@@ -13,7 +13,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchUserRole = async () => {
       try {
-        const response = await api.get('/auth/me'); // Endpoint pour récupérer les infos utilisateur
+        const response = await api.get('/auth/me'); // Endpoint pour récupérer tous les infos utilisateur
         setRole(response.data.role);
       } catch (error) {
         console.error('Erreur lors de la récupération du rôle utilisateur :', error);
