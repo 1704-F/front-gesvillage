@@ -22,7 +22,7 @@ import ConsumerInvoices from './components/Consumer/ConsumerInvoices';
 import ConsumerMeters from './components/Consumer/ConsumerMeters';
 import ConsumerProfile from './components/Consumer/ConsumerProfile';
 import ReadingPage from './components/Relever/ReadingPage';
-import { axiosPublic } from '../utils/axios';
+import { axiosPublic } from './utils/axios';
 import { Toaster } from "./components/ui/toast/toaster"; 
 
 import './styles.css';
