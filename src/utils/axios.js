@@ -21,3 +21,5 @@ axiosPrivate.interceptors.request.use((config) => {
 });
 
 export { axiosPublic, axiosPrivate };
+// Default export pour rétrocompatibilité
+export default axiosPrivate;
