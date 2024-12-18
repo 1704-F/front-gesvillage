@@ -22,7 +22,7 @@ import ConsumerInvoices from './components/Consumer/ConsumerInvoices';
 import ConsumerMeters from './components/Consumer/ConsumerMeters';
 import ConsumerProfile from './components/Consumer/ConsumerProfile';
 import ReadingPage from './components/Relever/ReadingPage';
-import api from './utils/axios';
+import { axiosPublic } from '../utils/axios';
 import { Toaster } from "./components/ui/toast/toaster"; 
 
 import './styles.css';
@@ -30,7 +30,7 @@ import './styles.css';
 
 // Composant wrapper pour les routes authentifiées
 const ProtectedLayout = ({ role }) => {
-  if (!role) return null; // Protection supplémentaire
+  if (!role) return null; // Protection supplémentaire 
 
   return (
     <Layout role={role}>
@@ -46,7 +46,7 @@ const App = () => {
   useEffect(() => {
     const fetchRole = async () => {
       try {
-        const response = await api.get('/auth/me');
+        const response = await axiosPublic.get('/auth/me');
         setRole(response.data.role);
       } catch (error) {
         console.error('Erreur lors de la récupération du rôle utilisateur :', error);
