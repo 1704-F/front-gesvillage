@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { axiosPublic, axiosPrivate } from '../../utils/axios';
-const api = axiosPrivate;
 import { Bar } from 'react-chartjs-2';
 import 'chart.js/auto';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
+
 
 const SuperAdminDashboard = () => {
   const [data, setData] = useState([]);

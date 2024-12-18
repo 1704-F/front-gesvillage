@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AdminAssignModal from './AdminAssignModal'; // Modale pour attribuer un admin
 import {
   Table,
   TableBody,
@@ -16,7 +17,7 @@ import {
 } from '@mui/material';
 import { axiosPublic, axiosPrivate } from '../../utils/axios';
 const api = axiosPrivate;
-import AdminAssignModal from './AdminAssignModal'; // Modale pour attribuer un admin
+
 
 const ServiceTable = () => {
   const [services, setServices] = useState([]);

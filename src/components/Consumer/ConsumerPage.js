@@ -1,5 +1,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { Alert, AlertDescription } from "../ui/alert";
+import { AlertCircle, X } from 'lucide-react';
 import { Card } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { Button } from "../ui/button";
@@ -37,8 +39,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { axiosPublic, axiosPrivate } from '../../utils/axios';
 const api = axiosPrivate;
-import { Alert, AlertDescription } from "../ui/alert";
-import { AlertCircle, X } from 'lucide-react';
+
 
 const ConsumerPage = () => {
   const { toast } = useToast();

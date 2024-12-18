@@ -1,9 +1,10 @@
 // components/Profile/ConsumerProfile.js
 import React, { useState, useEffect } from 'react';
+import moment from 'moment';
 import { Card, Descriptions, Avatar, Spin, Row, Col } from 'antd';
 import { axiosPublic, axiosPrivate } from '../../utils/axios';
 const api = axiosPrivate;
-import moment from 'moment';
+
 
 const ConsumerProfile = () => {
   const [profile, setProfile] = useState(null);
