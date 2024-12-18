@@ -7,7 +7,12 @@ import { Input } from "../../src/components/ui/input";
 import { Button } from "../../src/components/ui/button";
 import { Alert} from "../../src/components/ui/alert";
 import { AlertDescription } from "../../src/components/ui/alert";
-import api from '../utils/axios';
+
+
+// Import des deux instances Axios
+import { axiosPublic } from "../utils/axios"; // Pour les routes publiques
+import api from "../utils/axios"; // Pour les routes protégées
+
 
 import { Users, Calculator, FileText, BarChart,AlertCircle, MessageCircle, X } from 'lucide-react';
 
@@ -28,7 +33,7 @@ const Login = () => {
         return;
       }
        // Ajoutez les headers et le format correct du body
-    const response = await api.post('/auth/send-otp', 
+    const response = await axiosPublic.post('/auth/send-otp', 
       { phone_number: phoneNumber },
       { 
         headers: {

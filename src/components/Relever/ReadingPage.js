@@ -23,7 +23,8 @@ import { Plus, Pencil, Trash2, Calendar, Calculator, AlertCircle  } from 'lucide
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar as CalendarComponent } from "../ui/calendar";
 import { format } from 'date-fns';
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 import { cn } from "../lib/utils";
 
 const PERIODS = {

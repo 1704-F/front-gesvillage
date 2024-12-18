@@ -2,12 +2,16 @@ import axios from 'axios';
 
 console.log('API Base URL:', process.env.NEXT_PUBLIC_API_URL);
 
-const api = axios.create({
-  baseURL: process.env.NEXT_API_URL || 'https://api.gesvillage.com/api',
+const axiosPublic = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://api.gesvillage.com',
 });
 
-// Intercepteur pour ajouter automatiquement le token JWT
-api.interceptors.request.use((config) => {
+const axiosPrivate = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://api.gesvillage.com/api',
+});
+
+// Intercepteur pour ajouter automatiquement le token JWT pour axiosPrivate
+axiosPrivate.interceptors.request.use((config) => {
   console.log('Request URL:', config.baseURL + config.url);
   const token = localStorage.getItem('token');
   if (token) {
@@ -16,4 +20,4 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export default api;
+export { axiosPublic, axiosPrivate };

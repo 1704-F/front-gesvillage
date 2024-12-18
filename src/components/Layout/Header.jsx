@@ -9,7 +9,8 @@ import {
 } from "../ui/popover";
 import { Badge } from "../ui/badge";
 import { ScrollArea } from "../ui/scroll-area";
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 
 const Header = ({ toggleSidebar }) => {
   const navigate = useNavigate();

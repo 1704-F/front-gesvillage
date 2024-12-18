@@ -8,7 +8,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "../ui/popover";
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 
 const ConsumerMeters = () => {
   const [meters, setMeters] = useState([]);

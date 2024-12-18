@@ -10,7 +10,8 @@ import {
   InputLabel,
   FormControl,
 } from '@mui/material';
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 
 const AdminAssignModal = ({ service, onClose, onAdminAssigned }) => {
   const [admins, setAdmins] = useState([]); // Liste des admins disponibles

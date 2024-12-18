@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Modal, TextField, Button } from '@mui/material';
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 
 const ServiceEditModal = ({ service, open, onClose, onSave }) => {
   const [formData, setFormData] = useState({

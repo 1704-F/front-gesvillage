@@ -23,7 +23,8 @@ import { Calendar } from "../ui/calendar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import moment from 'moment';
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 
 const getNestedValue = (obj, path) => {
   if (!path) return obj;

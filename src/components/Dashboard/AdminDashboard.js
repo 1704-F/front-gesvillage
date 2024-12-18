@@ -19,7 +19,8 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 
 // Enregistrement des composants Chart.js nécessaires
 ChartJS.register(

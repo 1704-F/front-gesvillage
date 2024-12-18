@@ -12,7 +12,8 @@ import {
   Divider
 } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 
 const { Title, Text } = Typography;
 

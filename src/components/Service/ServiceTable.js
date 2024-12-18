@@ -14,7 +14,8 @@ import {
   Modal,
   Box,
 } from '@mui/material';
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 import AdminAssignModal from './AdminAssignModal'; // Modale pour attribuer un admin
 
 const ServiceTable = () => {

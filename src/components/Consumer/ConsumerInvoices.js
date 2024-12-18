@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Table, Card, Tag, Button, Select, DatePicker, Row, Col, Space, Modal, Statistic, Descriptions } from 'antd';
 import { DownloadOutlined, EyeOutlined } from '@ant-design/icons';
 import moment from 'moment';
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;

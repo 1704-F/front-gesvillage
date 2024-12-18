@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 
 const AdminForm = () => {
   const [formData, setFormData] = useState({

@@ -31,7 +31,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
-import api from '../../utils/axios'; 
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate; 
 
 const MeterPage = () => {
   // États

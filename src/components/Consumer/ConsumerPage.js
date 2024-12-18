@@ -35,7 +35,8 @@ import { cn } from "../lib/utils";
 import { Plus, Pencil, Trash2, Search, Phone, MapPin, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import api from '../../utils/axios';
+import { axiosPublic, axiosPrivate } from '../../utils/axios';
+const api = axiosPrivate;
 import { Alert, AlertDescription } from "../ui/alert";
 import { AlertCircle, X } from 'lucide-react';
 
