@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+console.log('API Base URL:', process.env.NEXT_PUBLIC_API_URL);
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL, // URL de base pour le Back-end fait
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
 });
 
 // Intercepteur pour ajouter automatiquement le token JWT

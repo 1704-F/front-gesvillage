@@ -19,6 +19,7 @@ const Login = () => {
   const [error, setError] = useState('');
 
   const handleSendOtp = async () => {
+    console.log('Using API URL:', process.env.NEXT_PUBLIC_API_URL);
     
     try {
       setError(''); // Réinitialiser l'erreur
@@ -37,6 +38,7 @@ const Login = () => {
   };
 
   const handleLogin = async () => {
+ 
     try {
       setError(''); // Réinitialiser l'erreur
       if (!otp || otp.length !== 4) {
