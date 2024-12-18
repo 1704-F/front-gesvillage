@@ -11,7 +11,7 @@ import { AlertDescription } from "../../src/components/ui/alert";
 
 // Import des deux instances Axios
 import { axiosPublic } from "../utils/axios"; // Pour les routes publiques
-import api from "../utils/axios"; // Pour les routes protégées
+
 
 
 import { Users, Calculator, FileText, BarChart,AlertCircle, MessageCircle, X } from 'lucide-react';
@@ -59,7 +59,7 @@ const Login = () => {
         return;
       }
 
-      const response = await api.post('/auth/verify-otp', { 
+      const response = await axiosPublic.post('/auth/verify-otp', { 
         phone_number: phoneNumber, 
         otp 
       });
