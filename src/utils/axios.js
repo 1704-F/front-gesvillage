@@ -1,25 +1,31 @@
+// utils/axios.js
 import axios from 'axios';
 
-console.log('API Base URL:', process.env.NEXT_PUBLIC_API_URL);
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.gesvillage.com';
 
 const axiosPublic = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://api.gesvillage.com',
+  baseURL: BASE_URL
 });
 
 const axiosPrivate = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://api.gesvillage.com/api',
+  baseURL: BASE_URL
 });
 
-// Intercepteur pour ajouter automatiquement le token JWT pour axiosPrivate
+// Intercepteur modifié pour gérer automatiquement le préfixe /api
 axiosPrivate.interceptors.request.use((config) => {
-  console.log('Request URL:', config.baseURL + config.url);
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // N'ajoute pas /api pour les routes d'auth
+  if (!config.url.startsWith('/auth')) {
+    config.url = `/api${config.url}`;
+  }
+  
+  console.log('URL finale:', config.url); // Pour le débogage
   return config;
 });
 
 export { axiosPublic, axiosPrivate };
-// Default export pour rétrocompatibilité
 export default axiosPrivate;
