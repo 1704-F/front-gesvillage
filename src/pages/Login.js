@@ -27,12 +27,20 @@ const Login = () => {
         setError('Veuillez entrer un numéro de téléphone valide commençant par +221 ou +33');
         return;
       }
-      await api.post('/auth/send-otp', { phone_number: phoneNumber });
+       // Ajoutez les headers et le format correct du body
+    const response = await api.post('/auth/send-otp', 
+      { phone_number: phoneNumber },
+      { 
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
       
-
+      console.log('API Response:', response);
       setStep(2);
     } catch (error) {
-      console.log("Numéro de téléphone envoyé :", phoneNumber);
+      console.error('Error details:', error.response?.data);
       setError('Erreur lors de l\'envoi du code. Veuillez vérifier votre numéro et réessayer.');
     }
   };
