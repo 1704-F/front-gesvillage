@@ -1,137 +1,283 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Modal,
-  Box,
-  Typography,
-  Button,
-  TextField,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-} from '@mui/material';
-import { axiosPublic, axiosPrivate } from '../../utils/axios';
-const api = axiosPrivate;
+import AdminAssignModal from './AdminAssignModal';
+import { Card } from "../ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
+import { Switch } from "../ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
+import { Search, Plus, Building2, User2, Trash2, Pencil } from 'lucide-react';
+import { axiosPrivate as api } from '../../utils/axios';
 
-const AdminAssignModal = ({ service, onClose, onAdminAssigned }) => {
-  const [admins, setAdmins] = useState([]); // Liste des admins disponibles
-  const [filteredAdmins, setFilteredAdmins] = useState([]); // Liste filtrée selon la recherche
-  const [searchQuery, setSearchQuery] = useState(''); // Recherche d'un admin
-  const [selectedAdminId, setSelectedAdminId] = useState(''); // Admin sélectionné
+const ServiceTable = () => {
+  const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedService, setSelectedService] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [removeModalOpen, setRemoveModalOpen] = useState(false);
+  const [adminsToRemove, setAdminsToRemove] = useState([]);
 
   useEffect(() => {
-    const fetchAdmins = async () => {
+    const fetchServices = async () => {
       try {
-        const response = await api.get('/admins'); // Appel à l'endpoint pour récupérer les admins
-        setAdmins(response.data);
-        setFilteredAdmins(response.data); // Par défaut, tous les admins sont affichés
-        setLoading(false);
+        const response = await api.get('/services');
+        // Assurez-vous que response.data est un tableau
+        const servicesData = Array.isArray(response.data) ? response.data : [];
+        setServices(servicesData);
       } catch (error) {
-        console.error('Erreur lors de la récupération des admins :', error);
+        console.error('Erreur lors de la récupération des services :', error);
+        setServices([]); // En cas d'erreur, initialiser avec un tableau vide
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchAdmins();
+    fetchServices();
   }, []);
 
-  // Filtrer les admins en fonction de la recherche
-  const handleSearchChange = (event) => {
-    const query = event.target.value.toLowerCase();
-    setSearchQuery(query);
-
-    const filtered = admins.filter(
-      (admin) =>
-        admin.name.toLowerCase().includes(query) || // Recherche par nom
-        admin.phone_number.includes(query) // Recherche par numéro de téléphone
-    );
-
-    setFilteredAdmins(filtered);
-  };
-
-  // Gérer l'attribution d'un admin
-  const handleAssignAdmin = async () => {
+  const handleToggleStatus = async (id) => {
+    if (!id) return;
     try {
-      console.log(`Assigning Admin: Service ID - ${service.id}, Admin ID - ${selectedAdminId}`);
-      const response = await api.patch(`/services/${service.id}/assign-admin`, {
-        adminId: selectedAdminId,
-      });
-      const assignedAdmin = admins.find((admin) => admin.id === selectedAdminId);
-      onAdminAssigned(assignedAdmin); // Mise à jour dans le tableau
-      console.log(response.data);
+      await api.patch(`/services/${id}/toggle-status`);
+      setServices(prevServices =>
+        prevServices.map(service =>
+          service.id === id ? { ...service, active: !service.active } : service
+        )
+      );
     } catch (error) {
-      console.error("Erreur lors de l'attribution de l'admin :", error);
+      console.error('Erreur lors du changement de statut :', error);
     }
   };
 
+  const handleRemoveAdmin = async (adminId) => {
+    if (!adminId) return;
+    try {
+      await api.patch(`/services/remove-admin`, { adminId });
+      setServices(prevServices =>
+        prevServices.map(service => ({
+          ...service,
+          users: (service.users || []).filter(user => user.id !== adminId)
+        }))
+      );
+      setRemoveModalOpen(false);
+    } catch (error) {
+      console.error('Erreur lors de la suppression de l\'admin :', error);
+    }
+  };
+
+  const openAssignModal = (service) => {
+    if (!service) return;
+    setSelectedService(service);
+    setModalOpen(true);
+  };
+
+  const closeAssignModal = () => {
+    setModalOpen(false);
+    setSelectedService(null);
+  };
+
+  const openRemoveAdminModal = (service) => {
+    if (!service) return;
+    setSelectedService(service);
+    setAdminsToRemove(service.users || []);
+    setRemoveModalOpen(true);
+  };
+
   if (loading) {
-    return <div>Chargement...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+      </div>
+    );
   }
 
+  const filteredServices = services.filter(service => 
+    service?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <Modal open={true} onClose={onClose}>
-      <Box
-        sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 400,
-          bgcolor: 'background.paper',
-          boxShadow: 24,
-          p: 4,
-          borderRadius: 2,
-        }}
-      >
-        <Typography variant="h6" gutterBottom>
-          Attribuer un Admin au Service : {service.name}
-        </Typography>
-        <TextField
-          label="Rechercher un Admin"
-          variant="outlined"
-          fullWidth
-          margin="normal"
-          value={searchQuery}
-          onChange={handleSearchChange}
-        />
-        <FormControl fullWidth>
-          <InputLabel id="select-admin-label">Sélectionner un Admin</InputLabel>
-          <Select
-            labelId="select-admin-label"
-            value={selectedAdminId}
-            onChange={(e) => setSelectedAdminId(e.target.value)}
-          >
-            {filteredAdmins.map((admin) => (
-              <MenuItem key={admin.id} value={admin.id}>
-                {admin.name} ({admin.phone_number})
-              </MenuItem>
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Building2 className="h-6 w-6" />
+          Attribution des rôles
+        </h1>
+
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input 
+              placeholder="Rechercher..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4"
+            />
+          </div>
+          <Button onClick={() => window.location.href = '/services/new'}>
+            <Plus className="w-4 h-4 mr-2" />
+            Ajouter un service
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nom</TableHead>
+              <TableHead>Compteurs</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>CA Total</TableHead>
+              <TableHead>Admins</TableHead>
+              <TableHead>Date de création</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredServices.map((service) => service && (
+              <TableRow key={service.id}>
+                <TableCell className="font-medium">{service?.name || 'N/A'}</TableCell>
+                <TableCell>{service?.meterCount || 0}</TableCell>
+                <TableCell>
+                  {service?.users?.length > 0 ? (
+                    <div className="flex flex-col space-y-1">
+                      {service.users.map((admin) => (
+                        <div key={admin.id} className="flex items-center gap-2">
+                          <User2 className="h-4 w-4 text-gray-500" />
+                          <span>{admin?.name}</span>
+                          <span className="text-sm text-gray-500">({admin?.phone_number})</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-gray-500">Aucun contact</span>
+                  )}
+                </TableCell>
+                <TableCell>{service?.totalCA || 0} FCFA</TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openAssignModal(service)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Attribuer Admin
+                    </Button>
+                    {service?.users?.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openRemoveAdminModal(service)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Supprimer
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {service?.createdAt ? new Date(service.createdAt).toLocaleDateString() : 'N/A'}
+                </TableCell>
+                <TableCell>
+                  <Switch
+                    checked={service?.active || false}
+                    onCheckedChange={() => handleToggleStatus(service?.id)}
+                  />
+                </TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.location.href = `/services/${service?.id}/edit`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => console.log('Suppression non implémentée')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
             ))}
-          </Select>
-        </FormControl>
-        <Box mt={2}>
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            onClick={handleAssignAdmin}
-            disabled={!selectedAdminId}
-          >
-            Attribuer
-          </Button>
-          <Button
-            variant="outlined"
-            color="secondary"
-            fullWidth
-            onClick={onClose}
-            style={{ marginTop: '10px' }}
-          >
-            Annuler
-          </Button>
-        </Box>
-      </Box>
-    </Modal>
+          </TableBody>
+        </Table>
+      </Card>
+
+      {/* Modal pour attribuer un admin */}
+      {modalOpen && selectedService && (
+        <AdminAssignModal
+          service={selectedService}
+          onClose={closeAssignModal}
+          onAdminAssigned={(admin) => {
+            if (admin) {
+              setServices(prevServices =>
+                prevServices.map(service =>
+                  service.id === selectedService.id
+                    ? { ...service, users: [...(service.users || []), admin] }
+                    : service
+                )
+              );
+              closeAssignModal();
+            }
+          }}
+        />
+      )}
+
+      {/* Modal pour supprimer un admin */}
+      {removeModalOpen && selectedService && (
+        <Dialog open={removeModalOpen} onOpenChange={() => setRemoveModalOpen(false)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Supprimer un Admin du Service : {selectedService?.name}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="py-4">
+              {adminsToRemove.map((admin) => (
+                <div key={admin.id} className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-2">
+                    <User2 className="h-4 w-4 text-gray-500" />
+                    <span>{admin?.name}</span>
+                    <span className="text-sm text-gray-500">({admin?.phone_number})</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRemoveAdmin(admin?.id)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setRemoveModalOpen(false)}
+              >
+                Annuler
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
   );
 };
 
-export default AdminAssignModal;
+export default ServiceTable;

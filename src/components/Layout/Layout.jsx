@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import Sidebar from './Sidebar';  // Import par défaut
-import Header from './Header';    // Import par défaut
+import { Toaster } from "../ui/toast/toaster";
+import Sidebar from './Sidebar';  
+import Header from './Header';    
 
 const Layout = ({ children, role }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -16,12 +17,14 @@ const Layout = ({ children, role }) => {
         <div className={`flex-1 ${sidebarOpen ? 'ml-64' : 'ml-20'} transition-all duration-300`}>
           <Header 
             toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            isSidebarOpen={sidebarOpen}  
           />
           <main className="p-6 mt-16">
             {children}
           </main>
         </div>
       </div>
+      <Toaster />
     </div>
   );
 };

@@ -35,16 +35,37 @@ import { axiosPublic, axiosPrivate } from '../../utils/axios';
 const api = axiosPrivate; 
 
 const MeterPage = () => {
+
+  const normalizeString = (str) => {
+    if (!str) return '';
+    return str
+      .normalize('NFC')
+      .replace(/‚/g, 'é')
+      .replace(/\u0083/g, 'é')
+      .replace(/\u0082/g, 'é');
+  };
+
   // États
-  const [meters, setMeters] = useState([]);
-  const [consumers, setConsumers] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedMeter, setSelectedMeter] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [nextMeterNumber, setNextMeterNumber] = useState('');
-  const [filterStatus, setFilterStatus] = useState('active');
-  const { toast } = useToast();
+
+ // États
+const [meters, setMeters] = useState([]); // Déplacer en premier
+const [currentPage, setCurrentPage] = useState(1);
+const [itemsPerPage, setItemsPerPage] = useState(10);
+const [consumers, setConsumers] = useState([]);
+const [isModalOpen, setIsModalOpen] = useState(false);
+const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+const [selectedMeter, setSelectedMeter] = useState(null);
+const [searchTerm, setSearchTerm] = useState('');
+const [nextMeterNumber, setNextMeterNumber] = useState('');
+const [filterStatus, setFilterStatus] = useState('active');
+const [quartiers, setQuartiers] = useState([]);
+const { toast } = useToast();
+
+// Calculer les indices pour la pagination après la déclaration de meters
+const totalPages = Math.ceil(meters.length / itemsPerPage);
+const startIndex = (currentPage - 1) * itemsPerPage;
+const endIndex = startIndex + itemsPerPage;
+const currentMeters = meters.slice(startIndex, endIndex);
 
   // Chargement initial des données
   useEffect(() => {
@@ -52,6 +73,22 @@ const MeterPage = () => {
     fetchConsumers();
   }, [filterStatus]);
 
+  useEffect(() => {
+    const fetchQuartiers = async () => {
+      try {
+        const response = await api.get('/geo/zones/quartiers');
+        setQuartiers(response.data.data);
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les quartiers",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    fetchQuartiers();
+  }, []);
   // Fonctions de récupération des données
   const fetchMeters = async () => {
     try {
@@ -178,7 +215,9 @@ const MeterPage = () => {
   const MeterForm = ({ isOpen, onClose, editMeter }) => {
     const [formData, setFormData] = useState({
       meter_number: editMeter?.meter_number || nextMeterNumber,
+      serial_number: editMeter?.serial_number || "",
       user_id: editMeter?.user?.id?.toString() || "", 
+      quartier_id: editMeter?.quartier?.id?.toString() || "",
       type: editMeter?.type || "manual",
       location: editMeter?.location || "",
       latitude: editMeter?.latitude || "",
@@ -194,6 +233,7 @@ const MeterPage = () => {
         location: editMeter.location,
         latitude: editMeter.latitude || "",
         longitude: editMeter.longitude || "",
+        quartier_id: editMeter.quartier?.id?.toString() || ""
       });
     }
   }, [editMeter]);
@@ -205,19 +245,31 @@ const MeterPage = () => {
 
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>
-              {editMeter ? "Modifier le compteur" : "Ajouter un compteur"}
-            </DialogTitle>
-          </DialogHeader>
+      <DialogContent className="sm:max-w-[800px]">
+        <DialogHeader>
+          <DialogTitle>
+            {editMeter ? "Modifier le compteur" : "Ajouter un compteur"}
+          </DialogTitle>
+        </DialogHeader>
 
-          <div className="space-y-4 py-4">
+        <div className="grid grid-cols-2 gap-6">
+          {/* Colonne gauche */}
+          <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Numéro de compteur</label>
               <Input
                 disabled
                 value={formData.meter_number}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Numéro de série</label>
+              <Input 
+                placeholder="Entrez le numéro de série du compteur"
+                value={formData.serial_number}
+                onChange={(e) => handleChange('serial_number', e.target.value)}
+                required
               />
             </div>
 
@@ -255,14 +307,27 @@ const MeterPage = () => {
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
+          {/* Colonne droite */}
+          <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Emplacement</label>
-              <Input 
-                placeholder="Entrez l'emplacement"
-                value={formData.location}
-                onChange={(e) => handleChange('location', e.target.value)}
-              />
+              <Select
+                value={formData.quartier_id}
+                onValueChange={(value) => handleChange('quartier_id', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un quartier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {quartiers.map((quartier) => (
+                    <SelectItem key={quartier.id} value={String(quartier.id)}>
+                      {quartier.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -283,17 +348,19 @@ const MeterPage = () => {
               />
             </div>
           </div>
+        </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={onClose}>
-              Annuler
-            </Button>
-            <Button onClick={() => handleFormSubmit(formData)}>
-              {editMeter ? "Modifier" : "Ajouter"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <DialogFooter className="mt-6">
+          <Button variant="outline" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button onClick={() => handleFormSubmit(formData)}>
+            {editMeter ? "Modifier" : "Ajouter"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     );
   };
 
@@ -334,6 +401,7 @@ const MeterPage = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Numéro</TableHead>
+                <TableHead>N° Série</TableHead>
                 <TableHead>Consommateur</TableHead>
                 <TableHead>Emplacement</TableHead>
                 <TableHead>Type</TableHead>
@@ -342,26 +410,36 @@ const MeterPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {meters
-                .filter(meter => 
-                  meter.meter_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  `${meter.user?.first_name} ${meter.user?.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
-                )
+            {currentMeters
+      .filter(meter => 
+        meter.meter_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        `${meter.user?.first_name} ${meter.user?.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
+      )
                 .map(meter => (
                   <TableRow key={meter.id}>
                     <TableCell>{meter.meter_number}</TableCell>
+                    
+
+                    <TableCell>
+  <div className="flex items-center space-x-2">
+    {normalizeString(meter.serial_number)}
+  </div>
+</TableCell>
+
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <User className="h-4 w-4" />
                         <span>{meter.user?.first_name} {meter.user?.last_name}</span>
                       </div>
                     </TableCell>
+
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <MapPin className="h-4 w-4" />
-                        <span>{meter.location}</span>
-                      </div>
-                    </TableCell>
+  <div className="flex items-center space-x-2">
+    <MapPin className="h-4 w-4" />
+    <span>{meter.quartier?.name || 'Non spécifié'}</span>
+  </div>
+</TableCell>
+
                     <TableCell>
                       <Badge variant={meter.type === 'iot' ? 'default' : 'secondary'}>
                         {meter.type.toUpperCase()}
@@ -382,19 +460,59 @@ const MeterPage = () => {
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => handleDelete(meter)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                       
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
             </TableBody>
+
           </Table>
+          <div className="flex items-center justify-between mt-4 px-2">
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-600">Lignes par page:</span>
+      <Select
+        value={String(itemsPerPage)}
+        onValueChange={(value) => {
+          setItemsPerPage(Number(value));
+          setCurrentPage(1);
+        }}
+      >
+        <SelectTrigger className="w-[70px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="5">5</SelectItem>
+          <SelectItem value="10">10</SelectItem>
+          <SelectItem value="20">20</SelectItem>
+          <SelectItem value="50">50</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-600">
+        {startIndex + 1}-{Math.min(endIndex, meters.length)} sur {meters.length}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+        disabled={currentPage === 1}
+      >
+        Précédent
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+        disabled={currentPage === totalPages}
+      >
+        Suivant
+      </Button>
+    </div>
+  </div>
+
         </CardContent>
       </Card>
 

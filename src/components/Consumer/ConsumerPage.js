@@ -1,5 +1,7 @@
-
+//consummer/ConsumerPage
 import React, { useEffect, useState, useCallback } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+
 import { Alert, AlertDescription } from "../ui/alert";
 import { AlertCircle, X } from 'lucide-react';
 import { Card } from "../ui/card";
@@ -45,8 +47,6 @@ const ConsumerPage = () => {
   const { toast } = useToast();
   const [consumers, setConsumers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedConsumer, setSelectedConsumer] = useState(null);
@@ -54,11 +54,20 @@ const ConsumerPage = () => {
   const [consumerToDelete, setConsumerToDelete] = useState(null);
   const [formError, setFormError] = useState('');
 
-  const fetchConsumers = useCallback(async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [total, setTotal] = useState(0);
+  
+
+   // Fonction de récupération des consommateurs
+   const fetchConsumers = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page, search: searchTerm };
-      const response = await api.get('/consumers', { params });
+      const response = await api.get('/consumers', {
+        params: {
+          search: searchTerm
+        }
+      });
       setConsumers(response.data.data);
       setTotal(response.data.total);
     } catch (error) {
@@ -70,15 +79,29 @@ const ConsumerPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, searchTerm]);
+  }, [searchTerm]);
+
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchConsumers();
     }, 500);
-
     return () => clearTimeout(timeoutId);
   }, [fetchConsumers]);
+
+ 
+
+
+
+// Calculer les indices et pages pour la pagination côté client
+const totalPages = Math.ceil(consumers.length / itemsPerPage);
+const startIndex = (currentPage - 1) * itemsPerPage;
+const endIndex = startIndex + itemsPerPage;
+const currentConsumers = consumers.slice(startIndex, endIndex);
+
+
+
+
 
   const handleFormSubmit = async (event) => {
     event.preventDefault();
@@ -145,65 +168,13 @@ const ConsumerPage = () => {
     }
   };
 
-  const PaginationSection = () => {
-    const totalPages = Math.ceil(total / 10);
-    
-    const renderPageNumbers = () => {
-      const pages = [];
-      for (let i = 1; i <= totalPages; i++) {
-        if (
-          i === 1 ||
-          i === totalPages ||
-          (i >= page - 1 && i <= page + 1)
-        ) {
-          pages.push(
-            <PaginationItem key={i}>
-              <PaginationLink
-                onClick={() => setPage(i)}
-                isActive={page === i}
-              >
-                {i}
-              </PaginationLink>
-            </PaginationItem>
-          );
-        } else if (i === page - 2 || i === page + 2) {
-          pages.push(
-            <PaginationItem key={i}>
-              <PaginationEllipsis />
-            </PaginationItem>
-          );
-        }
-      }
-      return pages;
-    };
+ 
 
-    if (totalPages <= 1) return null;
 
-    return (
-      <Pagination className="mt-4">
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              className={cn(page <= 1 && "pointer-events-none opacity-50")}
-            />
-          </PaginationItem>
-          
-          {renderPageNumbers()}
-
-          <PaginationItem>
-            <PaginationNext
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              className={cn(page >= totalPages && "pointer-events-none opacity-50")}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
-    );
-  };
 
   return (
     <div className="p-6 space-y-6">
+
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Gestion des Consommateurs</h1>
         
@@ -241,32 +212,33 @@ const ConsumerPage = () => {
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
-            {consumers.map((consumer) => (
-              <TableRow key={consumer.id}>
-                <TableCell>{consumer.name}</TableCell>
-                <TableCell>{consumer.first_name}</TableCell>
-                <TableCell>{consumer.last_name}</TableCell>
-                <TableCell>
-                  {consumer.date_of_birth ? 
-                    format(new Date(consumer.date_of_birth), 'dd/MM/yyyy') : 
-                    '-'}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <Phone className="h-4 w-4 text-gray-500" />
-                    <span>{consumer.phone_number}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="h-4 w-4 text-gray-500" />
-                    <span>{consumer.address || '-'}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {format(new Date(consumer.createdAt), 'dd/MM/yyyy')}
-                </TableCell>
+          {currentConsumers.map((consumer) => (
+    <TableRow key={consumer.id}>
+      <TableCell>{consumer.name}</TableCell>
+      <TableCell>{consumer.first_name}</TableCell>
+      <TableCell>{consumer.last_name}</TableCell>
+      <TableCell>
+        {consumer.date_of_birth ? 
+          format(new Date(consumer.date_of_birth), 'dd/MM/yyyy') : 
+          '-'}
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center space-x-2">
+          <Phone className="h-4 w-4 text-gray-500" />
+          <span>{consumer.phone_number}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center space-x-2">
+          <MapPin className="h-4 w-4 text-gray-500" />
+          <span>{consumer.address || '-'}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        {format(new Date(consumer.createdAt), 'dd/MM/yyyy')}
+      </TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button 
@@ -279,8 +251,11 @@ const ConsumerPage = () => {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
+
+                    {/* 
+
                     <Button 
-                      variant="destructive" 
+                      variant="destructive"  
                       size="sm"
                       onClick={() => {
                         setConsumerToDelete(consumer);
@@ -289,15 +264,68 @@ const ConsumerPage = () => {
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
+
+                    */}
+
                   </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
+
+
         </Table>
+
+        <div className="flex items-center justify-between mt-4 px-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Lignes par page:</span>
+            <Select
+              value={String(itemsPerPage)}
+              onValueChange={(value) => {
+                setItemsPerPage(Number(value));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[70px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">
+              {startIndex + 1}-{Math.min(endIndex, consumers.length)} sur {consumers.length}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              Précédent
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Suivant
+            </Button>
+          </div>
+
+        </div>
+
+
       </Card>
 
-      <PaginationSection />
+     
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[500px]">

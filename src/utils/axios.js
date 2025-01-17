@@ -1,7 +1,9 @@
-// utils/axios.js
 import axios from 'axios';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.gesvillage.com';
+// Définir l'URL de base en fonction de l'environnement
+const BASE_URL = process.env.NODE_ENV === 'development' 
+  ? 'http://localhost:5000'  // URL locale
+  : 'https://api.gesvillage.com'; // URL de production
 
 const axiosPublic = axios.create({
   baseURL: BASE_URL
@@ -23,7 +25,7 @@ axiosPrivate.interceptors.request.use((config) => {
     config.url = `/api${config.url}`;
   }
   
-  console.log('URL finale:', config.url); // Pour le débogage
+  console.log('URL finale:', config.url, 'BASE_URL:', BASE_URL); // Log amélioré
   return config;
 });
 

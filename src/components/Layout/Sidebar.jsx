@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation  } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Building2, 
@@ -13,10 +13,17 @@ import {
   UserCircle,
   Home,
   FileText,
-  BarChart3
+  BarChart3,
+  MapPin,
+  Beaker,
+  Wrench,
+  DollarSign,
+  FileBarChart
+
 } from 'lucide-react';
 
 const Sidebar = ({ role, isOpen, setIsOpen }) => {
+  const location = useLocation();
   const getMenuItems = (role) => {
     switch(role) {
       case 'SuperAdmin':
@@ -47,6 +54,11 @@ const Sidebar = ({ role, isOpen, setIsOpen }) => {
             icon: <Receipt className="w-5 h-5" /> 
           },
           { 
+            title: 'Gérer les Zones', 
+            path: '/zones', 
+            icon: <MapPin className="w-5 h-5" /> 
+          },
+          { 
             title: 'Paramètres', 
             path: '/settings', 
             icon: <Settings className="w-5 h-5" /> 
@@ -60,27 +72,60 @@ const Sidebar = ({ role, isOpen, setIsOpen }) => {
             icon: <LayoutDashboard className="w-5 h-5" /> 
           },
           { 
-            title: 'Gérer les Consommateurs', 
+            title: 'Consommateur', 
             path: '/consumers', 
             icon: <Users className="w-5 h-5" /> 
           },
           { 
-            title: 'Gérer les Compteurs', 
+            title: 'Compteur', 
             path: '/meters', 
             icon: <Gauge className="w-5 h-5" /> 
           },
           { 
-            title: 'Gérer les Consommations', 
+            title: 'Consommation', 
             path: '/readings', 
             icon: <FileSpreadsheet className="w-5 h-5" /> 
           },
           { 
-            title: 'Gérer les Factures', 
+            title: 'Facture', 
             path: '/invoices', 
             icon: <Receipt className="w-5 h-5" /> 
           },
+          
           { 
-            title: 'Gérer les Paramétres', 
+            title: 'Qualité de l\'eau', 
+            path: '/water-quality', 
+            icon: <Beaker className="w-5 h-5" /> 
+          },
+          { 
+            title: 'Dépense', // Nouveau lien 
+            path: '/expenses', 
+            icon: <DollarSign className="w-5 h-5" /> 
+          },
+         
+          { 
+            title: 'Gestion', 
+            path: '/management', 
+            icon: <Wrench className="w-5 h-5" /> 
+          },
+          { 
+            title: 'Rapport', // Nouveau menu
+            path: '/reports', 
+            icon: <FileBarChart className="w-5 h-5" /> 
+          },
+          { 
+            title: 'Service', 
+            path: '/service-info', 
+            icon: <Building2 className="w-5 h-5" /> 
+          },
+          { 
+            title: 'Cartographie', 
+            path: '/map', 
+            icon: <MapPin className="w-5 h-5" /> 
+          },
+
+          { 
+            title: 'Paramétres prix', 
             path: '/service-pricing', 
             icon: <Settings className="w-5 h-5" /> 
           },
@@ -129,7 +174,9 @@ const Sidebar = ({ role, isOpen, setIsOpen }) => {
   const menuItems = getMenuItems(role);
 
   return (
-    <aside className={`fixed left-0 top-0 h-screen bg-white border-r transition-all duration-300 z-40 ${isOpen ? 'w-64' : 'w-20'}`}>
+    <aside className={`fixed left-0 top-0 h-screen bg-white border-r transition-all duration-300 z-40 ${
+      isOpen ? 'w-64' : 'w-20'
+    }`}>
       {/* Logo conteneur avec une hauteur fixe */}
       <div className="h-16 border-b flex items-center px-4">
         {isOpen ? (
@@ -158,14 +205,17 @@ const Sidebar = ({ role, isOpen, setIsOpen }) => {
               key={index}
               to={item.path}
               className={`
-                flex items-center p-3 rounded-lg
+                flex items-center p-2.5 rounded-lg
                 hover:bg-gray-100 transition-colors
                 ${isOpen ? 'space-x-3' : 'justify-center'}
                 text-gray-600 hover:text-gray-900
                 group relative
+                ${location.pathname === item.path ? 'bg-[#2081E2] text-white' : ''}  /* Modification ici */
+
               `}
             >
-              {item.icon}
+             
+             {item.icon}
               {isOpen && <span>{item.title}</span>}
               {!isOpen && (
                 <div className="absolute left-20 bg-gray-900 text-white px-2 py-1 rounded text-sm opacity-0 pointer-events-none group-hover:opacity-100 whitespace-nowrap">

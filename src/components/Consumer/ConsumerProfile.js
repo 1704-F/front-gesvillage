@@ -1,4 +1,4 @@
-// components/Profile/ConsumerProfile.js
+// components/ConsumerProfile.js
 import React, { useState, useEffect } from 'react';
 import moment from 'moment';
 import { Card, Descriptions, Avatar, Spin, Row, Col } from 'antd';

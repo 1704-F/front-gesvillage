@@ -1,8 +1,11 @@
+//App.js
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import Layout from './components/Layout/Layout';
 
 import SuperAdminDashboard from './components/Dashboard/SuperAdminDashboard';
+import ZoneManagementPage from './pages/ZoneManagementPage';
+
 import AdminDashboard from './components/Dashboard/AdminDashboard';
 import SupervisorDashboard from './components/Dashboard/SupervisorDashboard';
 import ConsumerDashboard from './components/Dashboard/ConsumerDashboard';
@@ -14,7 +17,14 @@ import AdminForm from './components/Admin/AdminForm';
 import ServiceBillingPage from "./components/Facture/ServiceBillingPage";
 import ServicePricing from "./components/Settings/ServicePricing"
 import InvoicePage from "./components/Facture/InvoicePage";
+import MapService from "./components/Map/Map";
 import SettingsPage from './components/Settings/SettingsPage';
+import WaterQuality from './components/Settings/WaterQuality';
+import ServiceInfoPage from './components/Service/ServiceInfo';
+import ManagementPage from './components/Gestion/Management';
+import ExpensePage from './components/Expense/ExpensePage';
+import ReportsPage from './components/Rapport/ReportsPage'
+
 import ConsumerPage from './components/Consumer/ConsumerPage';
 import MeterPage from './components/Meter/MeterPage';
 import ConsumerConsumption from './components/Consumer/ConsumerConsumption';
@@ -22,8 +32,10 @@ import ConsumerInvoices from './components/Consumer/ConsumerInvoices';
 import ConsumerMeters from './components/Consumer/ConsumerMeters';
 import ConsumerProfile from './components/Consumer/ConsumerProfile';
 import ReadingPage from './components/Relever/ReadingPage';
+
 import { axiosPrivate } from './utils/axios';
 import { Toaster } from "./components/ui/toast/toaster"; 
+import { ToastProvider } from "./components/ui/toast/use-toast"
 
 import './styles.css';
 
@@ -72,6 +84,7 @@ const App = () => {
 
   return (
     <>
+    <ToastProvider>
     <Router>
       <Routes>
         {!isAuthenticated ? (
@@ -92,7 +105,9 @@ const App = () => {
                   <Route path="/services/new" element={<ServiceForm />} />
                   <Route path="/admins/new" element={<AdminForm />} />
                   <Route path="/service-billing" element={<ServiceBillingPage />} />
+                  <Route path="/zones" element={<ZoneManagementPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
+
                 </>
               )}
 
@@ -105,7 +120,14 @@ const App = () => {
                   <Route path="/meters" element={<MeterPage />} />
                   <Route path="/readings" element={<ReadingPage />} />
                   <Route path="/invoices" element={<InvoicePage />} />
+                  <Route path="/map" element={<MapService />} />
                   <Route path="/service-pricing" element={<ServicePricing />} />
+                  <Route path="/water-quality" element={<WaterQuality />} />
+                  <Route path="/service-info" element={<ServiceInfoPage />} />
+                  <Route path="/management" element={<ManagementPage />} />
+                  <Route path="/expenses" element={<ExpensePage />} />
+                  <Route path="/reports" element={<ReportsPage />} />
+
                 </>
               )}
 
@@ -138,6 +160,7 @@ const App = () => {
       </Routes>
     </Router>
     <Toaster />
+    </ToastProvider>
     </>
   );
 };

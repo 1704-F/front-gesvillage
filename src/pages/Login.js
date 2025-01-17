@@ -55,7 +55,7 @@ const Login = () => {
     try {
       setError(''); // Réinitialiser l'erreur
       if (!otp || otp.length !== 4) {
-        setError('Veuillez entrer un code à 4 chiffres valide');
+        setError('Veuillez entrer un code à 6 chiffres valide');
         return;
       }
 

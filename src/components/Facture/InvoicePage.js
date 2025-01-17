@@ -1,25 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { cn } from "../lib/utils";
 import { Card } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Alert, AlertDescription } from "../ui/alert";
-import { AlertCircle } from 'lucide-react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle,
-  DialogFooter,
-} from "../ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Badge } from "../ui/badge";
+import { Checkbox } from "../ui/checkbox";
+import { Alert, AlertDescription } from "../ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,292 +20,297 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import { useToast } from "../ui/toast/use-toast";
-import { 
-  Plus, 
-  FileText, 
-  Pencil, 
-  Trash2,
-  Calculator
-} from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Calendar as CalendarComponent } from "../ui/calendar";
+import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Plus, FileText, Download, Pencil, Trash2, FileSpreadsheet, AlertCircle, Calculator, Calendar,Check } from 'lucide-react';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { axiosPublic, axiosPrivate } from '../../utils/axios';
-const api = axiosPrivate;
+import { axiosPrivate as api } from '../../utils/axios';
+import InvoicePDF from '../Service/InvoicePDF';
 
-// Composant pour les détails de calcul
-const ConsumptionDetails = ({ consumption, servicePricing }) => {
-  if (!consumption || !servicePricing) return null;
+// Composant ConsumptionDetails
+const ConsumptionDetails = ({ reading, amount }) => {
+  if (!reading) return null;
 
-  const { threshold, base_price, extra_price } = servicePricing;
-  const baseConsumption = Math.min(consumption, threshold);
-  const extraConsumption = Math.max(0, consumption - threshold);
-  const baseAmount = baseConsumption * base_price;
-  const extraAmount = extraConsumption * extra_price;
-  const totalAmount = baseAmount + extraAmount;
+  const consumption = reading.consumption ? parseFloat(reading.consumption) : 0;
+  const lastReadingValue = reading.last_reading_value ? parseFloat(reading.last_reading_value) : 0;
+  const readingValue = reading.reading_value ? parseFloat(reading.reading_value) : 0;
 
   return (
-    <div className="mt-4 bg-blue-50 rounded-lg p-4 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Calculator className="h-5 w-5" />
-          Détails de la consommation
+          Détails
         </h3>
         <div className="text-lg font-bold text-blue-700">
-          {Math.round(totalAmount).toLocaleString()} FCFA
+          {Math.round(amount).toLocaleString()} FCFA
         </div>
       </div>
 
-      <div className="bg-white rounded-lg p-4 space-y-4">
+      <div className="bg-white rounded-md p-4 space-y-4">
         <div className="pb-3 border-b">
-          <span className="text-sm text-gray-500">Consommation totale</span>
+          <div className="text-sm font-medium text-gray-500">Consommation totale</div>
           <div className="text-2xl font-semibold">{consumption.toFixed(2)} m³</div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-2">
           <div>
-            <div className="font-medium">Première tranche (0 - {threshold} m³)</div>
-            <div className="ml-4 text-gray-600">
-              <div>{baseConsumption.toFixed(2)} m³ × {base_price} FCFA/m³</div>
-              <div className="font-medium text-black">
-                = {Math.round(baseAmount).toLocaleString()} FCFA
-              </div>
+            <div className="font-medium">Relevé</div>
+            <div className="pl-3 text-sm text-gray-600">
+              <div>Ancien index : {lastReadingValue.toFixed(2)} m³</div>
+              <div>Nouvel index : {readingValue.toFixed(2)} m³</div>
             </div>
           </div>
-
-          {extraConsumption > 0 && (
-            <div>
-              <div className="font-medium">Deuxième tranche ({threshold}+ m³)</div>
-              <div className="ml-4 text-gray-600">
-                <div>{extraConsumption.toFixed(2)} m³ × {extra_price} FCFA/m³</div>
-                <div className="font-medium text-black">
-                  = {Math.round(extraAmount).toLocaleString()} FCFA
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
   );
 };
 
-// Composant modal de génération de facture
-const GenerateInvoiceDialog = ({ 
-  open, 
-  onOpenChange, 
-  meters, 
-  onGenerate,
-  servicePricing 
+// Modal de génération de facture
+const GenerateInvoiceDialog = ({
+  open,
+  onOpenChange,
+  readings,
+  onGenerate
 }) => {
-  const [selectedMeter, setSelectedMeter] = useState(null);
-  const [error, setError] = useState(null); // Nouvel état pour l'erreur
+  const [selectedReadings, setSelectedReadings] = useState([]);
+  const [error, setError] = useState(null);
 
-  const handleGenerate = async (meterId) => {
-    try {
-      setError(null); // Réinitialiser l'erreur
-      await onGenerate(meterId);
-      onOpenChange(false);
-    } catch (error) {
-      console.log('Erreur reçue:', error.response?.data); // Pour debug
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[900px]">
+        <DialogHeader>
+          <DialogTitle>Générer des factures</DialogTitle>
+        </DialogHeader>
 
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-       // Si c'est une erreur de facture existante
-    if (error.response?.data?.details?.existingInvoice) {
-      const details = error.response.data.details.existingInvoice;
-      setError(
-        <div className="space-y-2">
-          <p className="font-medium text-red-700">Une facture existe déjà pour ce compteur sur cette période :</p>
-          <ul className="list-disc list-inside space-y-1 text-sm">
-            <li>N° Facture : {details.invoice_number}</li>
-            <li>Période : {details.period}</li>
-            <li>Consommateur : {details.consumer}</li>
-            <li>Statut : {details.status === 'paid' ? 'Payée' : 'Non payée'}</li>
-          </ul>
+        <div className="space-y-4">
+          <Card className="p-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox 
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedReadings(readings.map(r => r.id));
+                        } else {
+                          setSelectedReadings([]);
+                        }
+                      }}
+                    />
+                  </TableHead>
+                  <TableHead>Compteur</TableHead>
+                  <TableHead>Consommateur</TableHead>
+                  <TableHead>Période</TableHead>
+                  <TableHead>Consommation (m³)</TableHead>
+                  <TableHead>Montant (FCFA)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {readings.map((reading) => (
+                  <TableRow key={reading.id}>
+                    <TableCell>
+                      <Checkbox 
+                        checked={selectedReadings.includes(reading.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedReadings(prev => [...prev, reading.id]);
+                          } else {
+                            setSelectedReadings(prev => prev.filter(id => id !== reading.id));
+                          }
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>{reading.meter.meter_number}</TableCell>
+                    <TableCell>
+                      {reading.meter.user.first_name} {reading.meter.user.last_name}
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(reading.start_date), 'dd/MM/yy')} au {format(new Date(reading.end_date), 'dd/MM/yy')}
+                    </TableCell>
+                    <TableCell>
+                      {parseFloat(reading.consumption).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      {parseFloat(reading.amount).toLocaleString()} 
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
         </div>
-      );
-    } else {
-      setError(error.response?.data?.message || "Une erreur est survenue lors de la génération de la facture.");
-    }
-  }
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setError(null);
+              onOpenChange(false);
+            }}
+          >
+            Annuler
+          </Button>
+          <Button
+            onClick={() => onGenerate(selectedReadings)}
+            disabled={selectedReadings.length === 0}
+          >
+            Générer {selectedReadings.length} facture(s)
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
-  const getConsumption = (meter) => {
-    if (!meter?.lastReading) return null;
-    return parseFloat(meter.lastReading.reading_value) - parseFloat(meter.lastReading.last_reading_value);
-  };
-
-  const selectedMeterData = meters.find(m => m.id === selectedMeter);
-  const consumption = selectedMeterData ? getConsumption(selectedMeterData) : null;
+// Modal de visualisation de facture
+const ViewInvoiceDialog = ({ open, onOpenChange, invoice }) => {
+  if (!invoice) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Générer une facture</DialogTitle>
+          <DialogTitle>Facture :  {invoice.invoice_number}</DialogTitle>
         </DialogHeader>
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {error}
-            </AlertDescription>
-          </Alert>
-        )}
-
-
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Sélectionner un compteur</label>
-            <Select value={selectedMeter} onValueChange={setSelectedMeter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choisir un compteur" />
-              </SelectTrigger>
-              <SelectContent>
-                {meters.map((meter) => {
-                  const reading = meter.lastReading;
-                  if (!reading) return null;
-                  
-                  return (
-                    <SelectItem key={meter.id} value={meter.id}>
-                      <div className="flex flex-col">
-                        <span>
-                          {meter.meter_number} - {meter.user?.first_name} {meter.user?.last_name}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          Dernier relevé: {reading.reading_value} m³ ({format(new Date(reading.reading_date), 'dd/MM/yyyy')})
-                        </span>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Compteur</label>
+              <div>{invoice.meter.meter_number}</div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">N° Série</label>
+              <div>{invoice.meter.serial_number || 'Pas de Numéro'}</div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Consommateur</label>
+              <div>{invoice.meter.user.first_name} {invoice.meter.user.last_name}</div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Période</label>
+              <div>
+                {format(new Date(invoice.start_date), 'dd/MM/yyyy')} au {format(new Date(invoice.end_date), 'dd/MM/yyyy')}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Date d'échéance</label>
+              <div>{format(new Date(invoice.due_date), 'dd/MM/yyyy')}</div>
+            </div>
           </div>
 
-          {selectedMeter && consumption && (
-            <ConsumptionDetails
-              consumption={consumption}
-              servicePricing={servicePricing}
-            />
-          )}
+          <ConsumptionDetails
+            reading={invoice.reading}
+            amount={invoice.amount_due}
+          />
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setError(null); // Réinitialiser l'erreur à la fermeture
-              onOpenChange(false);
-            }}
-
-          >
-            Annuler
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Fermer
           </Button>
+
+          
+
+
           <Button 
-             onClick={() => handleGenerate(selectedMeter)}
-             disabled={!selectedMeter}
-          >
-            Générer
-          </Button>
+  
+  size="sm"
+  onClick={async () => {
+    try {
+      const response = await api.get(`/invoices/${invoice.id}/pdf`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `facture-${invoice.invoice_number}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }}
+>
+  <Download className="w-4 h-4 mr-2" />
+  Télécharger
+</Button>
+
+
+
+
         </DialogFooter>
-      </DialogContent>
+      </DialogContent> 
     </Dialog>
   );
 };
 
-// Composant modal de modification de facture
-const EditInvoiceDialog = ({ 
-  open, 
-  onOpenChange, 
-  invoice, 
-  onSubmit 
-}) => {
-  const [status, setStatus] = useState(invoice?.status || 'pending');
-  const [description, setDescription] = useState(invoice?.description || '');
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Modifier la facture</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Statut</label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="paid">Payé</SelectItem>
-                <SelectItem value="pending">Non payé</SelectItem>
-              
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Description</label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="min-h-[100px]"
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
-            Annuler
-          </Button>
-          <Button
-            onClick={() => {
-              onSubmit({ status, description });
-              onOpenChange(false);
-            }}
-          >
-            Modifier
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// Composant principal de la page
+// Composant principal
 const InvoicePage = () => {
   const { toast } = useToast();
+  
+  // États
   const [invoices, setInvoices] = useState([]);
-  const [meters, setMeters] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [servicePricing, setServicePricing] = useState(null);
+  const [selectedInvoices, setSelectedInvoices] = useState([]);
+  const [validatedReadings, setValidatedReadings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
 
-  // États pour les modals
+  // États de la période
+  // Dans InvoicePage
+const [dateRange, setDateRange] = useState([
+  (() => {
+    const date = new Date('2024-01-01');
+    //const date = new Date();
+    //date.setMonth(date.getMonth() - 1); // Mois dernier
+    //date.setDate(1); // Premier jour du mois
+    date.setHours(0, 0, 0, 0);
+    return date;
+  })(),
+  (() => {
+    const date = new Date();
+    date.setHours(23, 59, 59, 999);
+    return date;
+  })()
+]);
+  // États des filtres
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // États des modals
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentInvoice, setCurrentInvoice] = useState(null);
 
-  // ... suite du composant InvoicePage
-
+  // Chargement des données
   const fetchInvoices = async () => {
-    setLoading(true);
+    
     try {
+      setLoading(true);
       const response = await api.get('/invoices', {
         params: {
-          status: statusFilter !== 'all' ? statusFilter : undefined,
-          search: searchTerm || undefined
+          start_date: format(dateRange[0], 'yyyy-MM-dd'),
+          end_date: format(dateRange[1], 'yyyy-MM-dd'),
+          status: statusFilter !== 'all' ? statusFilter : undefined
         }
+        
       });
+      console.log('khaly Données des factures récupérées :', response.data.data);
+     
       setInvoices(response.data.data);
+
+
     } catch (error) {
       toast({
         variant: "destructive",
@@ -328,102 +322,77 @@ const InvoicePage = () => {
     }
   };
 
-  const fetchMeters = async () => {
+  const fetchValidatedReadings = async () => {
     try {
-      const response = await api.get('/readings/meters/active/validated');
-      const metersWithValidatedReadings = response.data.data.map(meter => ({
-        ...meter,
-        lastReading: meter.readings[meter.readings.length - 1]
-      }));
-      setMeters(metersWithValidatedReadings);
+      setLoading(true);
+      const response = await api.get('/readings/validated-not-invoiced');
+      setValidatedReadings(response.data.data);
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de récupérer les compteurs"
+        description: "Impossible de récupérer les relevés disponibles"
       });
+    } finally {
+      setLoading(false);
     }
   };
+  useEffect(() => {
+    fetchInvoices();
+  }, [dateRange, statusFilter]);
 
-  const handleGenerateInvoice = async (meterId) => {
+  // Handlers
+  const handleGenerateInvoices = async (readingIds) => {
     try {
-      const response = await api.post(`/invoices/generate/${meterId}`);
+      console.log('Reading IDs:', readingIds); // Pour debug
+      const response = await api.post('/invoices/generate', {
+        reading_ids: readingIds // Assurez-vous que c'est un tableau
+      });
       toast({
         title: "Succès",
-        description: "Facture générée avec succès"
+        description: "Factures générées avec succès"
       });
       fetchInvoices();
-      return response.data;
     } catch (error) {
-      if (error.response?.status === 400) {
-        throw error; // Renvoyer l'erreur pour que le dialog puisse l'afficher
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: "Erreur lors de la génération de la facture"
-        });
-      }
-    }
-  };
-
-  const handleGenerateAllInvoices = async () => {
-    try {
-      const response = await api.post('/invoices/generate/service');
-      
-      if (response.data.data?.length > 0) {
-        toast({
-          title: "Succès",
-          description: `${response.data.data.length} factures ont été générées`
-        });
-      } else {
-        toast({
-          variant: "warning",
-          title: "Attention",
-          description: "Aucune facture n'a été générée"
-        });
-      }
-      
-      fetchInvoices();
-    } catch (error) {
+      console.error('Erreur:', error);
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Erreur lors de la génération des factures"
+        description: error.response?.data?.message || "Erreur lors de la génération des factures"
       });
     }
   };
 
-  const handleUpdateInvoice = async (data) => {
+  const handleUpdateStatus = async (invoiceId, status) => {
     try {
-      await api.patch(`/invoices/${currentInvoice.id}/status`, data);
+      await api.patch(`/invoices/${invoiceId}/status`, { status });
       toast({
         title: "Succès",
-        description: "Facture mise à jour avec succès"
+        description: "Statut mis à jour avec succès"
       });
       fetchInvoices();
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Erreur lors de la mise à jour de la facture"
+        description: "Erreur lors de la mise à jour du statut"
       });
     }
   };
 
-  const handleDeleteInvoice = async () => {
+  const handleDelete = async () => {
     try {
       await api.delete(`/invoices/${currentInvoice.id}`);
       toast({
         title: "Succès",
-        description: "Facture supprimée avec succès"
+        description: "Facture supprimée avec succès" 
       });
       fetchInvoices();
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Erreur lors de la suppression de la facture"
+        description: "Impossible de supprimer la facture"
       });
     } finally {
       setIsDeleteDialogOpen(false);
@@ -431,128 +400,92 @@ const InvoicePage = () => {
     }
   };
 
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-
-// Modifiez la fonction handleViewInvoice
-const handleViewInvoice = (invoice) => {
-  setCurrentInvoice(invoice);
-  setIsViewModalOpen(true);
-};
-
+  const handleBulkExport = async () => {
+    try {
+      const link = `${api.defaults.baseURL}/invoices/bulk-pdf`;
+      const response = await api.post(link, {
+        invoice_ids: selectedInvoices
+      }, {
+        responseType: 'blob'  // Important pour recevoir le PDF
+      });
   
-// Ajoutez ce composant pour la visualisation
-const ViewInvoiceDialog = ({ open, onOpenChange, invoice }) => {
-  if (!invoice) return null;
-  
-  const reading = invoice.meter?.readings?.[0];
-  const consumption = reading ? parseFloat(reading.consumption) : 0;
+      // Créer un blob et le télécharger
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'factures.pdf';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Erreur lors de l'export des factures"
+      });
+    }
+  };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Facture {invoice.invoice_number}</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium">Compteur:</span> {invoice.meter?.meter_number}
-            </div>
-            <div>
-              <span className="font-medium">Consommateur:</span> {
-                invoice.meter?.user ? 
-                `${invoice.meter.user.first_name} ${invoice.meter.user.last_name}` : 
-                'N/A'
-              }
-            </div>
-            <div>
-              <span className="font-medium">Période:</span> {
-                `${format(new Date(invoice.start_date), 'dd/MM/yyyy')} au ${format(new Date(invoice.end_date), 'dd/MM/yyyy')}`
-              }
-            </div>
-            <div>
-              <span className="font-medium">Date d'échéance:</span> {
-                format(new Date(invoice.due_date), 'dd/MM/yyyy')
-              }
-            </div>
-          </div>
-
-          <ConsumptionDetails
-            consumption={consumption}
-            servicePricing={servicePricing}
-          />
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Fermer
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const pricingResponse = await api.get('/service-pricing/current');
-        setServicePricing(pricingResponse.data.data);
-      } catch (error) {
-        console.error('Erreur lors du chargement de la tarification:', error);
-      }
-    };
-
-    fetchInitialData();
-    fetchInvoices();
-  }, []);
-
-  useEffect(() => {
-    fetchInvoices();
-  }, [statusFilter, searchTerm]);
-
+  // Interface
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Gestion des Factures</h1>
         
         <div className="flex items-center space-x-4">
-          <div className="flex space-x-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="paid">Payé</SelectItem>
-                <SelectItem value="unpaid">Non payé</SelectItem>
-              </SelectContent>
-            </Select>
+        <div className="relative">
+  <input
+    type="date"
+    className="pl-10 pr-3 py-2 border rounded-lg"
+    value={dateRange[0] instanceof Date ? format(dateRange[0], 'yyyy-MM-dd') : ''}
+    onChange={(e) => setDateRange([
+      e.target.value ? new Date(e.target.value) : null, 
+      dateRange[1]
+    ])}
+  />
+  <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+</div>
 
-            <Input
-              placeholder="Rechercher..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-64"
-            />
-          </div>
+<div className="relative">
+  <input
+    type="date"
+    className="pl-10 pr-3 py-2 border rounded-lg"
+    value={dateRange[1] instanceof Date ? format(dateRange[1], 'yyyy-MM-dd') : ''}
+    onChange={(e) => setDateRange([
+      dateRange[0],
+      e.target.value ? new Date(e.target.value) : null
+    ])}
+  />
+  <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+</div>
+
+          <Select 
+            value={statusFilter} 
+            onValueChange={setStatusFilter}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Statut" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous</SelectItem>
+              <SelectItem value="paid">Payé</SelectItem>
+              <SelectItem value="pending">Non payé</SelectItem>
+            </SelectContent>
+          </Select>
 
           <div className="flex space-x-2">
             <Button
               onClick={() => {
-                fetchMeters();
+                fetchValidatedReadings();
                 setIsGenerateModalOpen(true);
               }}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Générer une facture
+              Générer
             </Button>
 
-            <Button variant="secondary" onClick={handleGenerateAllInvoices}>
-              <FileText className="h-4 w-4 mr-2" />
-              Générer toutes
-            </Button>
+           
+
           </div>
         </div>
       </div>
@@ -561,22 +494,48 @@ const ViewInvoiceDialog = ({ open, onOpenChange, invoice }) => {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12">
+                <Checkbox 
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedInvoices(invoices.map(invoice => invoice.id));
+                    } else {
+                      setSelectedInvoices([]);
+                    }
+                  }}
+                />
+              </TableHead>
               <TableHead>N° Facture</TableHead>
               <TableHead>Compteur</TableHead>
               <TableHead>Consommateur</TableHead>
-              <TableHead>Ancien Index</TableHead>
-              <TableHead>Nouvel Index</TableHead>
+              {/*<TableHead>Ancien Index</TableHead>*/}
+              {/*<TableHead>Nouvel Index</TableHead>*/}
               <TableHead>Consommation (m³)</TableHead>
               <TableHead>Montant (FCFA)</TableHead>
               <TableHead>Période</TableHead>
+              <TableHead>Échéance</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {invoices.map((invoice) => (
-              <TableRow key={invoice.id}>
-
+              <TableRow 
+                key={invoice.id}
+                className={invoice.status === 'paid' ? 'bg-green-50/50' : ''}
+              >
+                <TableCell>
+                  <Checkbox 
+                    checked={selectedInvoices.includes(invoice.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedInvoices(prev => [...prev, invoice.id]);
+                      } else {
+                        setSelectedInvoices(prev => prev.filter(id => id !== invoice.id));
+                      }
+                    }}
+                  />
+                </TableCell>
                 <TableCell>{invoice.invoice_number}</TableCell>
                 <TableCell>{invoice.meter?.meter_number}</TableCell>
                 <TableCell>
@@ -584,73 +543,134 @@ const ViewInvoiceDialog = ({ open, onOpenChange, invoice }) => {
                     `${invoice.meter.user.first_name} ${invoice.meter.user.last_name}` : 
                     'N/A'}
                 </TableCell>
+
+              {/*<TableHead>Ancien Index</TableHead>
                 <TableCell>
-  {invoice.meter?.readings?.[0]?.last_reading_value ? 
-    parseFloat(invoice.meter.readings[0].last_reading_value).toFixed(2) : 
-    'N/A'}
-</TableCell>
-<TableCell>
-  {invoice.meter?.readings?.[0]?.reading_value ? 
-    parseFloat(invoice.meter.readings[0].reading_value).toFixed(2) : 
-    'N/A'}
-</TableCell>
-<TableCell>
-  {invoice.meter?.readings?.[0]?.consumption ? 
-    parseFloat(invoice.meter.readings[0].consumption).toFixed(2) : 
-    'N/A'}
-</TableCell>
+                  {invoice.reading?.last_reading_value ? 
+                    parseFloat(invoice.reading.last_reading_value).toFixed(2) : 
+                    'N/A'}
+                </TableCell>
                 <TableCell>
-                  {Math.round(invoice.amount_due).toLocaleString()}
+                  {invoice.reading?.reading_value ? 
+                    parseFloat(invoice.reading.reading_value).toFixed(2) : 
+                    'N/A'}
+                </TableCell>
+
+                */}
+
+                <TableCell>
+                  {invoice.reading?.consumption ? 
+                    parseFloat(invoice.reading.consumption).toFixed(2) : 
+                    'N/A'}
+                </TableCell>
+                <TableCell>
+                  {invoice.amount_due ? 
+                    Math.round(invoice.amount_due).toLocaleString() : 
+                    'N/A'}
                 </TableCell>
                 <TableCell>
                   {`${format(new Date(invoice.start_date), 'dd/MM/yy')} au ${format(new Date(invoice.end_date), 'dd/MM/yy')}`}
                 </TableCell>
                 <TableCell>
+                  {format(new Date(invoice.due_date), 'dd/MM/yyyy')}
+                </TableCell>
+                <TableCell>
                   <Badge 
-                    variant={
-                      invoice.status === 'paid' ? 'success' : 
-                      invoice.status === 'pending' ? 'warning' : 
-                      'destructive'
-                    }
+                    variant={invoice.status === 'paid' ? 'success' : 'warning'}
                   >
-                    {invoice.status === 'paid' ? 'Payé' : 
-                     invoice.status === 'pending' ? 'Non payé' : 
-                     ''}
+                    {invoice.status === 'paid' ? 'Payé' : 'Non payé'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewInvoice(invoice)}
-                    >
-                      <FileText className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setCurrentInvoice(invoice);
-                        setIsEditModalOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        setCurrentInvoice(invoice);
-                        setIsDeleteDialogOpen(true);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+
+                <TableCell>
+  <div className="flex space-x-2">
+    
+    {/* Voir les détails */}
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => {
+        setCurrentInvoice(invoice);
+        console.log('Current invoice:', invoice);
+        setIsViewModalOpen(true);
+      }}
+    >
+      <FileText className="h-4 w-4" />
+    </Button>
+
+
+
+{/* Télécharger PDF - Changé l'icône et l'action */}
+
+<Button 
+  variant="outline" 
+  size="sm"
+  onClick={async () => {
+    try {
+      const response = await api.get(`/invoices/${invoice.id}/pdf`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `facture-${invoice.invoice_number}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }}
+>
+  <Download className="h-4 w-4" />
+</Button>
+
+
+    {/* Marquer comme payé - Nouvelle action */}
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => handleUpdateStatus(invoice.id, 'paid')}
+      disabled={invoice.status === 'paid'}
+    >
+      <Check className="h-4 w-4" />
+    </Button>
+    <Button
+      variant="destructive"
+      size="sm"
+      onClick={() => {
+        setCurrentInvoice(invoice);
+        setIsDeleteDialogOpen(true);
+      }}
+      disabled={invoice.status === 'paid'}
+    >
+      <Trash2 className="h-4 w-4" />
+    </Button>
+  </div>
+</TableCell>
+               
               </TableRow>
             ))}
+  {/* Nouvelle ligne de total avec correction */}
+  {invoices.length > 0 && (
+    <TableRow className="font-bold bg-gray-50">
+      <TableCell colSpan={4} className="text-right">Total</TableCell>
+      <TableCell>
+        {parseFloat(
+          invoices.reduce((sum, invoice) => 
+            sum + parseFloat(invoice.reading?.consumption || 0), 0)
+        ).toFixed(2)} m³
+      </TableCell>
+      <TableCell>
+        {Math.round(
+          invoices.reduce((sum, invoice) => 
+            sum + (invoice.amount_due || 0), 0)
+        ).toLocaleString()} FCFA
+      </TableCell>
+      <TableCell colSpan={2}></TableCell>
+    </TableRow>
+  )}
+
           </TableBody>
         </Table>
       </Card>
@@ -658,23 +678,15 @@ const ViewInvoiceDialog = ({ open, onOpenChange, invoice }) => {
       <GenerateInvoiceDialog
         open={isGenerateModalOpen}
         onOpenChange={setIsGenerateModalOpen}
-        meters={meters}
-        onGenerate={handleGenerateInvoice}
-        servicePricing={servicePricing}
+        readings={validatedReadings}
+        onGenerate={handleGenerateInvoices}
       />
 
-      <EditInvoiceDialog
-        open={isEditModalOpen}
-        onOpenChange={setIsEditModalOpen}
+      <ViewInvoiceDialog
+        open={isViewModalOpen}
+        onOpenChange={setIsViewModalOpen}
         invoice={currentInvoice}
-        onSubmit={handleUpdateInvoice}
       />
-
-<ViewInvoiceDialog
-      open={isViewModalOpen}
-      onOpenChange={setIsViewModalOpen}
-      invoice={currentInvoice}
-    />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
@@ -686,7 +698,7 @@ const ViewInvoiceDialog = ({ open, onOpenChange, invoice }) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteInvoice}>
+            <AlertDialogAction onClick={handleDelete}>
               Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
