@@ -1,3 +1,4 @@
+//ReadingPage-1
 import React, { useState, useEffect } from 'react';
 import { cn } from "../lib/utils";
 import { Card } from "../ui/card"; 
@@ -8,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Badge } from "../ui/badge";
 import { Alert, AlertDescription } from "../ui/alert";
+import { ScrollArea } from "../ui/scroll-area";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -255,6 +257,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit }) => {
   });
 
   const [consumption, setConsumption] = useState(null);
+  const [searchMeter, setSearchMeter] = useState('');
 
   useEffect(() => {
     if (editingReading) {
@@ -364,22 +367,39 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit }) => {
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Compteur</label>
+
                   <Select
-                    value={formData.meter_id}
-                    onValueChange={(value) => handleChange('meter_id', value)}
-                    disabled={!!editingReading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un compteur" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {meters.map((meter) => (
-                        <SelectItem key={meter.id} value={String(meter.id)}>
-                          {`${meter.meter_number} - ${meter.user?.first_name} ${meter.user?.last_name} (${meter.serial_number})`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+  value={formData.meter_id}
+  onValueChange={(value) => handleChange('meter_id', value)}
+  disabled={!!editingReading}
+>
+  <SelectTrigger>
+    <SelectValue placeholder="Sélectionner un compteur" />
+  </SelectTrigger>
+  <SelectContent>
+    <div className="sticky top-0 bg-white p-2">
+      <Input
+        placeholder="Rechercher un compteur..."
+        value={searchMeter}
+        onChange={(e) => setSearchMeter(e.target.value)}
+      />
+    </div>
+    <ScrollArea className="h-72">
+      {meters
+        .filter(meter => 
+          `${meter.meter_number} ${meter.user?.first_name} ${meter.user?.last_name} ${meter.serial_number}`
+          .toLowerCase()
+          .includes(searchMeter.toLowerCase())
+        )
+        .map((meter) => (
+          <SelectItem key={meter.id} value={String(meter.id)}>
+            {`${meter.meter_number} - ${meter.user?.first_name} ${meter.user?.last_name} (${meter.serial_number})`}
+          </SelectItem>
+        ))}
+    </ScrollArea>
+  </SelectContent>
+</Select>
+
                 </div>
               </div>
 
@@ -569,7 +589,7 @@ const ReadingPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReading, setEditingReading] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
    const [dateRange, setDateRange] = useState([
       (() => {
         const date = new Date('2024-01-01');
@@ -1005,12 +1025,14 @@ const currentReadings = readings.slice(startIndex, endIndex);
       <SelectTrigger className="w-[70px]">
         <SelectValue />
       </SelectTrigger>
+
       <SelectContent>
-        <SelectItem value="5">5</SelectItem>
-        <SelectItem value="10">10</SelectItem>
-        <SelectItem value="20">20</SelectItem>
-        <SelectItem value="50">50</SelectItem>
-      </SelectContent>
+      <SelectItem value="50">50</SelectItem>
+      <SelectItem value="100">100</SelectItem>
+      <SelectItem value="500">500</SelectItem>
+      <SelectItem value="1000">1000</SelectItem>
+    </SelectContent>
+
     </Select>
   </div>
 

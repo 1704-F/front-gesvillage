@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
+import { ScrollArea } from "../ui/scroll-area";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { 
@@ -50,7 +51,7 @@ const MeterPage = () => {
  // États
 const [meters, setMeters] = useState([]); // Déplacer en premier
 const [currentPage, setCurrentPage] = useState(1);
-const [itemsPerPage, setItemsPerPage] = useState(10);
+const [itemsPerPage, setItemsPerPage] = useState(50);
 const [consumers, setConsumers] = useState([]);
 const [isModalOpen, setIsModalOpen] = useState(false);
 const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -60,6 +61,7 @@ const [nextMeterNumber, setNextMeterNumber] = useState('');
 const [filterStatus, setFilterStatus] = useState('active');
 const [quartiers, setQuartiers] = useState([]);
 const { toast } = useToast();
+
 
 // Calculer les indices pour la pagination après la déclaration de meters
 const totalPages = Math.ceil(meters.length / itemsPerPage);
@@ -223,6 +225,9 @@ const currentMeters = meters.slice(startIndex, endIndex);
       latitude: editMeter?.latitude || "",
       longitude: editMeter?.longitude || "",
     });
+    const [searchConsumer, setSearchConsumer] = useState('');
+    const [isSelectOpen, setIsSelectOpen] = useState(false);
+
   // Réinitialiser le formulaire quand editMeter change
   useEffect(() => {
     if (editMeter) {
@@ -274,23 +279,47 @@ const currentMeters = meters.slice(startIndex, endIndex);
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Consommateur</label>
-              <Select
-                value={formData.user_id}
-                onValueChange={(value) => handleChange('user_id', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un consommateur" />
-                </SelectTrigger>
-                <SelectContent>
-                  {consumers.map((consumer) => (
-                    <SelectItem key={consumer.id} value={String(consumer.id)}>
-                      {`${consumer.first_name} ${consumer.last_name} (${consumer.name})`}
+          <label className="text-sm font-medium">Consommateur</label>
+          <Select
+            value={formData.user_id}
+            onValueChange={(value) => handleChange('user_id', value)}
+            open={isSelectOpen}
+            onOpenChange={setIsSelectOpen}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Sélectionner un consommateur" />
+            </SelectTrigger>
+            <SelectContent>
+              <div className="sticky top-0 bg-white p-2">
+                <Input
+                  placeholder="Rechercher un consommateur..."
+                  value={searchConsumer}
+                  onChange={(e) => setSearchConsumer(e.target.value)}
+                />
+              </div>
+              <ScrollArea className="h-72">
+                {consumers
+                  .filter(consumer => 
+                    `${consumer.first_name} ${consumer.last_name} ${consumer.name || ''}`
+                    .toLowerCase()
+                    .includes(searchConsumer.toLowerCase())
+                  )
+                  .map((consumer) => (
+                    <SelectItem 
+                      key={consumer.id} 
+                      value={String(consumer.id)}
+                    >
+                      {`${consumer.first_name} ${consumer.last_name} ${consumer.name ? `(${consumer.name})` : ''}`}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
+              </ScrollArea>
+            </SelectContent>
+          </Select>
+        </div>
+
+
+
+
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Type</label>
@@ -482,10 +511,10 @@ const currentMeters = meters.slice(startIndex, endIndex);
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="5">5</SelectItem>
-          <SelectItem value="10">10</SelectItem>
-          <SelectItem value="20">20</SelectItem>
           <SelectItem value="50">50</SelectItem>
+          <SelectItem value="100">100</SelectItem>
+          <SelectItem value="500">500</SelectItem>
+          <SelectItem value="1000">1000</SelectItem>
         </SelectContent>
       </Select>
     </div>
