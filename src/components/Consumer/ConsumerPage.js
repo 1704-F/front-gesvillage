@@ -55,7 +55,7 @@ const ConsumerPage = () => {
   const [formError, setFormError] = useState('');
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
   const [total, setTotal] = useState(0);
   
 
@@ -65,7 +65,9 @@ const ConsumerPage = () => {
     try {
       const response = await api.get('/consumers', {
         params: {
-          search: searchTerm
+          search: searchTerm,
+          page: currentPage,
+          limit: itemsPerPage
         }
       });
       setConsumers(response.data.data);
@@ -79,7 +81,7 @@ const ConsumerPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm]);
+  }, [searchTerm, currentPage, itemsPerPage]);
 
 
   useEffect(() => {
@@ -94,7 +96,7 @@ const ConsumerPage = () => {
 
 
 // Calculer les indices et pages pour la pagination côté client
-const totalPages = Math.ceil(consumers.length / itemsPerPage);
+const totalPages = Math.ceil(total / itemsPerPage);
 const startIndex = (currentPage - 1) * itemsPerPage;
 const endIndex = startIndex + itemsPerPage;
 const currentConsumers = consumers.slice(startIndex, endIndex);
@@ -289,19 +291,23 @@ const currentConsumers = consumers.slice(startIndex, endIndex);
               <SelectTrigger className="w-[70px]">
                 <SelectValue />
               </SelectTrigger>
+
               <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-              </SelectContent>
+  <SelectItem value="50">50</SelectItem>
+  <SelectItem value="100">100</SelectItem>
+  <SelectItem value="500">500</SelectItem>
+  <SelectItem value="1000">1000</SelectItem>
+</SelectContent>
+
             </Select>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              {startIndex + 1}-{Math.min(endIndex, consumers.length)} sur {consumers.length}
-            </span>
+          <span className="text-sm text-gray-600">
+  {((currentPage - 1) * itemsPerPage) + 1}-
+  {Math.min(currentPage * itemsPerPage, total)} sur {total}
+</span>
+           
             <Button
               variant="outline"
               size="sm"
@@ -399,7 +405,7 @@ const currentConsumers = consumers.slice(startIndex, endIndex);
                     name="phone_number"
                     defaultValue={selectedConsumer?.phone_number}
                     required
-                    placeholder="Ex: +33612345678"
+                    placeholder="Ex: +221774555777"
                     onChange={() => setFormError('')} 
                   />
                 </div>
