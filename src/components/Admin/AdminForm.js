@@ -1,3 +1,4 @@
+//componens/Admin/AdminForm.js
 import React, { useState, useEffect } from 'react';
 import { Card } from "../ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
@@ -26,6 +27,7 @@ const AdminPage = () => {
     date_of_birth: '',
     phone_number: '',
     service_id: '',
+    password: '',
   });
 
   // Chargement des données
@@ -61,18 +63,35 @@ useEffect(() => {
 }, []);
 
   // Gestion du formulaire
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Validation du mot de passe
+      if (!editingAdmin && (!formData.password || formData.password.length < 8)) {
+        toast({
+          title: "Erreur",
+          description: "Le mot de passe doit faire au moins 8 caractères",
+          variant: "destructive"
+        });
+        return;
+      }
+  
+      // Créer un objet avec les données à envoyer
+      const dataToSend = {
+        ...formData,
+        // N'inclure le mot de passe que s'il est fourni
+        ...(formData.password ? { password: formData.password } : {})
+      };
+  
       if (editingAdmin) {
-        // Utiliser PATCH au lieu de PUT
-        const response = await api.patch(`/admins/${editingAdmin.id}`, formData);
+        const response = await api.patch(`/admins/${editingAdmin.id}`, dataToSend);
         toast({
           title: "Succès",
           description: "Admin mis à jour avec succès"
         });
       } else {
-        const response = await api.post('/admins', formData);
+        const response = await api.post('/admins', dataToSend);
         toast({
           title: "Succès",
           description: "Admin créé avec succès"
@@ -90,6 +109,8 @@ useEffect(() => {
       });
     }
   };
+  
+
 
   const handleDelete = async (id) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet admin ?')) return;
@@ -118,7 +139,8 @@ useEffect(() => {
         last_name: admin.last_name || '',
         date_of_birth: admin.date_of_birth || '',
         phone_number: admin.phone_number || '',
-        service_id: admin.service_id?.toString() || ''
+        service_id: admin.service_id?.toString() || '',
+        password: '' // Toujours vide en modification
       });
     } else {
       setEditingAdmin(null);
@@ -128,11 +150,14 @@ useEffect(() => {
         last_name: '',
         date_of_birth: '',
         phone_number: '',
-        service_id: ''
+        service_id: '',
+        password: ''
       });
     }
     setModalOpen(true);
   };
+
+  
 
   if (loading) {
     return (
@@ -289,6 +314,23 @@ useEffect(() => {
                   required
                 />
               </div>
+
+              <div className="space-y-2">
+  <label className="text-sm font-medium">Mot de passe</label>
+  <Input
+    type="password"
+    name="password"
+    value={formData.password}
+    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+    required={!editingAdmin} // Requis uniquement pour la création
+    placeholder={editingAdmin ? "Laisser vide pour ne pas modifier" : "Mot de passe"}
+  />
+  <p className="text-sm text-gray-500">
+    {editingAdmin 
+      ? "Laisser vide pour conserver le mot de passe actuel" 
+      : "Le mot de passe doit contenir au moins 8 caractères"}
+  </p>
+</div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Service</label>

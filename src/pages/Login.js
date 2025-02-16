@@ -1,75 +1,64 @@
-// src/components/Login.tsx
+// src/components/Login.js
 "use client"
 import React, { useState } from 'react';
 import WhatsAppWidget from '../../src/components/Chat/WhatsAppWidget.tsx';
 import { Card, CardContent, CardHeader } from "../../src/components/ui/card";
 import { Input } from "../../src/components/ui/input";
 import { Button } from "../../src/components/ui/button";
-import { Alert} from "../../src/components/ui/alert";
+import { Alert } from "../../src/components/ui/alert";
 import { AlertDescription } from "../../src/components/ui/alert";
-
-
-// Import des deux instances Axios
-import { axiosPublic } from "../utils/axios"; // Pour les routes publiques
-
-
-
-import { Users, Calculator, FileText, BarChart,AlertCircle, MessageCircle, X } from 'lucide-react';
-
+import { axiosPublic } from "../utils/axios";
+import { Users, Calculator, FileText, BarChart, AlertCircle, MessageCircle, X } from 'lucide-react';
 
 const Login = () => {
+  const [userType, setUserType] = useState('admin'); // 'admin' ou 'consumer'
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState('');
-  const [step, setStep] = useState(1);
+  const [password, setPassword] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSendOtp = async () => {
-    console.log('Using API URL:', process.env.NEXT_PUBLIC_API_URL);
-    
+  const handleLogin = async () => {
     try {
-      setError(''); // Réinitialiser l'erreur
+      setError('');
+      setIsLoading(true);
+
       if (!phoneNumber || !phoneNumber.startsWith('+')) {
         setError('Veuillez entrer un numéro de téléphone valide commençant par +221 ou +33');
         return;
       }
-       // Ajoutez les headers et le format correct du body
-    const response = await axiosPublic.post('/auth/send-otp', 
-      { phone_number: phoneNumber },
-      { 
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-      
-      console.log('API Response:', response);
-      setStep(2);
-    } catch (error) {
-      console.error('Error details:', error.response?.data);
-      setError('Erreur lors de l\'envoi du code. Veuillez vérifier votre numéro et réessayer.');
-    }
-  };
 
-  const handleLogin = async () => {
- 
-    try {
-      setError(''); // Réinitialiser l'erreur
-      if (!otp || otp.length !== 4) {
-        setError('Veuillez entrer un code à 6 chiffres valide');
+      // Validation spécifique selon le type d'utilisateur
+      if (userType === 'admin' && !password) {
+        setError('Veuillez entrer votre mot de passe');
         return;
       }
 
-      const response = await axiosPublic.post('/auth/verify-otp', { 
-        phone_number: phoneNumber, 
-        otp 
+      if (userType === 'consumer' && !dateOfBirth) {
+        setError('Veuillez entrer votre date de naissance');
+        return;
+      }
+
+      const response = await axiosPublic.post('/auth/login', {
+        phone_number: phoneNumber,
+        password: userType === 'admin' ? password : undefined,
+        date_of_birth: userType === 'consumer' ? dateOfBirth : undefined
       });
+
       localStorage.setItem('token', response.data.token);
       window.location.href = '/dashboard';
+
     } catch (error) {
-      console.error('Erreur lors de la connexion :', error);
-      setError('Code incorrect. Veuillez réessayer.'); 
+      console.error('Erreur lors de la connexion:', error);
+      setError(error.response?.data?.message || 'Erreur lors de la connexion. Veuillez réessayer.');
+    } finally {
+      setIsLoading(false);
     }
   };
+
+
+
+
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -123,20 +112,30 @@ const Login = () => {
       </div>
 
       {/* Colonne de droite */}
+
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <Card className="w-full max-w-md bg-white shadow-xl">
           <CardHeader className="text-center pb-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              {step === 1 ? 'Connexion' : 'Vérification'}
-            </h3>
-            <p className="text-gray-600">
-              {step === 1 
-                ? 'Accédez à votre espace de gestion' 
-                : 'Entrez le code reçu par SMS'}
-            </p>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">Connexion</h3>
+            <div className="flex gap-2 mb-4">
+              <Button
+                variant={userType === 'admin' ? 'default' : 'outline'}
+                onClick={() => setUserType('admin')}
+                className="flex-1"
+              >
+                Admin
+              </Button>
+              <Button
+                variant={userType === 'consumer' ? 'default' : 'outline'}
+                onClick={() => setUserType('consumer')}
+                className="flex-1"
+              >
+                Consommateur
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-          {error && (
+            {error && (
               <Alert variant="destructive" className="mb-6">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
@@ -149,67 +148,69 @@ const Login = () => {
                 </Button>
               </Alert>
             )}
+
             <div className="space-y-6">
-              {step === 1 ? (
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Numéro de téléphone
-                    </label>
-                    <Input
-                      type="tel"
-                      placeholder="Ex: +33612345678"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      className="w-full h-12"
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleSendOtp}
-                    className="w-full h-12 bg-[#2081E2] hover:bg-[#1a6fc7] text-white font-medium text-lg"
-                  >
-                    Recevoir le code
-                  </Button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Numéro de téléphone
+                </label>
+                <Input
+                  type="tel"
+                  placeholder="Ex: +33612345678"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="w-full h-12"
+                  disabled={isLoading}
+                />
+              </div>
+
+              {userType === 'admin' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mot de passe
+                  </label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full h-12"
+                    disabled={isLoading}
+                  />
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Code de vérification
-                    </label>
-                    <Input
-                      type="text"
-                      placeholder="Entrez le code reçu"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      className="w-full h-12"
-                      maxLength={6}
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleLogin}
-                    className="w-full h-12 bg-[#2081E2] hover:bg-[#1a6fc7] text-white font-medium text-lg"
-                  >
-                    Se connecter
-                  </Button>
-                  <Button 
-                    onClick={() => setStep(1)}
-                    variant="outline"
-                    className="w-full h-12 border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium"
-                  >
-                    Modifier le numéro
-                  </Button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date de naissance
+                  </label>
+                  <Input
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    className="w-full h-12"
+                    disabled={isLoading}
+                  />
                 </div>
               )}
+
+              <Button 
+                onClick={handleLogin}
+                className="w-full h-12 bg-[#2081E2] hover:bg-[#1a6fc7] text-white font-medium text-lg"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Connexion...' : 'Se connecter'}
+              </Button>
             </div>
           </CardContent>
         </Card>
       </div>
-      
 
       <WhatsAppWidget />
     </div>
   );
 };
 
+    
+    
+
+ 
 export default Login;
