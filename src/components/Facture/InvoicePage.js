@@ -274,6 +274,15 @@ const InvoicePage = () => {
   const [selectedInvoices, setSelectedInvoices] = useState([]);
   const [validatedReadings, setValidatedReadings] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+
+// Calculez les indices et les factures actuelles
+  const totalPages = Math.ceil(invoices.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentInvoices = invoices.slice(startIndex, endIndex);
   
 
   // États de la période
@@ -528,7 +537,7 @@ const [dateRange, setDateRange] = useState([
             </TableRow>
           </TableHeader>
           <TableBody>
-            {invoices.map((invoice) => (
+          {currentInvoices.map((invoice) => (
               <TableRow 
                 key={invoice.id}
                 className={invoice.status === 'paid' ? 'bg-green-50/50' : ''}
@@ -682,6 +691,53 @@ const [dateRange, setDateRange] = useState([
 
           </TableBody>
         </Table>
+
+        <div className="flex items-center justify-between mt-4 px-2">
+  <div className="flex items-center gap-2">
+    <span className="text-sm text-gray-600">Lignes par page:</span>
+    <Select
+      value={String(itemsPerPage)}
+      onValueChange={(value) => {
+        setItemsPerPage(Number(value));
+        setCurrentPage(1);
+      }}
+    >
+      <SelectTrigger className="w-[70px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="50">50</SelectItem>
+        <SelectItem value="100">100</SelectItem>
+        <SelectItem value="500">500</SelectItem>
+        <SelectItem value="1000">1000</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+
+  <div className="flex items-center gap-2">
+    <span className="text-sm text-gray-600">
+      {startIndex + 1}-{Math.min(endIndex, invoices.length)} sur {invoices.length}
+    </span>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+      disabled={currentPage === 1}
+    >
+      Précédent
+    </Button>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+      disabled={currentPage === totalPages || totalPages === 0}
+    >
+      Suivant
+    </Button>
+  </div>
+</div>
+
+
       </Card>
 
       <GenerateInvoiceDialog
