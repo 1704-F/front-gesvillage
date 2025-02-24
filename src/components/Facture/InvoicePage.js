@@ -69,6 +69,7 @@ const ConsumptionDetails = ({ reading, amount }) => {
 };
 
 // Modal de génération de facture
+// Modal de génération de facture avec scroll
 const GenerateInvoiceDialog = ({
   open,
   onOpenChange,
@@ -80,7 +81,7 @@ const GenerateInvoiceDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[900px]">
+      <DialogContent className="max-w-[900px] max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Générer des factures</DialogTitle>
         </DialogHeader>
@@ -92,85 +93,93 @@ const GenerateInvoiceDialog = ({
           </Alert>
         )}
 
-        <div className="space-y-4">
-          <Card className="p-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox 
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedReadings(readings.map(r => r.id));
-                        } else {
-                          setSelectedReadings([]);
-                        }
-                      }}
-                    />
-                  </TableHead>
-                  <TableHead>Compteur</TableHead>
-                  <TableHead>Consommateur</TableHead>
-                  <TableHead>Période</TableHead>
-                  <TableHead>Consommation (m³)</TableHead>
-                  <TableHead>Montant (FCFA)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {readings.map((reading) => (
-                  <TableRow key={reading.id}>
-                    <TableCell>
+        <div className="space-y-4 flex-grow overflow-hidden">
+          <Card className="p-4 h-full">
+            <div className="max-h-[50vh] overflow-y-auto">
+              <Table>
+                <TableHeader className="sticky top-0 bg-white">
+                  <TableRow>
+                    <TableHead className="w-12">
                       <Checkbox 
-                        checked={selectedReadings.includes(reading.id)}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedReadings(prev => [...prev, reading.id]);
+                            setSelectedReadings(readings.map(r => r.id));
                           } else {
-                            setSelectedReadings(prev => prev.filter(id => id !== reading.id));
+                            setSelectedReadings([]);
                           }
                         }}
                       />
-                    </TableCell>
-                    <TableCell>{reading.meter.meter_number}</TableCell>
-                    <TableCell>
-                      {reading.meter.user.first_name} {reading.meter.user.last_name}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(reading.start_date), 'dd/MM/yy')} au {format(new Date(reading.end_date), 'dd/MM/yy')}
-                    </TableCell>
-                    <TableCell>
-                      {parseFloat(reading.consumption).toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      {parseFloat(reading.amount).toLocaleString()} 
-                    </TableCell>
+                    </TableHead>
+                    <TableHead>Compteur</TableHead>
+                    <TableHead>Consommateur</TableHead>
+                    <TableHead>Période</TableHead>
+                    <TableHead>Consommation (m³)</TableHead>
+                    <TableHead>Montant (FCFA)</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {readings.map((reading) => (
+                    <TableRow key={reading.id}>
+                      <TableCell>
+                        <Checkbox 
+                          checked={selectedReadings.includes(reading.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedReadings(prev => [...prev, reading.id]);
+                            } else {
+                              setSelectedReadings(prev => prev.filter(id => id !== reading.id));
+                            }
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>{reading.meter.meter_number}</TableCell>
+                      <TableCell>
+                        {reading.meter.user.first_name} {reading.meter.user.last_name}
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(reading.start_date), 'dd/MM/yy')} au {format(new Date(reading.end_date), 'dd/MM/yy')}
+                      </TableCell>
+                      <TableCell>
+                        {parseFloat(reading.consumption).toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        {parseFloat(reading.amount).toLocaleString()} 
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         </div>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setError(null);
-              onOpenChange(false);
-            }}
-          >
-            Annuler
-          </Button>
-          <Button
-            onClick={() => onGenerate(selectedReadings)}
-            disabled={selectedReadings.length === 0}
-          >
-            Générer {selectedReadings.length} facture(s)
-          </Button>
-        </DialogFooter>
+        <div className="flex justify-between items-center mt-4 pt-2 border-t">
+          <div className="text-sm">
+            {selectedReadings.length} relevé(s) sélectionné(s) sur {readings.length}
+          </div>
+          <DialogFooter className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setError(null);
+                onOpenChange(false);
+              }}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={() => onGenerate(selectedReadings)}
+              disabled={selectedReadings.length === 0}
+            >
+              Générer {selectedReadings.length} facture(s)
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
 };
+
 
 // Modal de visualisation de facture
 const ViewInvoiceDialog = ({ open, onOpenChange, invoice }) => {

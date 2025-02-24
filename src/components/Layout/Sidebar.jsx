@@ -118,11 +118,8 @@ const Sidebar = ({ role, isOpen, setIsOpen }) => {
             path: '/service-info', 
             icon: <Building2 className="w-5 h-5" /> 
           },
-          { 
-            title: 'Cartographie', 
-            path: '/map', 
-            icon: <MapPin className="w-5 h-5" /> 
-          },
+
+
 
           { 
             title: 'Paramétres prix', 
