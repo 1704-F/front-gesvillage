@@ -393,7 +393,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit }) => {
         )
         .map((meter) => (
           <SelectItem key={meter.id} value={String(meter.id)}>
-            {`${meter.meter_number} - ${meter.user?.first_name} ${meter.user?.last_name} (${meter.serial_number})`}
+            {`${meter.meter_number} - ${meter.user?.first_name} ${meter.user?.last_name} (${meter.user?.name})`}
           </SelectItem>
         ))}
     </ScrollArea>
