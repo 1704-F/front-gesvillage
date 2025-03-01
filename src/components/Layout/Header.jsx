@@ -60,7 +60,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     width: isSidebarOpen ? "calc(100% - 61px)" : "calc(100% - 80px)" // Le header se rétrécit
   }}
 >
-  {console.log("Sidebar is open:", isSidebarOpen)}
+ 
   <div 
     className="flex items-center justify-between w-full"
     style={{

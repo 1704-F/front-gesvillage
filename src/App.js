@@ -91,6 +91,7 @@ const App = () => {
           <>
             <Route path="/" element={<Login />} />
             <Route path="*" element={<Navigate to="/" replace />} />
+            
           </>
         ) : (
           <>
@@ -165,4 +166,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default App; 

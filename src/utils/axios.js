@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Définir l'URL de base en fonction de l'environnement
-const BASE_URL = process.env.NODE_ENV === 'development' 
+export const BASE_URL = process.env.NODE_ENV === 'development' 
   ? 'http://localhost:5000'  // URL locale
   : 'https://api.gesvillage.com'; // URL de production
 
@@ -13,7 +13,7 @@ const axiosPrivate = axios.create({
   baseURL: BASE_URL
 });
 
-// Intercepteur modifié pour gérer automatiquement le préfixe /api
+// Intercepteur modifié pour gérer automatiquement le préfixe /api 
 axiosPrivate.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -25,7 +25,6 @@ axiosPrivate.interceptors.request.use((config) => {
     config.url = `/api${config.url}`;
   }
   
-  console.log('URL finale:', config.url, 'BASE_URL:', BASE_URL); // Log amélioré
   return config;
 });
 
