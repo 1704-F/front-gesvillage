@@ -1,4 +1,4 @@
-//ReadingPage-1
+//ReadingPage
 import React, { useState, useEffect } from 'react';
 import { cn } from "../lib/utils";
 import { Card } from "../ui/card"; 
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Badge } from "../ui/badge";
 import { Alert, AlertDescription } from "../ui/alert";
 import { ScrollArea } from "../ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import { useToast } from "../ui/toast/use-toast";
-import { Plus, Pencil, Trash2, Calendar, Calculator, AlertCircle, Download,Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, Calendar, Calculator, AlertCircle, Download,Check, FileText, AlertTriangle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar as CalendarComponent } from "../ui/calendar";
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
@@ -83,6 +84,8 @@ const formatPercent = (num) => {
   if (isNaN(num)) return '0.00';
   return Number(num).toFixed(2);
 };
+
+
 
 // Composant PDF
 const RelevePDF = ({ readings, dateRange }) => (
@@ -579,8 +582,122 @@ const ConsumptionHeatmap = ({ readings }) => {
   );
 };
 
+// Nouveau composant pour afficher les compteurs sans relevés
+const MetersWithoutReadings = ({ dateRange }) => {
+  const { toast } = useToast();
+  const [meters, setMeters] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMetersWithoutReadings = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/readings/meters-without-readings', {
+          params: {
+            start_date: format(dateRange[0], 'yyyy-MM-dd'),
+            end_date: format(dateRange[1], 'yyyy-MM-dd')
+          }
+        });
+        setMeters(response.data.data);
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: "Impossible de récupérer les compteurs sans relevés"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (dateRange[0] && dateRange[1]) {
+      fetchMetersWithoutReadings();
+    }
+  }, [dateRange, toast]);
+
+  return (
+    <Card>
+      <div className="p-4 border-b flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <AlertTriangle className="h-5 w-5 text-yellow-500" />
+          <h2 className="text-lg font-medium">
+            Compteurs sans relevés pour la période sélectionnée
+          </h2>
+        </div>
+        <Badge variant="outline" className="bg-yellow-50">
+          {meters.length} compteur(s)
+        </Badge>
+      </div>
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-16">N°</TableHead>
+            <TableHead>N° Compteur</TableHead>
+            <TableHead>N° Série</TableHead>
+            <TableHead>Consommateur</TableHead>
+            <TableHead>Emplacement</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-8">
+                Chargement des données...
+              </TableCell>
+            </TableRow>
+          ) : meters.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-8">
+                <div className="flex flex-col items-center justify-center text-gray-500">
+                  <FileText className="h-8 w-8 mb-2" />
+                  <p>Tous les compteurs ont des relevés pour cette période.</p>
+                </div>
+              </TableCell>
+            </TableRow>
+          ) : (
+            meters.map((meter, index) => (
+              <TableRow key={meter.id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{meter.meter_number}</TableCell>
+                <TableCell>{meter.serial_number || 'N/A'}</TableCell>
+                <TableCell>
+                  {meter.user ? 
+                    <div>
+                      <div className="font-medium">{meter.user.first_name} {meter.user.last_name}</div>
+                      <div className="text-sm text-gray-500">{meter.user.name}</div>
+                    </div> : 
+                    'N/A'}
+                </TableCell>
+                <TableCell>{meter.location || 'N/A'}</TableCell>
+                <TableCell>
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      // Ici vous pourriez implémenter une redirection vers le formulaire
+                      // d'ajout de relevé avec ce compteur présélectionné
+                      window.dispatchEvent(new CustomEvent('create-reading-for-meter', { 
+                        detail: { meterId: meter.id }
+                      }));
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter un relevé
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </Card>
+  );
+};
 
 
+
+// Composant principal modifié avec les onglets
 const ReadingPage = () => {
   const { toast } = useToast();
   const [readings, setReadings] = useState([]);
@@ -590,29 +707,40 @@ const ReadingPage = () => {
   const [editingReading, setEditingReading] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
-   const [dateRange, setDateRange] = useState([
-      (() => {
-        const date = new Date('2024-01-01');
-        //const date = new Date();
-        //date.setMonth(date.getMonth() - 1);
-        //date.setDate(1);
-        return date;
-      })(),
-      new Date()
-    ]);
-
-
+  const [dateRange, setDateRange] = useState([
+    (() => {
+      const date = new Date('2024-01-01');
+      return date;
+    })(),
+    new Date()
+  ]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [readingToDelete, setReadingToDelete] = useState(null);
-
   const [selectedReadings, setSelectedReadings] = useState([]);
-const [selectAll, setSelectAll] = useState(false);
+  const [selectAll, setSelectAll] = useState(false);
+  const [activeTab, setActiveTab] = useState("readings");
 
   const totalPages = Math.ceil(readings.length / itemsPerPage);
-const startIndex = (currentPage - 1) * itemsPerPage;
-const endIndex = startIndex + itemsPerPage;
-const currentReadings = readings.slice(startIndex, endIndex);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentReadings = readings.slice(startIndex, endIndex);
+
+  // Écouter l'événement personnalisé pour créer un relevé pour un compteur spécifique
+  useEffect(() => {
+    const handleCreateReadingForMeter = (event) => {
+      const meterId = event.detail.meterId;
+      const meter = meters.find(m => m.id === meterId);
+      if (meter) {
+        setEditingReading(null);
+        setIsModalOpen(true);
+        // Le reste de la logique pour préremplir le compteur serait géré dans le composant ReadingForm
+      }
+    };
+
+    window.addEventListener('create-reading-for-meter', handleCreateReadingForMeter);
+    return () => window.removeEventListener('create-reading-for-meter', handleCreateReadingForMeter);
+  }, [meters]);
 
   const fetchReadings = async () => {
     try {
@@ -679,6 +807,11 @@ const currentReadings = readings.slice(startIndex, endIndex);
       }
       setIsModalOpen(false);
       fetchReadings();
+      // Recharger les compteurs sans relevés si nous sommes sur cet onglet
+      if (activeTab === "missing") {
+        // Un événement pour déclencher le rechargement dans le composant MetersWithoutReadings
+        window.dispatchEvent(new CustomEvent('refresh-meters-without-readings'));
+      }
     } catch (error) {
       // Gestion des erreurs spécifiques provenant du backend
       const errorMessage = error.response?.data?.message || "Une erreur est survenue";
@@ -708,10 +841,7 @@ const currentReadings = readings.slice(startIndex, endIndex);
       throw error; // Optionnel : relancer l'erreur pour d'autres traitements éventuels
     }
   };
-
-
   
-
   const handleDelete = async () => {
     try {
       await api.delete(`/readings/${readingToDelete.id}`);
@@ -812,262 +942,268 @@ const currentReadings = readings.slice(startIndex, endIndex);
     }
   };
 
-
   return (
     <div className="p-6 space-y-6">
-
-<ActionsBar
-  selectedCount={selectedReadings.length}
-  onValidate={handleBulkValidate}
-  onChangeStatus={handleBulkStatusChange}
-/>
-
-
+      {activeTab === "readings" && (
+        <ActionsBar
+          selectedCount={selectedReadings.length}
+          onValidate={handleBulkValidate}
+          onChangeStatus={handleBulkStatusChange}
+        />
+      )}
    
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Gestion des Relevés</h1>
 
         <div className="flex items-center space-x-4">
-  <div className="relative">
-    <input
-      type="date"
-      className="pl-10 pr-3 py-2 border rounded-lg"
-      value={dateRange[0] instanceof Date ? format(dateRange[0], 'yyyy-MM-dd') : ''}
-      onChange={(e) => setDateRange([e.target.value ? new Date(e.target.value) : null, dateRange[1]])}
-    />
-    <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
-  </div>
-  
-  <div className="relative">
-    <input
-      type="date"
-      className="pl-10 pr-3 py-2 border rounded-lg"
-      value={dateRange[1] instanceof Date ? format(dateRange[1], 'yyyy-MM-dd') : ''}
-      onChange={(e) => setDateRange([dateRange[0], e.target.value ? new Date(e.target.value) : null])}
-    />
-    <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
-  </div>
+          <div className="relative">
+            <input
+              type="date"
+              className="pl-10 pr-3 py-2 border rounded-lg"
+              value={dateRange[0] instanceof Date ? format(dateRange[0], 'yyyy-MM-dd') : ''}
+              onChange={(e) => setDateRange([e.target.value ? new Date(e.target.value) : null, dateRange[1]])}
+            />
+            <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+          </div>
+          
+          <div className="relative">
+            <input
+              type="date"
+              className="pl-10 pr-3 py-2 border rounded-lg"
+              value={dateRange[1] instanceof Date ? format(dateRange[1], 'yyyy-MM-dd') : ''}
+              onChange={(e) => setDateRange([dateRange[0], e.target.value ? new Date(e.target.value) : null])}
+            />
+            <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+          </div>
 
-  <Select value={statusFilter} onValueChange={setStatusFilter}>
-    <SelectTrigger className="w-40">
-      <SelectValue placeholder="Statut" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="all">Tous</SelectItem>
-      <SelectItem value="pending">En attente</SelectItem>
-      <SelectItem value="validated">Validé</SelectItem>
-    </SelectContent>
-  </Select>
+          {activeTab === "readings" && (
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous</SelectItem>
+                <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="validated">Validé</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
 
-  <PDFDownloadLink
-  document={<RelevePDF readings={readings} dateRange={dateRange} />}
-  fileName={`releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
->
-  {({ loading }) => (
-    <Button variant="outline" disabled={loading}>
-      <Download className="h-4 w-4 mr-2" />
-      {loading ? 'Génération...' : 'Télécharger PDF'}
-    </Button>
-  )}
-</PDFDownloadLink>
+          {activeTab === "readings" && (
+            <PDFDownloadLink
+              document={<RelevePDF readings={readings} dateRange={dateRange} />}
+              fileName={`releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
+            >
+              {({ loading }) => (
+                <Button variant="outline" disabled={loading}>
+                  <Download className="h-4 w-4 mr-2" />
+                  {loading ? 'Génération...' : 'Télécharger PDF'}
+                </Button>
+              )}
+            </PDFDownloadLink>
+          )}
 
-
-  <Button onClick={() => {
-      setEditingReading(null);
-      setIsModalOpen(true);
-    }}>
-      <Plus className="h-4 w-4 mr-2" />
-      Ajouter
-    </Button>
-</div>
-        
-     
+          <Button onClick={() => {
+            setEditingReading(null);
+            setIsModalOpen(true);
+          }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Ajouter
+          </Button>
+        </div>
       </div>
 
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="readings">
+            <FileText className="h-4 w-4 mr-2" />
+            Relevés enregistrés
+          </TabsTrigger>
+          <TabsTrigger value="missing">
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Compteurs sans relevés
+          </TabsTrigger>
+        </TabsList>
 
-
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-            <TableHead className="w-12">
-      <input
-        type="checkbox"
-        className="rounded border-gray-300"
-        checked={selectAll}
-        onChange={(e) => {
-          setSelectAll(e.target.checked);
-          setSelectedReadings(
-            e.target.checked ? currentReadings.map(r => r.id) : []
-          );
-        }}
-      />
-    </TableHead>
-            <TableHead className="w-16">N°</TableHead>
-              <TableHead>Compteur</TableHead>
-              <TableHead>Consommateur</TableHead>
-              <TableHead>Ancien Index</TableHead>
-              <TableHead>Nouvel Index</TableHead>
-              <TableHead>Consommation (m³)</TableHead>
-              <TableHead>Montant (FCFA)</TableHead>
-              <TableHead>Période</TableHead>
-              <TableHead>Date du relevé</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {currentReadings.map((reading, index) => (
-              <TableRow 
-                key={reading.id}
-                className={reading.status === 'validated' ? 'bg-green-50/50' : ''}
-              >
-                <TableCell>
-  <input
-    type="checkbox"
-    className="rounded border-gray-300"
-    checked={selectedReadings.includes(reading.id)}
-    onChange={(e) => {
-      if (e.target.checked) {
-        setSelectedReadings([...selectedReadings, reading.id]);
-      } else {
-        setSelectedReadings(selectedReadings.filter(id => id !== reading.id));
-      }
-    }}
-  />
-</TableCell>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{reading.meter?.meter_number}</TableCell>
-                <TableCell>
-                  {reading.meter?.user ? 
-                    `${reading.meter.user.first_name} ${reading.meter.user.last_name}` : 
-                    'N/A'}
-                </TableCell>
-                <TableCell>
-                  {reading.last_reading_value ? 
-                    parseFloat(reading.last_reading_value).toFixed(2) : 
-                    'N/A'}
-                </TableCell>
-                <TableCell>
-                  {parseFloat(reading.reading_value).toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  {reading.consumption ? 
-                    parseFloat(reading.consumption).toFixed(2) : 
-                    'N/A'}
-                </TableCell>
-                <TableCell>
-                  {reading.amount ? 
-                    Number(reading.amount).toLocaleString() : 
-                    'N/A'}
-                </TableCell>
-                <TableCell>
-                  {`${format(new Date(reading.start_date), 'dd/MM/yy')} au ${format(new Date(reading.end_date), 'dd/MM/yy')}`}
-                </TableCell>
-                <TableCell>
-                  {format(new Date(reading.reading_date), 'dd/MM/yyyy')}
-                </TableCell>
-                <TableCell>
-                <Badge 
-    variant={reading.status === 'validated' ? 'success' : 'warning'}
-    className={cn(
-      "w-24 flex justify-center",
-      reading.status === 'validated' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-    )}
-  >
-    {reading.status === 'validated' ? 'Validé' : 'En attente'}
-  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-
-                      disabled={reading.status === 'validated' || reading.is_invoiced}
-
-                      onClick={() => {
-                        setEditingReading(reading);
-                        setIsModalOpen(true);
+        <TabsContent value="readings">
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300"
+                      checked={selectAll}
+                      onChange={(e) => {
+                        setSelectAll(e.target.checked);
+                        setSelectedReadings(
+                          e.target.checked ? currentReadings.map(r => r.id) : []
+                        );
                       }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
+                    />
+                  </TableHead>
+                  <TableHead className="w-16">N°</TableHead>
+                  <TableHead>Compteur</TableHead>
+                  <TableHead>Consommateur</TableHead>
+                  <TableHead>Ancien Index</TableHead>
+                  <TableHead>Nouvel Index</TableHead>
+                  <TableHead>Consommation (m³)</TableHead>
+                  <TableHead>Montant (FCFA)</TableHead>
+                  <TableHead>Période</TableHead>
+                  <TableHead>Date du relevé</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentReadings.map((reading, index) => (
+                  <TableRow 
+                    key={reading.id}
+                    className={reading.status === 'validated' ? 'bg-green-50/50' : ''}
+                  >
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300"
+                        checked={selectedReadings.includes(reading.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedReadings([...selectedReadings, reading.id]);
+                          } else {
+                            setSelectedReadings(selectedReadings.filter(id => id !== reading.id));
+                          }
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell>{reading.meter?.meter_number}</TableCell>
+                    <TableCell>
+                      {reading.meter?.user ? 
+                        `${reading.meter.user.first_name} ${reading.meter.user.last_name}` : 
+                        'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {reading.last_reading_value ? 
+                        parseFloat(reading.last_reading_value).toFixed(2) : 
+                        'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {parseFloat(reading.reading_value).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      {reading.consumption ? 
+                        parseFloat(reading.consumption).toFixed(2) : 
+                        'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {reading.amount ? 
+                        Number(reading.amount).toLocaleString() : 
+                        'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {`${format(new Date(reading.start_date), 'dd/MM/yy')} au ${format(new Date(reading.end_date), 'dd/MM/yy')}`}
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(reading.reading_date), 'dd/MM/yyyy')}
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={reading.status === 'validated' ? 'success' : 'warning'}
+                        className={cn(
+                          "w-24 flex justify-center",
+                          reading.status === 'validated' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        )}
+                      >
+                        {reading.status === 'validated' ? 'Validé' : 'En attente'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={reading.status === 'validated' || reading.is_invoiced}
+                          onClick={() => {
+                            setEditingReading(reading);
+                            setIsModalOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={reading.status === 'validated' || reading.is_invoiced}
+                          onClick={() => {
+                            setReadingToDelete(reading);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="flex items-center justify-between mt-4 px-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Lignes par page:</span>
+                <Select
+                  value={String(itemsPerPage)}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[70px]">
+                    <SelectValue />
+                  </SelectTrigger>
 
+                  <SelectContent>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                    <SelectItem value="500">500</SelectItem>
+                    <SelectItem value="1000">1000</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                      disabled={reading.status === 'validated' || reading.is_invoiced}
-                      onClick={() => {
-                        setReadingToDelete(reading);
-                        setIsDeleteDialogOpen(true);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <div className="flex items-center justify-between mt-4 px-2">
-  <div className="flex items-center gap-2">
-    <span className="text-sm text-gray-600">Lignes par page:</span>
-    <Select
-      value={String(itemsPerPage)}
-      onValueChange={(value) => {
-        setItemsPerPage(Number(value));
-        setCurrentPage(1);
-      }}
-    >
-      <SelectTrigger className="w-[70px]">
-        <SelectValue />
-      </SelectTrigger>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">
+                  {startIndex + 1}-{Math.min(endIndex, readings.length)} sur {readings.length}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Suivant
+                </Button>
+              </div>
+            </div>
+          </Card>
+          
+          <div className="mt-6">
+            <ConsumptionHeatmap readings={readings} />
+          </div>
+        </TabsContent>
 
-      <SelectContent>
-      <SelectItem value="50">50</SelectItem>
-      <SelectItem value="100">100</SelectItem>
-      <SelectItem value="500">500</SelectItem>
-      <SelectItem value="1000">1000</SelectItem>
-    </SelectContent>
-
-    </Select>
-  </div>
-
-  <div className="flex items-center gap-2">
-    <span className="text-sm text-gray-600">
-      {startIndex + 1}-{Math.min(endIndex, readings.length)} sur {readings.length}
-    </span>
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-      disabled={currentPage === 1}
-    >
-      Précédent
-    </Button>
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-      disabled={currentPage === totalPages}
-    >
-      Suivant
-    </Button>
-  </div>
-</div>
-
-      
-      </Card>
-
-     
-      <div className="mt-6">
-  <ConsumptionHeatmap readings={readings} />
-</div>
-
-     
+        <TabsContent value="missing">
+          <MetersWithoutReadings dateRange={dateRange} />
+        </TabsContent>
+      </Tabs>
 
       <ReadingForm
         isOpen={isModalOpen}
@@ -1096,17 +1232,8 @@ const currentReadings = readings.slice(startIndex, endIndex);
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-
-
     </div>
-
-    
-
-    
   );
-
-  
 };
 
 export default ReadingPage;

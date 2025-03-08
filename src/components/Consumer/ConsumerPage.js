@@ -1,9 +1,8 @@
-//consummer/ConsumerPage
 import React, { useEffect, useState, useCallback } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-
 import { Alert, AlertDescription } from "../ui/alert";
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X, Users, Scissors } from 'lucide-react';
 import { Card } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { Button } from "../ui/button";
@@ -40,8 +39,10 @@ import { Plus, Pencil, Trash2, Search, Phone, MapPin, CalendarDays } from 'lucid
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { axiosPublic, axiosPrivate } from '../../utils/axios';
-const api = axiosPrivate;
+// Importer le composant onglet des bons de coupure
+import DisconnectionTab from './DisconnectionTab'; 
 
+const api = axiosPrivate;
 
 const ConsumerPage = () => {
   const { toast } = useToast();
@@ -53,14 +54,14 @@ const ConsumerPage = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [consumerToDelete, setConsumerToDelete] = useState(null);
   const [formError, setFormError] = useState('');
+  const [activeTab, setActiveTab] = useState("consumers");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [total, setTotal] = useState(0);
   
-
-   // Fonction de récupération des consommateurs
-   const fetchConsumers = useCallback(async () => {
+  // Fonction de récupération des consommateurs
+  const fetchConsumers = useCallback(async () => {
     setLoading(true);
     try {
       const response = await api.get('/consumers', {
@@ -83,7 +84,6 @@ const ConsumerPage = () => {
     }
   }, [searchTerm, currentPage, itemsPerPage]);
 
-
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchConsumers();
@@ -91,19 +91,11 @@ const ConsumerPage = () => {
     return () => clearTimeout(timeoutId);
   }, [fetchConsumers]);
 
- 
-
-
-
-// Calculer les indices et pages pour la pagination côté client
-const totalPages = Math.ceil(total / itemsPerPage);
-const startIndex = (currentPage - 1) * itemsPerPage;
-const endIndex = startIndex + itemsPerPage;
-const currentConsumers = consumers.slice(startIndex, endIndex);
-
-
-
-
+  // Calculer les indices et pages pour la pagination côté client
+  const totalPages = Math.ceil(total / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentConsumers = consumers.slice(startIndex, endIndex);
 
   const handleFormSubmit = async (event) => {
     event.preventDefault();
@@ -113,7 +105,7 @@ const currentConsumers = consumers.slice(startIndex, endIndex);
     // Réinitialiser l'erreur
     setFormError('');
 
-       // Validation du format du numéro de téléphone
+    // Validation du format du numéro de téléphone
     if (!data.phone_number.startsWith('+')) {
       setFormError('Le numéro de téléphone doit commencer par +');
       return;
@@ -136,19 +128,18 @@ const currentConsumers = consumers.slice(startIndex, endIndex);
       setIsModalOpen(false);
       fetchConsumers();
     } catch (error) {
+      // Ajout de logs pour debug
+      console.log('Erreur complète:', error);
+      console.log('Response data:', error.response?.data);
+      console.log('Message d\'erreur:', error.response?.data?.message);
 
-       // Ajout de logs pour debug
-       console.log('Erreur complète:', error);
-       console.log('Response data:', error.response?.data);
-       console.log('Message d\'erreur:', error.response?.data?.message);
-
-    // Vérifier spécifiquement l'erreur de contrainte unique de PostgreSQL
-  if (error.response?.data?.error?.includes('users_phone_number_key')) {
-    setFormError('Ce numéro de téléphone est déjà utilisé par un autre consommateur');
-  } else {
-    setFormError(error.response?.data?.message || "Une erreur est survenue");
-  }
-}
+      // Vérifier spécifiquement l'erreur de contrainte unique de PostgreSQL
+      if (error.response?.data?.error?.includes('users_phone_number_key')) {
+        setFormError('Ce numéro de téléphone est déjà utilisé par un autre consommateur');
+      } else {
+        setFormError(error.response?.data?.message || "Une erreur est survenue");
+      }
+    }
   };
 
   const handleDelete = async () => {
@@ -170,168 +161,175 @@ const currentConsumers = consumers.slice(startIndex, endIndex);
     }
   };
 
- 
-
-
-
   return (
     <div className="p-6 space-y-6">
-
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Gestion des Consommateurs</h1>
         
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Rechercher..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 w-[300px]"
-            />
+        {activeTab === "consumers" && (
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Rechercher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 w-[300px]"
+              />
+            </div>
+            <Button onClick={() => {
+              setSelectedConsumer(null);
+              setIsModalOpen(true);
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter
+            </Button>
           </div>
-          <Button onClick={() => {
-            setSelectedConsumer(null);
-            setIsModalOpen(true);
-          }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Ajouter
-          </Button>
-        </div>
+        )}
       </div>
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Surnom</TableHead>
-              <TableHead>Prénom</TableHead>
-              <TableHead>Nom</TableHead>
-              <TableHead>Date de naissance</TableHead>
-              <TableHead>Téléphone</TableHead>
-              <TableHead>Adresse</TableHead>
-              <TableHead>Créé le</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="consumers">
+            <Users className="w-4 h-4 mr-2" />
+            Liste des consommateurs
+          </TabsTrigger>
+          <TabsTrigger value="disconnection">
+            <Scissors className="w-4 h-4 mr-2" />
+            Bons de coupure
+          </TabsTrigger>
+        </TabsList>
 
-          <TableBody>
-          {currentConsumers.map((consumer) => (
-    <TableRow key={consumer.id}>
-      <TableCell>{consumer.name}</TableCell>
-      <TableCell>{consumer.first_name}</TableCell>
-      <TableCell>{consumer.last_name}</TableCell>
-      <TableCell>
-        {consumer.date_of_birth ? 
-          format(new Date(consumer.date_of_birth), 'dd/MM/yyyy') : 
-          '-'}
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center space-x-2">
-          <Phone className="h-4 w-4 text-gray-500" />
-          <span>{consumer.phone_number}</span>
-        </div>
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center space-x-2">
-          <MapPin className="h-4 w-4 text-gray-500" />
-          <span>{consumer.address || '-'}</span>
-        </div>
-      </TableCell>
-      <TableCell>
-        {format(new Date(consumer.createdAt), 'dd/MM/yyyy')}
-      </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setSelectedConsumer(consumer);
-                        setIsModalOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
+        <TabsContent value="consumers">
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Surnom</TableHead>
+                  <TableHead>Prénom</TableHead>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Date de naissance</TableHead>
+                  <TableHead>Téléphone</TableHead>
+                  <TableHead>Adresse</TableHead>
+                  <TableHead>Créé le</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
 
-                    {/* 
+              <TableBody>
+                {currentConsumers.map((consumer) => (
+                  <TableRow key={consumer.id}>
+                    <TableCell>{consumer.name}</TableCell>
+                    <TableCell>{consumer.first_name}</TableCell>
+                    <TableCell>{consumer.last_name}</TableCell>
+                    <TableCell>
+                      {consumer.date_of_birth ? 
+                        format(new Date(consumer.date_of_birth), 'dd/MM/yyyy') : 
+                        '-'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Phone className="h-4 w-4 text-gray-500" />
+                        <span>{consumer.phone_number}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <span>{consumer.address || '-'}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(consumer.createdAt), 'dd/MM/yyyy')}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedConsumer(consumer);
+                            setIsModalOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
 
-                    <Button 
-                      variant="destructive"  
-                      size="sm"
-                      onClick={() => {
-                        setConsumerToDelete(consumer);
-                        setIsDeleteDialogOpen(true);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                        {/* 
+                        <Button 
+                          variant="destructive"  
+                          size="sm"
+                          onClick={() => {
+                            setConsumerToDelete(consumer);
+                            setIsDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        */}
 
-                    */}
+                        
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
 
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+            <div className="flex items-center justify-between mt-4 px-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Lignes par page:</span>
+                <Select
+                  value={String(itemsPerPage)}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[70px]">
+                    <SelectValue />
+                  </SelectTrigger>
 
+                  <SelectContent>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                    <SelectItem value="500">500</SelectItem>
+                    <SelectItem value="1000">1000</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-        </Table>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">
+                  {((currentPage - 1) * itemsPerPage) + 1}-
+                  {Math.min(currentPage * itemsPerPage, total)} sur {total}
+                </span>
+               
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Suivant
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
 
-        <div className="flex items-center justify-between mt-4 px-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Lignes par page:</span>
-            <Select
-              value={String(itemsPerPage)}
-              onValueChange={(value) => {
-                setItemsPerPage(Number(value));
-                setCurrentPage(1);
-              }}
-            >
-              <SelectTrigger className="w-[70px]">
-                <SelectValue />
-              </SelectTrigger>
-
-              <SelectContent>
-  <SelectItem value="50">50</SelectItem>
-  <SelectItem value="100">100</SelectItem>
-  <SelectItem value="500">500</SelectItem>
-  <SelectItem value="1000">1000</SelectItem>
-</SelectContent>
-
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">
-  {((currentPage - 1) * itemsPerPage) + 1}-
-  {Math.min(currentPage * itemsPerPage, total)} sur {total}
-</span>
-           
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Précédent
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-            >
-              Suivant
-            </Button>
-          </div>
-
-        </div>
-
-
-      </Card>
-
-     
+        <TabsContent value="disconnection">
+          <DisconnectionTab />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[500px]">
