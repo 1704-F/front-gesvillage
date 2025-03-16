@@ -648,30 +648,39 @@ const getConsumerStatus = () => {
   return (
     <Document>
       {/* ================ Page 1: Finances ================ */}
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" orientation="landscape" style={styles.page}>
       <View style={styles.header}>
           <View style={styles.leftHeader}>
+
           <View style={styles.logo}>
-              <GesVillageLogo />
-            </View>
-            <Text style={styles.companyInfo}>
-              Adresse : Fété-Niébé{"\n"}
-              WhatsApp : +33775802267{"\n"}
-              Téléphone : +221778715285
-            </Text>
-          </View>
-          <View style={styles.rightHeader}>
-            <Text style={styles.serviceInfo}>
+  {serviceInfo?.logo ? (
+    <Image 
+      src={`${process.env.REACT_APP_API_URL || 'https://api.gesvillage.com'}/uploads/logos/${serviceInfo.logo}`}
+      style={{ maxWidth: 100, maxHeight: 80 }}
+    />
+  ) : (
+    <GesVillageLogo />
+  )}
+</View>
+<Text style={styles.companyInfo}>
+
+
               {serviceInfo?.name || 'N/A'}{"\n"}
               Adresse : {serviceInfo?.location || 'N/A'}{"\n"}
               Contact : {serviceInfo?.contact_person || 'N/A'}{"\n"}
               Tél : {serviceInfo?.contact_info || 'N/A'}{"\n"}
               Région : {serviceInfo?.region || 'N/A'}{"\n"}
               Commune : {serviceInfo?.commune || 'N/A'}{"\n"}
-              {serviceInfo.zone?.type}: {serviceInfo?.zoneName || 'N/A'}{"\n"}
+            </Text>
+           
+          </View>
+          <View style={styles.rightHeader}>
+            <Text style={styles.serviceInfo}>
+            {serviceInfo.zone?.type}: {serviceInfo?.zoneName || 'N/A'}{"\n"}
               {"\n"}
               Administrateur : {serviceInfo?.admin?.name || 'N/A'}{"\n"}
-              Tél : {serviceInfo?.admin?.phone_number || 'N/A'}
+              Tél : {serviceInfo?.admin?.phone_number || 'N/A'}   
+              
             </Text>
           </View>
         </View>
@@ -774,7 +783,7 @@ const getConsumerStatus = () => {
       </Page>
 
       {/* ================ Page 2: Consommation ================ */}
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.pageTitle}>Rapport de Consommation</Text>
         <Text style={styles.dateRange}>
           {format(currentPeriod[0], 'dd MMMM yyyy', { locale: fr })} - {' '}
@@ -840,7 +849,7 @@ const getConsumerStatus = () => {
       </Page>
 
       {/* ================ Page 3: Consommateurs ================ */}
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.pageTitle}>Rapport des Consommateurs</Text>
         <Text style={styles.dateRange}>
           {format(currentPeriod[0], 'dd MMMM yyyy', { locale: fr })} - {' '}
