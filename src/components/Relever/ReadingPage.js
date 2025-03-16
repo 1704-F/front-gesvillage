@@ -26,6 +26,7 @@ import { Plus, Pencil, Trash2, Calendar, Calculator, AlertCircle, Download,Check
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar as CalendarComponent } from "../ui/calendar";
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Users, XCircle, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { axiosPrivate as api } from '../../utils/axios';
 
@@ -84,8 +85,6 @@ const formatPercent = (num) => {
   if (isNaN(num)) return '0.00';
   return Number(num).toFixed(2);
 };
-
-
 
 // Composant PDF
 const RelevePDF = ({ readings, dateRange }) => (
@@ -262,6 +261,9 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit }) => {
   const [consumption, setConsumption] = useState(null);
   const [searchMeter, setSearchMeter] = useState('');
 
+  
+
+
   useEffect(() => {
     if (editingReading) {
       setFormData({
@@ -347,6 +349,10 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit }) => {
       }
     }
   };
+
+  
+
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -637,7 +643,7 @@ const MetersWithoutReadings = ({ dateRange }) => {
             <TableHead>N° Série</TableHead>
             <TableHead>Consommateur</TableHead>
             <TableHead>Emplacement</TableHead>
-            <TableHead>Actions</TableHead>
+            
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -671,21 +677,8 @@ const MetersWithoutReadings = ({ dateRange }) => {
                     'N/A'}
                 </TableCell>
                 <TableCell>{meter.location || 'N/A'}</TableCell>
-                <TableCell>
-                  <Button 
-                    size="sm" 
-                    onClick={() => {
-                      // Ici vous pourriez implémenter une redirection vers le formulaire
-                      // d'ajout de relevé avec ce compteur présélectionné
-                      window.dispatchEvent(new CustomEvent('create-reading-for-meter', { 
-                        detail: { meterId: meter.id }
-                      }));
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Ajouter un relevé
-                  </Button>
-                </TableCell>
+
+               
               </TableRow>
             ))
           )}
@@ -709,8 +702,13 @@ const ReadingPage = () => {
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [dateRange, setDateRange] = useState([
     (() => {
-      const date = new Date('2024-01-01');
-      return date;
+
+      const date = new Date();
+    date.setMonth(date.getMonth() - 1); // Mois dernier 
+    date.setDate(1); // Premier jour du mois
+    date.setHours(0, 0, 0, 0);
+    return date;
+
     })(),
     new Date()
   ]);
@@ -720,11 +718,21 @@ const ReadingPage = () => {
   const [selectedReadings, setSelectedReadings] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
   const [activeTab, setActiveTab] = useState("readings");
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
-  const totalPages = Math.ceil(readings.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentReadings = readings.slice(startIndex, endIndex);
+  const currentReadings = readings;
+
+
+  
+
+  // recherche d'un utilisateur
+  const [consumerFilter, setConsumerFilter] = useState(null);
+  const [consumerSearchQuery, setConsumerSearchQuery] = useState("");
+  const [consumerSearchResults, setConsumerSearchResults] = useState([]);
+  const [isSearchingConsumers, setIsSearchingConsumers] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  
 
   // Écouter l'événement personnalisé pour créer un relevé pour un compteur spécifique
   useEffect(() => {
@@ -742,53 +750,88 @@ const ReadingPage = () => {
     return () => window.removeEventListener('create-reading-for-meter', handleCreateReadingForMeter);
   }, [meters]);
 
-  const fetchReadings = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/readings', {
+      
+      const response = await api.get('/readings/dashboard', {
         params: {
           start_date: format(dateRange[0], 'yyyy-MM-dd'),
           end_date: format(dateRange[1], 'yyyy-MM-dd'),
-          status: statusFilter !== 'all' ? statusFilter : undefined
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          consumer_id: consumerFilter?.id,
+          page: currentPage,
+          limit: itemsPerPage
         }
       });
-      setReadings(response.data.data);
+      
+      const data = response.data.data;
+
+      
+      setReadings(data.readings);
+      setTotalPages(data.pagination.totalPages);
+      setTotalItems(data.pagination.total);
+      setMeters(data.meters);
+      
+      // Pas besoin d'appeler fetchMeters() séparément
+      
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de récupérer les relevés"
+        description: "Impossible de récupérer les données du tableau de bord"
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchMeters = async () => {
-    try {
-      const response = await api.get('/meters', {
-        params: { status: 'active' }
-      });
-      setMeters(response.data.data);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de récupérer les compteurs"
-      });
-    }
-  };
+
+  // Ajoutez cette fonction pour rechercher des consommateurs
+const searchConsumers = async (query) => {
+  if (!query || query.length < 2) {
+    setConsumerSearchResults([]);
+    return;
+  }
+  
+  setIsSearchingConsumers(true);
+  try {
+    const response = await api.get('/readings/search-consumers', {
+      params: { query }
+    });
+    console.log("Résultats:", response.data.data);
+    setConsumerSearchResults(response.data.data);
+  } catch (error) {
+    console.error('Erreur lors de la recherche des consommateurs:', error);
+    toast({
+      variant: "destructive",
+      title: "Erreur",
+      description: "Impossible de rechercher les consommateurs"
+    });
+  } finally {
+    setIsSearchingConsumers(false);
+  }
+};
+
+
+  // Ajoutez un effet pour déclencher la recherche lorsque la requête change
+useEffect(() => {
+  const delayDebounceFn = setTimeout(() => {
+    searchConsumers(consumerSearchQuery);
+  }, 300);
+  
+  return () => clearTimeout(delayDebounceFn);
+}, [consumerSearchQuery]);
+
+
+
+
 
   useEffect(() => {
-    Promise.all([
-      fetchReadings(),
-      fetchMeters()
-    ]);
-  }, []);
+    fetchDashboardData();
+  }, [dateRange, statusFilter, consumerFilter, currentPage, itemsPerPage]);
 
-  useEffect(() => {
-    fetchReadings();
-  }, [dateRange, statusFilter]);
+  
 
   const handleSubmit = async (data) => {
     try {
@@ -806,7 +849,7 @@ const ReadingPage = () => {
         });
       }
       setIsModalOpen(false);
-      fetchReadings();
+      fetchDashboardData();
       // Recharger les compteurs sans relevés si nous sommes sur cet onglet
       if (activeTab === "missing") {
         // Un événement pour déclencher le rechargement dans le composant MetersWithoutReadings
@@ -849,7 +892,7 @@ const ReadingPage = () => {
         title: "Succès",
         description: "Relevé supprimé avec succès"
       });
-      fetchReadings();
+      fetchDashboardData()
     } catch (error) {
       toast({
         variant: "destructive",
@@ -902,7 +945,7 @@ const ReadingPage = () => {
         description: "Les relevés sélectionnés ont été validés"
       });
       setSelectedReadings([]);
-      fetchReadings();
+      fetchDashboardData()
     } catch (error) {
       toast({
         variant: "destructive",
@@ -923,7 +966,7 @@ const ReadingPage = () => {
         description: "Le statut des relevés sélectionnés a été mis à jour"
       });
       setSelectedReadings([]);
-      fetchReadings();
+      fetchDashboardData()
     } catch (error) {
       if (error.response?.status === 400 && 
           error.response?.data?.message?.includes('Impossible de changer le statut')) {
@@ -1012,6 +1055,91 @@ const ReadingPage = () => {
           </Button>
         </div>
       </div>
+
+      {/* Juste après la section des filtres principaux */}
+<div className="flex items-center space-x-4 mt-2 pb-4 w-full">
+  <div className="flex-1 relative">
+    <div className="relative">
+      <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+        <PopoverTrigger asChild>
+          <Button 
+            variant="outline" 
+            role="combobox" 
+            aria-expanded={isSearchOpen} 
+            className="w-full justify-between"
+          >
+            <div className="flex items-center">
+              <Users className="h-4 w-4 mr-2" />
+              {consumerFilter ? consumerFilter.name : "Rechercher un consommateur..."}
+            </div>
+            <Search className="h-4 w-4 ml-2 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[400px] p-0" align="start">
+          <div className="p-2">
+            <Input 
+              placeholder="Rechercher un consommateur..." 
+              value={consumerSearchQuery}
+              onChange={(e) => setConsumerSearchQuery(e.target.value)}
+              autoFocus
+            />
+            
+            {isSearchingConsumers && (
+              <div className="flex justify-center my-2">
+                <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+              </div>
+            )}
+            
+            <div className="mt-2 max-h-60 overflow-y-auto">
+              {consumerSearchResults.length > 0 ? (
+                consumerSearchResults.map((consumer) => (
+                  <div
+                    key={consumer.id}
+                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer rounded"
+                    onClick={() => {
+                      setConsumerFilter(consumer);
+                      setConsumerSearchQuery("");
+                      setIsSearchOpen(false);
+                    }}
+                  >
+                    <Users className="h-4 w-4 mr-2 text-blue-500" />
+                    <span>{consumer.name}</span>
+                    <span className="ml-2 text-sm text-gray-500">
+                      ({consumer.meter_number})
+                    </span>
+                  </div>
+                ))
+              ) : consumerSearchQuery.length > 1 ? (
+                <div className="text-center py-2 text-gray-500">
+                  Aucun consommateur trouvé
+                </div>
+              ) : (
+                <div className="text-center py-2 text-gray-500">
+                  Saisissez au moins 2 caractères
+                </div>
+              )}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  </div>
+
+  {/* Affichage du filtre actif */}
+  {consumerFilter && (
+    <div className="flex items-center bg-blue-50 px-3 py-2 rounded-lg">
+      <span className="mr-2 text-sm font-medium">
+        Filtré par: {consumerFilter.name}
+      </span>
+      <button
+        onClick={() => setConsumerFilter(null)}
+        className="text-gray-400 hover:text-red-500"
+      >
+        <XCircle className="h-5 w-5" />
+      </button>
+    </div>
+  )}
+</div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
@@ -1172,26 +1300,30 @@ const ReadingPage = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">
-                  {startIndex + 1}-{Math.min(endIndex, readings.length)} sur {readings.length}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                >
-                  Précédent
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                >
-                  Suivant
-                </Button>
-              </div>
+  <span className="text-sm text-gray-600">
+    {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} sur {totalItems}
+  </span>
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+    disabled={currentPage === 1}
+  >
+    Précédent
+  </Button>
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+    disabled={currentPage === totalPages}
+  >
+    Suivant
+  </Button>
+</div>
+
+
+
+      
             </div>
           </Card>
           

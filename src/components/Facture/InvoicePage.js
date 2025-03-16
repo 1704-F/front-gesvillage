@@ -28,6 +28,9 @@ import { format } from 'date-fns';
 import { axiosPrivate as api } from '../../utils/axios';
 import InvoicePDF from '../Service/InvoicePDF';
 
+import { Users, XCircle, Search } from 'lucide-react';
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from "../ui/command";
+
 // Composant ConsumptionDetails
 const ConsumptionDetails = ({ reading, amount }) => {
   if (!reading) return null;
@@ -68,7 +71,6 @@ const ConsumptionDetails = ({ reading, amount }) => {
   );
 };
 
-// Modal de génération de facture
 // Modal de génération de facture avec scroll
 const GenerateInvoiceDialog = ({
   open,
@@ -278,21 +280,37 @@ const InvoicePage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
 
-// Calculez les indices et les factures actuelles
-  const totalPages = Math.ceil(invoices.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentInvoices = invoices.slice(startIndex, endIndex);
+
+
+   // Ajouter ces états à votre composant InvoicePage
+const [consumerFilter, setConsumerFilter] = useState(null);
+const [consumerSearchQuery, setConsumerSearchQuery] = useState("");
+const [consumerSearchResults, setConsumerSearchResults] = useState([]);
+const [isSearchingConsumers, setIsSearchingConsumers] = useState(false);
+const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+const [statistics, setStatistics] = useState({
+  total_count: 0,
+  pending_count: 0,
+  paid_count: 0,
+  total_amount_due: 0,
+  pending_amount: 0,
+  paid_amount: 0
+});
+
+const [totalItems, setTotalItems] = useState(0);
+const [totalPages, setTotalPages] = useState(1);
+
   
 
   // États de la période
   // Dans InvoicePage
 const [dateRange, setDateRange] = useState([
   (() => {
-    const date = new Date('2024-01-01');
-    //const date = new Date();
-    //date.setMonth(date.getMonth() - 1); // Mois dernier
-    //date.setDate(1); // Premier jour du mois
+    
+    const date = new Date();
+    date.setMonth(date.getMonth() - 1); // Mois dernier 
+    date.setDate(1); // Premier jour du mois
     date.setHours(0, 0, 0, 0);
     return date;
   })(),
@@ -311,53 +329,59 @@ const [dateRange, setDateRange] = useState([
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentInvoice, setCurrentInvoice] = useState(null);
 
+  const [exportLoading, setExportLoading] = useState(false);
+
   // Chargement des données
-  const fetchInvoices = async () => {
-    
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/invoices', {
+      
+      const response = await api.get('/invoices/dashboard', {
         params: {
           start_date: format(dateRange[0], 'yyyy-MM-dd'),
           end_date: format(dateRange[1], 'yyyy-MM-dd'),
-          status: statusFilter !== 'all' ? statusFilter : undefined
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          consumer_id: consumerFilter?.id,
+          page: currentPage,
+          limit: itemsPerPage
         }
-        
       });
-      console.log('khaly Données des factures récupérées :', response.data.data);
-     
-      setInvoices(response.data.data);
-
-
+      
+      const data = response.data.data;
+      
+      // Mettre à jour tous les états avec les données
+      setInvoices(data.invoices);
+      setValidatedReadings(data.validatedReadings);
+      setStatistics(data.statistics);
+      setTotalItems(data.pagination.total);
+      setTotalPages(data.pagination.totalPages);
+      
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de récupérer les factures"
+        description: "Impossible de récupérer les données du tableau de bord"
       });
     } finally {
       setLoading(false);
     }
   };
+ 
 
-  const fetchValidatedReadings = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/readings/validated-not-invoiced');
-      setValidatedReadings(response.data.data);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de récupérer les relevés disponibles"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
   useEffect(() => {
-    fetchInvoices();
-  }, [dateRange, statusFilter]);
+    const delayDebounceFn = setTimeout(() => {
+      searchConsumers(consumerSearchQuery);
+    }, 300);
+  
+    return () => clearTimeout(delayDebounceFn);
+  }, [consumerSearchQuery]);
+
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [dateRange, statusFilter, consumerFilter, currentPage, itemsPerPage]);
+  
+ 
 
   // Handlers
   const handleGenerateInvoices = async (readingIds) => {
@@ -370,7 +394,7 @@ const [dateRange, setDateRange] = useState([
         title: "Succès",
         description: "Factures générées avec succès"
       });
-      fetchInvoices();
+      fetchDashboardData();
     } catch (error) {
       console.error('Erreur:', error);
       toast({
@@ -388,7 +412,7 @@ const [dateRange, setDateRange] = useState([
         title: "Succès",
         description: "Statut mis à jour avec succès"
       });
-      fetchInvoices();
+      fetchDashboardData();
     } catch (error) {
       toast({
         variant: "destructive",
@@ -405,7 +429,7 @@ const [dateRange, setDateRange] = useState([
         title: "Succès",
         description: "Facture supprimée avec succès" 
       });
-      fetchInvoices();
+      fetchDashboardData();
     } catch (error) {
       toast({
         variant: "destructive",
@@ -443,6 +467,97 @@ const [dateRange, setDateRange] = useState([
       });
     }
   };
+
+  const handleExportPeriodInvoices = async () => {
+    try {
+      // Vérifier si des dates sont sélectionnées
+      if (!dateRange[0] || !dateRange[1]) {
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: "Veuillez sélectionner une période pour l'export"
+        });
+        return;
+      }
+  
+      setExportLoading(true);
+  
+      // Formater les dates
+      const startDate = format(dateRange[0], 'yyyy-MM-dd');
+      const endDate = format(dateRange[1], 'yyyy-MM-dd');
+      
+      // Approche alternative avec la responseType blob
+      try {
+        const response = await api.get(`/invoices/export-period`, {
+          params: {
+            start_date: startDate,
+            end_date: endDate
+          },
+          responseType: 'blob'
+        });
+        
+        // Créer un lien de téléchargement et déclencher le téléchargement
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Factures_${startDate}_${endDate}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Succès",
+          description: "Export des factures terminé"
+        });
+      } catch (error) {
+        console.error("Erreur lors de l'export:", error);
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: "Impossible d'exporter les factures pour cette période"
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'export des factures:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible d'exporter les factures pour cette période"
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const searchConsumers = async (query) => {
+    if (!query || query.length < 2) {
+      setConsumerSearchResults([]);
+      return;
+    }
+    
+    console.log("Recherche pour:", query);
+    setIsSearchingConsumers(true);
+    try {
+      const response = await api.get('/invoices/search-consumers', {
+        params: { query }
+      });
+      console.log("Résultats:", response.data.data);
+      setConsumerSearchResults(response.data.data);
+    } catch (error) {
+      console.error('Erreur lors de la recherche des consommateurs:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de rechercher les consommateurs"
+      });
+    } finally {
+      setIsSearchingConsumers(false);
+    }
+  };
+  
+
 
   // Interface
   return (
@@ -494,19 +609,139 @@ const [dateRange, setDateRange] = useState([
           <div className="flex space-x-2">
             <Button
               onClick={() => {
-                fetchValidatedReadings();
-                setIsGenerateModalOpen(true);
+                fetchDashboardData().then(() => {
+                  setIsGenerateModalOpen(true);
+                });
+                
               }}
             >
               <Plus className="h-4 w-4 mr-2" />
               Générer
             </Button>
 
+            <Button 
+  variant="outline"
+  onClick={handleExportPeriodInvoices}
+  disabled={exportLoading}
+>
+  {exportLoading ? (
+    <>
+      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></div>
+      Export...
+    </>
+  ) : (
+    <>
+      <Download className="h-4 w-4 mr-2" />
+      Exporter période
+    </>
+  )}
+</Button>
+
            
 
           </div>
+
+
+
+
+
+
+          
         </div>
       </div>
+
+      <div className="flex items-center space-x-4 mt-2 pb-4 w-full">
+  <div className="flex-1 relative">
+    <div className="relative">
+
+  
+<Popover open={isSearchOpen || (consumerSearchQuery.length > 1 && consumerSearchResults.length > 0)} onOpenChange={setIsSearchOpen}>
+  <PopoverTrigger asChild>
+    <Button 
+      variant="outline" 
+      role="combobox" 
+      className="w-full justify-between"
+      onClick={() => setIsSearchOpen(true)}
+    >
+      <div className="flex items-center">
+        <Users className="h-4 w-4 mr-2" />
+        {consumerFilter ? consumerFilter.name : "Rechercher un consommateur..."}
+      </div>
+      <Search className="h-4 w-4 ml-2 shrink-0 opacity-50" />
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent className="w-[400px] p-0" align="start">
+    <div className="p-2">
+      <Input 
+        placeholder="Rechercher un consommateur..." 
+        value={consumerSearchQuery}
+        onChange={(e) => setConsumerSearchQuery(e.target.value)}
+        autoFocus
+      />
+      
+      {isSearchingConsumers && (
+        <div className="flex justify-center my-2">
+          <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+        </div>
+      )}
+      
+      <div className="mt-2 max-h-60 overflow-y-auto">
+        {consumerSearchResults.length > 0 ? (
+          consumerSearchResults.map((consumer) => (
+            <div
+              key={consumer.id}
+              className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer rounded"
+              onClick={() => {
+                setConsumerFilter(consumer);
+                setConsumerSearchQuery("");
+                setIsSearchOpen(false);
+              }}
+            >
+              <Users className="h-4 w-4 mr-2 text-blue-500" />
+              <span>{consumer.name}</span>
+              <span className="ml-2 text-sm text-gray-500">
+                ({consumer.meter_number})
+              </span>
+            </div>
+          ))
+        ) : consumerSearchQuery.length > 1 ? (
+          <div className="text-center py-2 text-gray-500">
+            Aucun consommateur trouvé
+          </div>
+        ) : (
+          <div className="text-center py-2 text-gray-500">
+            Saisissez au moins 2 caractères
+          </div>
+        )}
+      </div>
+    </div>
+  </PopoverContent>
+</Popover>
+
+     
+
+    </div>
+  </div>
+
+  {/* Affichage du filtre actif */}
+  {consumerFilter && (
+    <div className="flex items-center bg-blue-50 px-3 py-2 rounded-lg">
+      <span className="mr-2 text-sm font-medium">
+        Filtré par: {consumerFilter.name}
+      </span>
+      <button
+        onClick={() => setConsumerFilter(null)}
+        className="text-gray-400 hover:text-red-500"
+      >
+        <XCircle className="h-5 w-5" />
+      </button>
+    </div>
+  )}
+</div>
+
+     
+
+
 
       <Card>
         <Table>
@@ -537,7 +772,7 @@ const [dateRange, setDateRange] = useState([
             </TableRow>
           </TableHeader>
           <TableBody>
-          {currentInvoices.map((invoice) => (
+          {invoices.map((invoice) => (
               <TableRow 
                 key={invoice.id}
                 className={invoice.status === 'paid' ? 'bg-green-50/50' : ''}
@@ -715,9 +950,10 @@ const [dateRange, setDateRange] = useState([
   </div>
 
   <div className="flex items-center gap-2">
-    <span className="text-sm text-gray-600">
-      {startIndex + 1}-{Math.min(endIndex, invoices.length)} sur {invoices.length}
-    </span>
+  <span className="text-sm text-gray-600">
+    {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} sur {totalItems}
+  </span>
+   
     <Button
       variant="outline"
       size="sm"
@@ -735,6 +971,8 @@ const [dateRange, setDateRange] = useState([
       Suivant
     </Button>
   </div>
+
+
 </div>
 
 

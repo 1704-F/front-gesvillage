@@ -42,6 +42,9 @@ const DisconnectionTab = () => {
   const [employeeId, setEmployeeId] = useState('');
   const [notes, setNotes] = useState('');
   const [employees, setEmployees] = useState([]);
+
+  const [applyPenalty, setApplyPenalty] = useState(false);
+  const [penaltyAmount, setPenaltyAmount] = useState('');
   
   // États pour les filtres
   const [filters, setFilters] = useState({
@@ -110,9 +113,9 @@ const DisconnectionTab = () => {
       if (!selectedConsumer) return;
       
       await api.patch(`/consumers/${selectedConsumer.id}/disconnection-notice/execute`, {
-        // Si employeeId est 'none', envoyez null ou undefined à la place
         employee_id: employeeId === 'none' ? null : employeeId,
-        notes: notes || undefined
+        notes: notes || undefined,
+        penalty_amount: applyPenalty ? penaltyAmount || null : null
       });
       
       toast({
@@ -121,14 +124,16 @@ const DisconnectionTab = () => {
       });
       
       setExecuteModal(false);
-      setEmployeeId(''); // Réinitialiser à une chaîne vide est OK pour l'état, mais pas pour la valeur du SelectItem
+      setEmployeeId('');
       setNotes('');
+      setApplyPenalty(false);
+      setPenaltyAmount('');
       fetchConsumersWithUnpaidInvoices();
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de mettre à jour le statut"
+        description: error.response?.data?.message || "Impossible de mettre à jour le statut"
       });
     }
   };
@@ -255,7 +260,26 @@ const DisconnectionTab = () => {
                     </TableCell>
                     <TableCell>{consumer.phone_number}</TableCell>
                     <TableCell>{consumer.unpaid_invoices_count}</TableCell>
-                    <TableCell>{Number(consumer.total_unpaid_amount).toLocaleString()} FCFA</TableCell>
+                    <TableCell>
+  {(() => {
+    const invoicesTotal = Number(consumer.total_unpaid_amount);
+    const penaltyAmount = Number(consumer.disconnection_notice?.penalty_amount || 0);
+    const grandTotal = invoicesTotal + penaltyAmount;
+    
+    return (
+      <>
+        {grandTotal.toLocaleString()} FCFA
+        {penaltyAmount > 0 && (
+          <Badge variant="outline" className="ml-2">
+            +{penaltyAmount.toLocaleString()} pénalité
+          </Badge>
+        )}
+      </>
+    );
+  })()}
+</TableCell>
+
+                   
                     <TableCell>
                       {consumer.oldest_unpaid_invoice ? 
                         format(new Date(consumer.oldest_unpaid_invoice.due_date), 'dd/MM/yyyy') : 
@@ -373,15 +397,30 @@ const DisconnectionTab = () => {
           </Table>
 
           <div className="flex justify-between mt-4">
-            <div>
-              <span className="text-sm text-gray-500">Total dû:</span>
-              <span className="ml-2 font-bold">{Number(selectedConsumer?.total_unpaid_amount).toLocaleString()} FCFA</span>
-            </div>
-            <div>
-              <span className="text-sm text-gray-500">Factures impayées:</span>
-              <span className="ml-2 font-bold">{selectedConsumer?.unpaid_invoices_count}</span>
-            </div>
-          </div>
+  <div>
+    <span className="text-sm text-gray-500">Total dû:</span>
+    <span className="ml-2 font-bold">
+      {(
+        Number(selectedConsumer?.total_unpaid_amount || 0) + 
+        Number(selectedConsumer?.disconnection_notice?.penalty_amount || 0)
+      ).toLocaleString()} FCFA
+    </span>
+    {selectedConsumer?.disconnection_notice?.penalty_amount > 0 && (
+      <span className="text-xs text-gray-500 ml-2">
+        (inclut une pénalité de {Number(selectedConsumer.disconnection_notice.penalty_amount).toLocaleString()} FCFA)
+      </span>
+    )}
+  </div>
+  
+  <div>
+    <span className="text-sm text-gray-500">Factures impayées:</span>
+    <span className="ml-2 font-bold">{selectedConsumer?.unpaid_invoices_count}</span>
+  </div>
+</div>
+
+   
+
+         
 
           <DialogFooter>
             <Button 
@@ -418,50 +457,84 @@ const DisconnectionTab = () => {
 
       {/* Modal pour exécuter un bon de coupure */}
       <Dialog open={executeModal} onOpenChange={setExecuteModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Exécuter le bon de coupure</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Employé ayant effectué la coupure</label>
-              <Select value={employeeId} onValueChange={setEmployeeId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un employé" />
-                </SelectTrigger>
-                <SelectContent>
-                <SelectItem value="none">Non spécifié</SelectItem>
-                  {employees.map(employee => (
-                    <SelectItem key={employee.id} value={employee.id.toString()}>
-                      {employee.first_name} {employee.last_name} ({employee.job_title})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes (optionnel)</label>
-              <Input
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Notes concernant l'exécution"
-              />
-            </div>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Exécuter le bon de coupure</DialogTitle>
+    </DialogHeader>
+    
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Employé ayant effectué la coupure</label>
+        <Select value={employeeId} onValueChange={setEmployeeId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Sélectionner un employé" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Non spécifié</SelectItem>
+            {employees.map(employee => (
+              <SelectItem key={employee.id} value={employee.id.toString()}>
+                {employee.first_name} {employee.last_name} ({employee.job_title})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {/* Section pour la pénalité de retard */}
+      <div className="space-y-2 border p-3 rounded-md">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="applyPenalty"
+            checked={applyPenalty}
+            onChange={(e) => setApplyPenalty(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <label htmlFor="applyPenalty" className="text-sm font-medium">
+            Appliquer une pénalité de retard
+          </label>
+        </div>
+        
+        {applyPenalty && (
+          <div className="mt-2">
+            <label className="text-sm font-medium">Montant de la pénalité (FCFA)</label>
+            <Input
+              type="number"
+              value={penaltyAmount}
+              onChange={(e) => setPenaltyAmount(e.target.value)}
+              placeholder="Montant en FCFA"
+              min="0"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Laissez vide pour une pénalité sans montant fixe
+            </p>
           </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setExecuteModal(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleExecuteDisconnection}>
-              <Check className="h-4 w-4 mr-2" />
-              Confirmer l'exécution
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
+      </div>
+      
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Notes (optionnel)</label>
+        <Input
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Notes concernant l'exécution"
+        />
+      </div>
+    </div>
+    
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setExecuteModal(false)}>
+        Annuler
+      </Button>
+      <Button onClick={handleExecuteDisconnection}>
+        <Check className="h-4 w-4 mr-2" />
+        Confirmer l'exécution
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
+
     </div>
   );
 };
