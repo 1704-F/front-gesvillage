@@ -656,7 +656,7 @@ const getConsumerStatus = () => {
   {serviceInfo?.logo ? (
     <Image 
       src={`${process.env.REACT_APP_API_URL || 'https://api.gesvillage.com'}/uploads/logos/${serviceInfo.logo}`}
-      style={{ maxWidth: 100, maxHeight: 80 }}
+      style={{ maxWidth: 100, maxHeight: 75 }}
     />
   ) : (
     <GesVillageLogo />
@@ -669,17 +669,21 @@ const getConsumerStatus = () => {
               Adresse : {serviceInfo?.location || 'N/A'}{"\n"}
               Contact : {serviceInfo?.contact_person || 'N/A'}{"\n"}
               Tél : {serviceInfo?.contact_info || 'N/A'}{"\n"}
-              Région : {serviceInfo?.region || 'N/A'}{"\n"}
-              Commune : {serviceInfo?.commune || 'N/A'}{"\n"}
+              
             </Text>
            
           </View>
           <View style={styles.rightHeader}>
             <Text style={styles.serviceInfo}>
-            {serviceInfo.zone?.type}: {serviceInfo?.zoneName || 'N/A'}{"\n"}
-              {"\n"}
-              Administrateur : {serviceInfo?.admin?.name || 'N/A'}{"\n"}
-              Tél : {serviceInfo?.admin?.phone_number || 'N/A'}   
+            
+            <Text style={styles.companyInfo}>
+              gesVillage{"\n"}
+              Adresse : Fété-Niébé{"\n"}
+              WhatsApp : +33775802267{"\n"}
+              N.I.N.E.A : 012026531{"\n"}
+              RCCM : SN.MTM2025.C.327{"\n"}
+
+            </Text>   
               
             </Text>
           </View>
