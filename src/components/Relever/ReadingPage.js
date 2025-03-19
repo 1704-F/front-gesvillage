@@ -243,7 +243,7 @@ const ConsumptionDetails = ({ consumption }) => {
   );
 };
 
-const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit }) => {
+const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, selectedMeterId  }) => {
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     meter_id: '',
@@ -278,8 +278,15 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit }) => {
           to: new Date(editingReading.end_date)
         }
       });
+    } else if (selectedMeterId) {
+      // Nouveau cas: initialiser seulement l'ID du compteur
+      setFormData(prev => ({
+        ...prev,
+        meter_id: String(selectedMeterId)
+      }));
+
     }
-  }, [editingReading]);
+  }, [editingReading, selectedMeterId]);
 
   useEffect(() => {
     if (formData.last_reading_value && formData.reading_value) {
@@ -594,32 +601,51 @@ const MetersWithoutReadings = ({ dateRange }) => {
   const [meters, setMeters] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchMetersWithoutReadings = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get('/readings/meters-without-readings', {
-          params: {
-            start_date: format(dateRange[0], 'yyyy-MM-dd'),
-            end_date: format(dateRange[1], 'yyyy-MM-dd')
-          }
-        });
-        setMeters(response.data.data);
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Erreur",
-          description: "Impossible de récupérer les compteurs sans relevés"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchMetersWithoutReadings = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/readings/meters-without-readings', {
+        params: {
+          start_date: format(dateRange[0], 'yyyy-MM-dd'),
+          end_date: format(dateRange[1], 'yyyy-MM-dd')
+        }
+      });
+      setMeters(response.data.data);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de récupérer les compteurs sans relevés"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Premier useEffect pour le chargement initial
+  useEffect(() => {
     if (dateRange[0] && dateRange[1]) {
       fetchMetersWithoutReadings();
     }
   }, [dateRange, toast]);
+
+  // Deuxième useEffect pour écouter l'événement de rafraîchissement
+  useEffect(() => {
+    const handleRefresh = () => {
+      if (dateRange[0] && dateRange[1]) {
+        fetchMetersWithoutReadings();
+      }
+    };
+
+    window.addEventListener('refresh-meters-without-readings', handleRefresh);
+
+    return () => {
+      window.removeEventListener('refresh-meters-without-readings', handleRefresh);
+    };
+  }, [dateRange]); 
+
+ 
+  
 
   return (
     <Card>
@@ -643,6 +669,7 @@ const MetersWithoutReadings = ({ dateRange }) => {
             <TableHead>N° Série</TableHead>
             <TableHead>Consommateur</TableHead>
             <TableHead>Emplacement</TableHead>
+            <TableHead>Actions</TableHead>
             
           </TableRow>
         </TableHeader>
@@ -677,6 +704,21 @@ const MetersWithoutReadings = ({ dateRange }) => {
                     'N/A'}
                 </TableCell>
                 <TableCell>{meter.location || 'N/A'}</TableCell>
+                <TableCell>
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      // Ici vous pourriez implémenter une redirection vers le formulaire
+                      // d'ajout de relevé avec ce compteur présélectionné
+                      window.dispatchEvent(new CustomEvent('create-reading-for-meter', { 
+                        detail: { meterId: meter.id }
+                      }));
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter un relevé
+                  </Button>
+                </TableCell>
 
                
               </TableRow>
@@ -721,6 +763,8 @@ const ReadingPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
+  const [selectedMeterId, setSelectedMeterId] = useState(null);
+
   const currentReadings = readings;
 
 
@@ -738,17 +782,15 @@ const ReadingPage = () => {
   useEffect(() => {
     const handleCreateReadingForMeter = (event) => {
       const meterId = event.detail.meterId;
-      const meter = meters.find(m => m.id === meterId);
-      if (meter) {
-        setEditingReading(null);
-        setIsModalOpen(true);
-        // Le reste de la logique pour préremplir le compteur serait géré dans le composant ReadingForm
-      }
+      setSelectedMeterId(meterId);
+      setEditingReading(null);
+      setIsModalOpen(true);
     };
-
+  
     window.addEventListener('create-reading-for-meter', handleCreateReadingForMeter);
     return () => window.removeEventListener('create-reading-for-meter', handleCreateReadingForMeter);
   }, [meters]);
+
 
   const fetchDashboardData = async () => {
     try {
@@ -1338,15 +1380,17 @@ useEffect(() => {
       </Tabs>
 
       <ReadingForm
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingReading(null);
-        }}
-        editingReading={editingReading}
-        meters={meters}
-        onSubmit={handleSubmit}
-      />
+  isOpen={isModalOpen}
+  onClose={() => {
+    setIsModalOpen(false);
+    setEditingReading(null);
+    setSelectedMeterId(null);  // Réinitialiser l'ID du compteur sélectionné à la fermeture
+  }}
+  editingReading={editingReading}
+  meters={meters}
+  onSubmit={handleSubmit}
+  selectedMeterId={selectedMeterId}
+/>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
