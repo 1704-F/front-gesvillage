@@ -19,12 +19,52 @@ import {
 import { format } from 'date-fns';
 import { axiosPrivate as api } from '../../utils/axios';
 
+const localCache = {
+  get: (key) => {
+    try {
+      const cachedData = localStorage.getItem(key);
+      if (!cachedData) return null;
+      
+      const { data, expiry } = JSON.parse(cachedData);
+      if (expiry < Date.now()) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération du cache:', error);
+      return null;
+    }
+  },
+  
+  set: (key, data, ttlHours = 6) => {
+    try {
+      const cacheData = {
+        data,
+        expiry: Date.now() + (ttlHours * 60 * 60 * 1000)
+      };
+      localStorage.setItem(key, JSON.stringify(cacheData));
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de la mise en cache:', error);
+      return false;
+    }
+  },
+  
+  invalidate: (key) => {
+    localStorage.removeItem(key);
+  }
+};
+
 const ServiceInfoPage = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [service, setService] = useState(null);
   const [pricing, setPricing] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+
+  const CACHE_KEY = 'service_info_data';
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Non spécifié';
@@ -38,19 +78,36 @@ const ServiceInfoPage = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [serviceResponse, pricingResponse] = await Promise.all([
-          api.get('/services/available'),
-          api.get('/service-pricing/current')
-        ]);
-  
-        setService(serviceResponse.data[0]);
-        // Modification ici pour accéder aux données correctement
-        setPricing(pricingResponse.data.data.current);
+        // 1. Essayer de récupérer les données du cache local
+        const cachedData = localCache.get(CACHE_KEY);
+        
+        if (cachedData) {
+          console.log('Données chargées depuis le cache local');
+          setService(cachedData.service);
+          setPricing(cachedData.pricing.current);
+          setLoading(false);
+          return;
+        }
+        
+        // 2. Si pas de cache, faire un appel API consolidé
+        const response = await api.get('/services/info');
+        
+        // 3. Extraire et utiliser les données
+        const { service, pricing } = response.data.data;
+        setService(service);
+        setPricing(pricing.current);
+        
+        // 4. Mettre en cache les données pour les futurs chargements
+        localCache.set(CACHE_KEY, {
+          service,
+          pricing
+        });
+        
       } catch (error) {
         toast({
           variant: "destructive",
           title: "Erreur",
-          description: "Impossible de récupérer les informations"
+          description: "Impossible de récupérer les informations du service"
         });
         console.error('Erreur:', error);
       } finally {
@@ -60,6 +117,10 @@ const ServiceInfoPage = () => {
   
     loadData();
   }, []);
+
+  
+
+
 
   if (loading) {
     return <div className="p-6">Chargement...</div>;

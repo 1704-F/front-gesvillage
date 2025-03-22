@@ -999,17 +999,42 @@ useEffect(() => {
   
   const handleBulkStatusChange = async (status) => {
     try {
-      await api.post('/readings/bulk-status-update', { 
+      // Mise à jour locale immédiate pour un feedback visuel rapide
+      const updatedReadings = readings.map(reading => {
+        if (selectedReadings.includes(reading.id)) {
+          return { ...reading, status };
+        }
+        return reading;
+      });
+      
+      // Mettre à jour l'UI immédiatement
+      setReadings(updatedReadings);
+      
+      // Appel API
+      const response = await api.post('/readings/bulk-status-update', { 
         ids: selectedReadings,
         status 
       });
+      
+      // Réinitialiser la sélection
+      setSelectedReadings([]);
+      
+      // Notification de succès
       toast({
         title: "Succès",
         description: "Le statut des relevés sélectionnés a été mis à jour"
       });
-      setSelectedReadings([]);
-      fetchDashboardData()
+      
+      // Rafraîchir les données du tableau de bord après un court délai
+      // pour s'assurer que le cache a été invalidé côté serveur
+      setTimeout(() => {
+        fetchDashboardData();
+      }, 100);
     } catch (error) {
+      // En cas d'erreur, rafraîchir complètement pour montrer l'état réel
+      fetchDashboardData();
+      
+      // Gestion des erreurs existante...
       if (error.response?.status === 400 && 
           error.response?.data?.message?.includes('Impossible de changer le statut')) {
         toast({
