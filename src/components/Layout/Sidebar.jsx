@@ -18,7 +18,8 @@ import {
   Beaker,
   Wrench,
   DollarSign,
-  FileBarChart
+  FileBarChart,
+  Package
 
 } from 'lucide-react';
 
@@ -107,6 +108,11 @@ const Sidebar = ({ role, isOpen, setIsOpen }) => {
             title: 'Gestion', 
             path: '/management', 
             icon: <Wrench className="w-5 h-5" /> 
+          },
+          {
+            title: 'Inventaire',
+            path: '/inventory',
+            icon: <Package className="w-5 h-5" />
           },
           { 
             title: 'Rapport', // Nouveau menu

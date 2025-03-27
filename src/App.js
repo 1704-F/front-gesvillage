@@ -5,6 +5,7 @@ import Layout from './components/Layout/Layout';
 
 import SuperAdminDashboard from './components/Dashboard/SuperAdminDashboard';
 import ZoneManagementPage from './pages/ZoneManagementPage';
+import InventoryPage from './pages/InventoryPage';
 
 import AdminDashboard from './components/Dashboard/AdminDashboard';
 import SupervisorDashboard from './components/Dashboard/SupervisorDashboard';
@@ -128,6 +129,7 @@ const App = () => {
                   <Route path="/management" element={<ManagementPage />} />
                   <Route path="/expenses" element={<ExpensePage />} />
                   <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/inventory" element={<InventoryPage />} />
 
                 </>
               )}

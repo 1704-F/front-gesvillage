@@ -1,4 +1,7 @@
+//qualité de l'eau
 import React, { useState, useEffect } from 'react';
+import PumpingRecordForm from './PumpingRecordForm'; // Le composant de formulaire que nous avons créé
+import ViewPumpingRecordModal from './ViewPumpingRecordModal'; // Le composant de vue détaillée
 import { Card } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { Button } from "../ui/button";
@@ -31,9 +34,12 @@ import {
   AlertCircle, 
   Beaker, 
   Check,
+  Gauge,
+  DropletHalf, 
   XCircle 
 } from 'lucide-react';
 import { axiosPrivate as api } from '../../utils/axios';
+
 
 // Composant pour le formulaire d'ajout/édition de source
 const SourceForm = ({ isOpen, onClose, editingSource, onSubmit }) => {
@@ -392,6 +398,251 @@ const ParameterForm = ({ isOpen, onClose, editingParameter, onSubmit }) => {
   );
 };
 
+const PumpingRecordsTab = ({ 
+  sources, 
+  onEdit = (record) => {}, 
+  shouldRefresh = false,
+  onRefreshComplete = () => {}
+}) => {
+  const { toast } = useToast();
+  const [pumpingRecords, setPumpingRecords] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [viewPumpingModal, setViewPumpingModal] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+
+  // Chargement initial des données
+  useEffect(() => {
+    Promise.all([
+      fetchPumpingRecords(),
+      fetchEmployees()
+    ]).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (shouldRefresh) {
+      fetchPumpingRecords().then(() => {
+        onRefreshComplete();
+      });
+    }
+  }, [shouldRefresh, onRefreshComplete]);
+
+
+  // Récupération des enregistrements de pompage
+  const fetchPumpingRecords = async () => {
+    try {
+      const response = await api.get('/water-quality/pumping');
+      setPumpingRecords(response.data);
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer les enregistrements de pompage",
+        variant: "destructive",
+      });
+    }
+  };
+
+ 
+  const fetchEmployees = async () => {
+    try {
+      const response = await api.get('/employees');
+      setEmployees(response.data.data || []);
+    } catch (error) {
+      console.error("Erreur:", error);
+      setEmployees([]);
+    }
+  };
+
+
+
+
+  // Suppression d'un enregistrement de pompage
+  const handleDeletePumping = async (id) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet enregistrement ?")) {
+      return;
+    }
+    try {
+      await api.delete(`/water-quality/pumping/${id}`);
+      toast({
+        title: "Succès",
+        description: "Enregistrement supprimé avec succès"
+      });
+      fetchPumpingRecords();
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: error.response?.data?.message || "Impossible de supprimer l'enregistrement",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Validation d'un enregistrement de pompage
+  const handleValidatePumping = async (id) => {
+    try {
+      await api.patch(`/water-quality/pumping/${id}/validate`);
+      
+      // Mise à jour de l'état local
+      setPumpingRecords(pumpingRecords.map(record => {
+        if (record.id === id) {
+          return {
+            ...record,
+            status: 'validated'
+          };
+        }
+        return record;
+      }));
+
+      toast({
+        title: "Succès",
+        description: "Enregistrement validé avec succès"
+      });
+      
+      // Rechargement des données
+      fetchPumpingRecords();
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de valider l'enregistrement",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Affichage des détails d'un enregistrement
+  const handleViewPumping = async (id) => {
+    try {
+      const response = await api.get(`/water-quality/pumping/${id}`);
+      setSelectedRecord(response.data);
+      setViewPumpingModal(true);
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer les détails de l'enregistrement",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Formatage de la durée en heures et minutes
+  const formatDuration = (minutes) => {
+    if (!minutes) return 'N/A';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}min`;
+  };
+
+  if (loading) {
+    return <div className="flex justify-center p-6">Chargement...</div>;
+  }
+
+  
+
+  return (
+    <>
+    
+
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Source</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Employé</TableHead>
+              <TableHead>Volume (m³)</TableHead>
+              <TableHead>Durée</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {pumpingRecords.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-6">
+                  Aucun enregistrement de pompage trouvé
+                </TableCell>
+              </TableRow>
+            ) : (
+              pumpingRecords.map((record) => (
+                <TableRow key={record.id}>
+                  <TableCell>{record.source?.name || 'N/A'}</TableCell>
+                  <TableCell>
+                    {format(new Date(record.pumping_date), 'dd/MM/yyyy', { locale: fr })}
+                  </TableCell>
+                  <TableCell>
+                    {record.employee ? 
+                      `${record.employee.first_name} ${record.employee.last_name}` : 
+                      'N/A'
+                    }
+                  </TableCell>
+                  <TableCell>{record.volume_pumped} m³</TableCell>
+                  <TableCell>{formatDuration(record.pumping_duration)}</TableCell>
+                  <TableCell>
+                    <Badge variant={record.status === 'validated' ? 'success' : 'warning'}>
+                      {record.status === 'validated' ? 'Validé' : 'En attente'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewPumping(record.id)}
+                      >
+                        <FileText className="w-4 h-4" />
+                      </Button>
+                      
+                      {record.status !== 'validated' && (
+                        <>
+                          <Button 
+    variant="outline" 
+    size="sm"
+    onClick={() => onEdit(record)}
+  >
+    <Pencil className="w-4 h-4" />
+  </Button>
+                          
+                          <Button 
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleValidatePumping(record.id)}
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                          
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => handleDeletePumping(record.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+
+     
+
+      <ViewPumpingRecordModal
+        isOpen={viewPumpingModal}
+        onClose={() => {
+          setViewPumpingModal(false);
+          setSelectedRecord(null);
+        }}
+        record={selectedRecord}
+      />
+    </>
+  );
+};
+
+
 // Composant principal
 const WaterQualityPage = () => {
   // États
@@ -401,6 +652,9 @@ const WaterQualityPage = () => {
   const [analyses, setAnalyses] = useState([]);
   const [activeTab, setActiveTab] = useState("sources");
   const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState([]);
+  const [openPumpingModal, setOpenPumpingModal] = useState(null);
+  const [refreshPumping, setRefreshPumping] = useState(false);
 
   // États des modaux
   const [sourceModal, setSourceModal] = useState({ isOpen: false, editing: null });
@@ -411,14 +665,29 @@ const WaterQualityPage = () => {
   const [viewAnalysisModal, setViewAnalysisModal] = useState(false);
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
 
+  const [pumpingModal, setPumpingModal] = useState({ isOpen: false, editing: null });
+
   // Chargement initial des données
   useEffect(() => {
     Promise.all([
       fetchSources(),
       fetchParameters(),
       fetchAnalyses(),
+      fetchEmployees()
     ]).finally(() => setLoading(false));
   }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await api.get('/employees');
+      setEmployees(response.data.data || []);
+    } catch (error) {
+      console.error("Erreur:", error);
+      setEmployees([]);
+    }
+  };
+
+  
 
   // Fonctions de récupération des données
   const fetchSources = async () => {
@@ -643,6 +912,11 @@ const translateSourceType = (type) => {
       });
     }
   };
+
+
+
+
+
   const ViewAnalysisModal = ({ isOpen, onClose, analysis }) => {
     if (!analysis) return null;
   
@@ -765,6 +1039,15 @@ const translateSourceType = (type) => {
             <Plus className="w-4 h-4 mr-2" /> Ajouter un paramètre
           </Button>
         )}
+
+{activeTab === 'pumping' && (
+  <Button onClick={() => setPumpingModal({ isOpen: true, editing: null })}>
+    <Plus className="w-4 h-4 mr-2" /> Ajouter un pompage
+  </Button>
+)}
+
+
+
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -781,6 +1064,11 @@ const translateSourceType = (type) => {
             <FileText className="w-4 h-4 mr-2" />
             Paramètres ({parameters.length})
           </TabsTrigger>
+          <TabsTrigger value="pumping">
+  <Gauge className="w-4 h-4 mr-2" />
+  Suivi Pompage
+</TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="sources">
@@ -969,7 +1257,18 @@ const translateSourceType = (type) => {
             </Table>
           </Card>
         </TabsContent>
+
+        <TabsContent value="pumping">
+        <PumpingRecordsTab 
+  sources={sources} 
+  onEdit={(record) => setPumpingModal({ isOpen: true, editing: record })}
+  shouldRefresh={refreshPumping}
+  onRefreshComplete={() => setRefreshPumping(false)}
+/>
+</TabsContent>
+
       </Tabs>
+    
 
       {/* Modaux */}
       <SourceForm 
@@ -1001,8 +1300,63 @@ const translateSourceType = (type) => {
   }}
   analysis={selectedAnalysis}
 />
+
+<PumpingRecordForm
+  isOpen={pumpingModal.isOpen}
+  onClose={() => setPumpingModal({ isOpen: false, editing: null })}
+  editingRecord={pumpingModal.editing}
+  sources={sources}
+  employees={employees}
+  onSubmit={async (data) => {
+    try {
+      if (pumpingModal.editing) {
+        await api.put(`/water-quality/pumping/${pumpingModal.editing.id}`, data);
+        toast({
+          title: "Succès",
+          description: "Enregistrement de pompage modifié avec succès"
+        });
+      } else {
+        // S'assurer que les valeurs numériques sont correctement formatées pour l'API
+        const formattedData = {
+          ...data,
+          start_meter_reading: parseFloat(data.start_meter_reading),
+          end_meter_reading: parseFloat(data.end_meter_reading),
+          volume_pumped: parseFloat(data.volume_pumped),
+          pumping_duration: parseInt(data.pumping_duration)
+        };
+        
+        await api.post('/water-quality/pumping', formattedData);
+        toast({
+          title: "Succès",
+          description: "Enregistrement de pompage ajouté avec succès"
+        });
+      }
+      setPumpingModal({ isOpen: false, editing: null });
+      setRefreshPumping(true);
+      // Rafraîchir les données de pompage
+      // Vous pourriez avoir besoin d'ajouter un moyen de dire à PumpingRecordsTab de rafraîchir ses données
+    } catch (error) {
+      console.error("Erreur lors de la soumission:", error);
+      toast({
+        title: "Erreur",
+        description: error.response?.data?.message || "Une erreur est survenue",
+        variant: "destructive",
+      });
+    }
+  }}
+/>
+
+
+
+
     </div>
   );
+
+  
+
+
+
+
 };
 
 export default WaterQualityPage;
