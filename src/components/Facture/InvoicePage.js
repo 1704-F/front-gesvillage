@@ -665,7 +665,7 @@ const [dateRange, setDateRange] = useState([
     >
       <div className="flex items-center">
         <Users className="h-4 w-4 mr-2" />
-        {consumerFilter ? consumerFilter.name : "Rechercher un consommateur..."}
+        {consumerFilter ? consumerFilter.name : "Rechercher un consommateur..."} 
       </div>
       <Search className="h-4 w-4 ml-2 shrink-0 opacity-50" />
     </Button>
@@ -688,21 +688,29 @@ const [dateRange, setDateRange] = useState([
       <div className="mt-2 max-h-60 overflow-y-auto">
         {consumerSearchResults.length > 0 ? (
           consumerSearchResults.map((consumer) => (
+
             <div
-              key={consumer.id}
-              className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer rounded"
-              onClick={() => {
-                setConsumerFilter(consumer);
-                setConsumerSearchQuery("");
-                setIsSearchOpen(false);
-              }}
-            >
-              <Users className="h-4 w-4 mr-2 text-blue-500" />
-              <span>{consumer.name}</span>
-              <span className="ml-2 text-sm text-gray-500">
-                ({consumer.meter_number})
-              </span>
-            </div>
+  key={consumer.id}
+  className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer rounded"
+  onClick={() => {
+    setConsumerFilter(consumer);
+    setConsumerSearchQuery("");
+    setIsSearchOpen(false);
+  }}
+>
+  <Users className="h-4 w-4 mr-2 text-blue-500" />
+  <span>{consumer.name}</span>
+  {consumer.nickname && (
+    <span className="ml-1 text-sm text-gray-600">
+      ({consumer.nickname})
+    </span>
+  )}
+  <span className="ml-2 text-sm text-gray-500">
+    {consumer.meter_number}
+  </span>
+</div>
+
+
           ))
         ) : consumerSearchQuery.length > 1 ? (
           <div className="text-center py-2 text-gray-500">
