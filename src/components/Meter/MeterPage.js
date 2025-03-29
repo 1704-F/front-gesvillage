@@ -224,6 +224,7 @@ const currentMeters = meters.slice(startIndex, endIndex);
       location: editMeter?.location || "",
       latitude: editMeter?.latitude || "",
       longitude: editMeter?.longitude || "",
+      billing_type: editMeter?.billing_type || "standard",
     });
     const [searchConsumer, setSearchConsumer] = useState('');
     const [isSelectOpen, setIsSelectOpen] = useState(false);
@@ -376,6 +377,25 @@ const currentMeters = meters.slice(startIndex, endIndex);
                 onChange={(e) => handleChange('longitude', e.target.value)}
               />
             </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Type de facturation</label>
+              <Select
+                value={formData.billing_type}
+                onValueChange={(value) => handleChange('billing_type', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un type de facturation" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="premium">Premium (Tarif élevé)</SelectItem>
+                  <SelectItem value="free">Gratuit (Bâtiment public)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+
           </div>
         </div>
 
@@ -434,6 +454,7 @@ const currentMeters = meters.slice(startIndex, endIndex);
                 <TableHead>Consommateur</TableHead>
                 <TableHead>Emplacement</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Facturation</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -474,6 +495,25 @@ const currentMeters = meters.slice(startIndex, endIndex);
                         {meter.type.toUpperCase()}
                       </Badge>
                     </TableCell>
+
+                    <TableCell>
+          <Badge 
+            variant={
+              meter.billing_type === 'premium' ? 'destructive' : 
+              meter.billing_type === 'free' ? 'success' : 
+              'secondary'
+            }
+          >
+            {meter.billing_type === 'premium' ? 'Premium' : 
+             meter.billing_type === 'free' ? 'Gratuit' : 
+             'Standard'}
+          </Badge>
+        </TableCell>
+
+
+
+
+
                     <TableCell>
                       <Switch
                         checked={meter.status === 'active'}

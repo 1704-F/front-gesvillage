@@ -135,45 +135,60 @@ const EmployeeForm = ({ isOpen, onClose, editingEmployee, onSubmit }) => {
 
   const MaintenanceForm = ({ isOpen, onClose, editingMaintenance, employees, onSubmit }) => {
     const [formData, setFormData] = useState({
-      title: '',
       description: '',
       type: '',
       employee_id: '',
       date: format(new Date(), 'yyyy-MM-dd'),
-      status: 'pending'
+      status: 'pending',
+      equipment: '',
+      location: '',
+      issue_type: 'new',
+      problem_description: '',
+      last_intervention: '',
+      last_intervention_measures: '',
+      diagnosis: '',
+      work_description: '',
+      failure_cause: '',
+      recommendations: '',
+      executed_by: '',
+      execution_date: format(new Date(), 'yyyy-MM-dd'),
+      certified_by_id: '',
+      certification_date: format(new Date(), 'yyyy-MM-dd')
     });
-  
+    
     useEffect(() => {
       if (editingMaintenance) {
-        setFormData(editingMaintenance);
+        setFormData({
+          ...editingMaintenance,
+          date: format(new Date(editingMaintenance.date), 'yyyy-MM-dd'),
+          execution_date: editingMaintenance.execution_date 
+            ? format(new Date(editingMaintenance.execution_date), 'yyyy-MM-dd') 
+            : format(new Date(), 'yyyy-MM-dd'),
+          certification_date: editingMaintenance.certification_date 
+            ? format(new Date(editingMaintenance.certification_date), 'yyyy-MM-dd') 
+            : format(new Date(), 'yyyy-MM-dd'),
+        });
       }
     }, [editingMaintenance]);
-  
+    
     const handleSubmit = (e) => {
       e.preventDefault();
       onSubmit(formData);
     };
-  
+    
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-[800px]">
+        <DialogContent className="max-w-[800px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingMaintenance ? 'Modifier la maintenance' : 'Nouvelle maintenance'}
             </DialogTitle>
           </DialogHeader>
+          
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Titre</label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Type</label>
+                <label className="text-sm font-medium">Type d'entretien</label>
                 <Select
                   value={formData.type}
                   onValueChange={(value) => setFormData({ ...formData, type: value })}
@@ -183,12 +198,22 @@ const EmployeeForm = ({ isOpen, onClose, editingEmployee, onSubmit }) => {
                     <SelectValue placeholder="Sélectionner le type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="preventive">Préventive</SelectItem>
-                    <SelectItem value="corrective">Corrective</SelectItem>
-                    <SelectItem value="emergency">Urgence</SelectItem>
+                    <SelectItem value="preventive">Entretien Préventif</SelectItem>
+                    <SelectItem value="corrective">Entretien Curatif</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date</label>
+                <Input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  required
+                />
+              </div>
+              
               <div className="space-y-2">
                 <label className="text-sm font-medium">Employé assigné</label>
                 <Select
@@ -208,24 +233,151 @@ const EmployeeForm = ({ isOpen, onClose, editingEmployee, onSubmit }) => {
                   </SelectContent>
                 </Select>
               </div>
+              
               <div className="space-y-2">
-                <label className="text-sm font-medium">Date</label>
+                <label className="text-sm font-medium">Équipement à vérifier</label>
                 <Input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  value={formData.equipment}
+                  onChange={(e) => setFormData({ ...formData, equipment: e.target.value })}
                   required
                 />
               </div>
             </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Emplacement</label>
+                <Input
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Panne observée</label>
+                <Select
+                  value={formData.issue_type}
+                  onValueChange={(value) => setFormData({ ...formData, issue_type: value })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Type de panne" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">Nouvelle</SelectItem>
+                    <SelectItem value="recurring">Récurrente</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
             <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
+              <label className="text-sm font-medium">Description du problème constaté</label>
               <Input
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                value={formData.problem_description}
+                onChange={(e) => setFormData({ ...formData, problem_description: e.target.value })}
                 required
               />
             </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Dernière intervention effectuée</label>
+              <Input
+                value={formData.last_intervention}
+                onChange={(e) => setFormData({ ...formData, last_intervention: e.target.value })}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Mesures et solutions adaptées lors de la dernière intervention</label>
+              <Input
+                value={formData.last_intervention_measures}
+                onChange={(e) => setFormData({ ...formData, last_intervention_measures: e.target.value })}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Diagnostic effectué</label>
+              <Input
+                value={formData.diagnosis}
+                onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description du travail effectué</label>
+              <Input
+                value={formData.work_description}
+                onChange={(e) => setFormData({ ...formData, work_description: e.target.value })}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Quelle était la cause de la panne</label>
+              <Input
+                value={formData.failure_cause}
+                onChange={(e) => setFormData({ ...formData, failure_cause: e.target.value })}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Recommandations</label>
+              <Input
+                value={formData.recommendations}
+                onChange={(e) => setFormData({ ...formData, recommendations: e.target.value })}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Travail exécuté par (Nom et fonction)</label>
+                <Input
+                  value={formData.executed_by}
+                  onChange={(e) => setFormData({ ...formData, executed_by: e.target.value })}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date d'exécution</label>
+                <Input
+                  type="date"
+                  value={formData.execution_date}
+                  onChange={(e) => setFormData({ ...formData, execution_date: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Travail certifié par</label>
+                <Select
+                  value={formData.certified_by_id}
+                  onValueChange={(value) => setFormData({ ...formData, certified_by_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un employé" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.id} value={String(employee.id)}>
+                        {employee.first_name} {employee.last_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date de certification</label>
+                <Input
+                  type="date"
+                  value={formData.certification_date}
+                  onChange={(e) => setFormData({ ...formData, certification_date: e.target.value })}
+                />
+              </div>
+            </div>
+            
             <DialogFooter>
               <Button variant="outline" onClick={onClose}>
                 Annuler
@@ -239,6 +391,8 @@ const EmployeeForm = ({ isOpen, onClose, editingEmployee, onSubmit }) => {
       </Dialog>
     );
   };
+
+
 // Composant de pagination
 const Pagination = ({ pagination, onPageChange }) => {
   return (
@@ -1443,6 +1597,35 @@ const handleDeleteDonation = async (id) => {
   }
 };
 
+const handleDownloadMaintenance = async (maintenanceId) => {
+  try {
+    const response = await api.get(`/maintenances/${maintenanceId}/pdf`, {
+      responseType: 'blob'
+    });
+    
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `maintenance-${maintenanceId}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Succès",
+      description: "Fiche de maintenance téléchargée avec succès"
+    });
+  } catch (error) {
+    console.error('Erreur lors du téléchargement de la fiche de maintenance:', error);
+    toast({
+      title: "Erreur",
+      description: "Impossible de télécharger la fiche de maintenance",
+      variant: "destructive"
+    });
+  }
+};
+
 
 
 
@@ -1621,87 +1804,98 @@ const handleDeleteDonation = async (id) => {
 
         </Card>
         </TabsContent>
+
         <TabsContent value="maintenance">
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Employé assigné</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
+  <Card>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Date</TableHead>
+          <TableHead>Type</TableHead>
+          <TableHead>Équipement</TableHead>
+          <TableHead>Problème</TableHead>
+          <TableHead>Employé assigné</TableHead>
+          <TableHead>Statut</TableHead>
+          <TableHead>Actions</TableHead>
+        </TableRow>
+      </TableHeader>
 
-            <TableBody>
-  {Array.isArray(maintenances) && maintenances.length > 0 ? (
-    maintenances.map((maintenance) => (
-      <TableRow key={maintenance.id}>
-        <TableCell>{format(new Date(maintenance.date), 'dd/MM/yyyy')}</TableCell>
-        <TableCell>
-          <Badge variant={
-            maintenance.type === 'emergency' ? 'destructive' : 
-            maintenance.type === 'preventive' ? 'success' : 'default'
-          }>
-            {maintenance.type === 'preventive' ? 'Préventive' : 
-             maintenance.type === 'corrective' ? 'Corrective' : 'Urgence'}
-          </Badge>
-        </TableCell>
-        <TableCell>{maintenance.description}</TableCell>
-        <TableCell>
-          {maintenance.employee?.first_name} {maintenance.employee?.last_name}
-        </TableCell>
+      <TableBody>
+        {Array.isArray(maintenances) && maintenances.length > 0 ? (
+          maintenances.map((maintenance) => (
+            <TableRow key={maintenance.id}>
+              <TableCell>{format(new Date(maintenance.date), 'dd/MM/yyyy')}</TableCell>
+              <TableCell>
+                <Badge variant={
+                  maintenance.type === 'preventive' ? 'success' : 'default'
+                }>
+                  {maintenance.type === 'preventive' ? 'Préventif' : 'Curatif'}
+                </Badge>
+              </TableCell>
+              <TableCell>{maintenance.equipment || "—"}</TableCell>
+              <TableCell>{maintenance.problem_description || maintenance.description}</TableCell>
+              <TableCell>
+                {maintenance.employee?.first_name} {maintenance.employee?.last_name}
+              </TableCell>
+              <TableCell>
+                <Badge variant={maintenance.status === 'done' ? 'success' : 'warning'}>
+                  {maintenance.status === 'done' ? 'Terminé' : 'En cours'}
+                </Badge>
+              </TableCell>
 
-        <TableCell>
-  <Badge variant={maintenance.status === 'done' ? 'success' : 'warning'}>
-    {maintenance.status === 'done' ? 'Terminé' : 'En cours'}
-  </Badge>
+              <TableCell>
+  <div className="flex space-x-2">
+    <Button 
+      variant="outline" 
+      size="sm"
+      onClick={() => setMaintenanceModal({ isOpen: true, editing: maintenance })}
+      disabled={maintenance.status === 'done'} // Désactiver le bouton d'édition si validée
+    >
+      <Pencil className="h-4 w-4" />
+    </Button>
+    <Button 
+      variant="outline" 
+      size="sm"
+      onClick={() => handleToggleMaintenanceStatus(maintenance.id)}
+      disabled={maintenance.status === 'done'} // Désactiver le bouton de changement de statut si validée
+    >
+      {maintenance.status === 'done' ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+    </Button>
+    
+    <Button 
+      variant="outline" 
+      size="sm"
+      onClick={() => handleDownloadMaintenance(maintenance.id)}
+      disabled={maintenance.status !== 'done'} // Activer uniquement si la maintenance est validée
+    >
+      <Download className="h-4 w-4" />
+    </Button>
+  </div>
 </TableCell>
 
-        <TableCell>
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setMaintenanceModal({ isOpen: true, editing: maintenance })}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button 
-  variant="outline" 
-  size="sm"
-  onClick={() => handleToggleMaintenanceStatus(maintenance.id)}
->
-  {maintenance.status === 'done' ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-</Button>
-
-          </div>
-        </TableCell>
-      </TableRow>
-    ))
-  ) : (
-    <TableRow>
-      <TableCell colSpan={6} className="text-center">
-        Aucune maintenance trouvée.
-      </TableCell>
-    </TableRow>
-  )}
-</TableBody>
+            
+              
 
 
-           
+            </TableRow>
+          ))
+        ) : (
+          <TableRow>
+            <TableCell colSpan={7} className="text-center">
+              Aucune maintenance trouvée.
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
 
-          </Table>
-
-          <Pagination 
+    <Pagination 
       pagination={pagination.maintenances}
       onPageChange={(page) => handlePageChange('maintenances', page)}
     />
-
-        </Card>
-        </TabsContent>
+  </Card>
+</TabsContent>
+       
 
         <TabsContent value="schedule">
         <Card>

@@ -34,6 +34,7 @@ import { axiosPrivate as api } from '../../utils/axios';
 const styles = StyleSheet.create({
   page: {
     padding: 30,
+    orientation: 'landscape',
   },
   header: {
     marginBottom: 20,
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#000',
     borderBottomStyle: 'solid',
     alignItems: 'center',
-    minHeight: 30,
+    minHeight: 24,
   },
   tableHeader: {
     backgroundColor: '#f3f4f6',
@@ -59,8 +60,9 @@ const styles = StyleSheet.create({
   },
   tableCell: {
     flex: 1,
-    padding: 5,
-    fontSize: 10,
+    padding: 4,
+    fontSize: 8,
+    textAlign: 'left',
   },
   dateRange: {
     marginBottom: 10,
@@ -87,9 +89,10 @@ const formatPercent = (num) => {
 };
 
 // Composant PDF
+
 const RelevePDF = ({ readings, dateRange }) => (
   <Document>
-    <Page size="A4" style={styles.page}>
+    <Page size="A4" orientation="landscape" style={styles.page}>
       <Text style={styles.header}>Relevés de consommation</Text>
       
       <Text style={styles.dateRange}>
@@ -108,6 +111,8 @@ const RelevePDF = ({ readings, dateRange }) => (
           <Text style={styles.tableCell}>Montant (FCFA)</Text>
           <Text style={styles.tableCell}>Date</Text>
           <Text style={styles.tableCell}>Statut</Text>
+          <Text style={styles.tableCell}>Paiement</Text>
+          <Text style={styles.tableCell}>Date de paiement</Text>
         </View>
 
         {/* Données */}
@@ -132,6 +137,12 @@ const RelevePDF = ({ readings, dateRange }) => (
             <Text style={styles.tableCell}>
               {reading.status === 'validated' ? 'Validé' : 'En attente'}
             </Text>
+            <Text style={styles.tableCell}>
+              {/* Colonne de paiement - vide par défaut */}
+            </Text>
+            <Text style={styles.tableCell}>
+              {/* Colonne de date de paiement - vide par défaut */}
+            </Text>
           </View>
         ))}
       </View>
@@ -139,9 +150,15 @@ const RelevePDF = ({ readings, dateRange }) => (
   </Document>
 );
 
-const ConsumptionDetails = ({ consumption }) => {
+const ConsumptionDetails = ({ consumption, meterId }) => {
   const [calculationDetails, setCalculationDetails] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const billingTypeLabels = {
+    'standard': 'Standard',
+    'premium': 'Premium (tarif majoré)',
+    'free': 'Gratuit'
+  };
 
   useEffect(() => {
     const fetchCalculation = async () => {
@@ -150,10 +167,10 @@ const ConsumptionDetails = ({ consumption }) => {
       try {
         setLoading(true);
         const response = await api.post('/readings/calculate-preview', { 
-          consumption
+          consumption,
+          meter_id: meterId // Utiliser l'ID du compteur passé en prop
         });
         
-        // La réponse a une nouvelle structure
         setCalculationDetails(response.data.data);
       } catch (error) {
         console.error('Erreur lors du calcul:', error);
@@ -163,7 +180,8 @@ const ConsumptionDetails = ({ consumption }) => {
     };
 
     fetchCalculation();
-  }, [consumption]);
+  }, [consumption, meterId]);
+  
 
   if (!calculationDetails || loading) {
     return (
@@ -183,62 +201,82 @@ const ConsumptionDetails = ({ consumption }) => {
           <Calculator className="h-5 w-5" />
           Calcul
         </h3>
+        {details.billing_type && (
+          <Badge 
+            variant={
+              details.billing_type === 'premium' ? 'destructive' : 
+              details.billing_type === 'free' ? 'success' : 
+              'secondary'
+            }
+          >
+            {billingTypeLabels[details.billing_type]}
+          </Badge>
+        )}
         <div className="text-lg font-bold text-blue-700">
           {Math.round(details.total_amount).toLocaleString()} FCFA
         </div>
       </div>
 
-      <div className="bg-white rounded-md p-4 space-y-4">
-        <div className="pb-3 border-b">
-          <div className="text-sm font-medium text-gray-500">Consommation totale</div>
-          <div className="text-2xl font-semibold">{consumption.toFixed(2)} m³</div>
+      {/* Cas spécial pour les compteurs gratuits */}
+      {details.billing_type === 'free' ? (
+        <div className="bg-green-50 rounded-md p-4 text-center">
+          <p className="font-medium text-green-700">Ce compteur est configuré en mode gratuit</p>
+          <p className="text-sm text-green-600">Aucun frais ne sera facturé pour cette consommation</p>
         </div>
+      ) : (
+        /* Affichage normal des détails de calcul */
+        <div className="bg-white rounded-md p-4 space-y-4">
+          <div className="pb-3 border-b">
+            <div className="text-sm font-medium text-gray-500">Consommation totale</div>
+            <div className="text-2xl font-semibold">{consumption.toFixed(2)} m³</div>
+          </div>
 
-        <div className="space-y-4">
-          {isSingleTier ? (
-            // Affichage pour tarification unique
-            <div>
-              <div className="text-sm font-medium">Tarification unique</div>
-              <div className="pl-3 text-sm text-gray-600">
-                <div>Prix unitaire : {details.first_tier.rate} FCFA/m³</div>
-                <div>{details.first_tier.consumption.toFixed(2)} m³ × {details.first_tier.rate} FCFA</div>
-                <div className="font-medium text-black">
-                  = {Math.round(details.first_tier.amount).toLocaleString()} FCFA
-                </div>
-              </div>
-            </div>
-          ) : (
-            // Affichage pour tarification à deux tranches
-            <>
+          <div className="space-y-4">
+            {isSingleTier ? (
+              // Affichage pour tarification unique
               <div>
-                <div className="text-sm font-medium">Première tranche</div>
+                <div className="text-sm font-medium">Tarification unique</div>
                 <div className="pl-3 text-sm text-gray-600">
+                  <div>Prix unitaire : {details.first_tier.rate} FCFA/m³</div>
                   <div>{details.first_tier.consumption.toFixed(2)} m³ × {details.first_tier.rate} FCFA</div>
                   <div className="font-medium text-black">
                     = {Math.round(details.first_tier.amount).toLocaleString()} FCFA
                   </div>
                 </div>
               </div>
-
-              {details.second_tier.consumption > 0 && ( 
+            ) : (
+              // Affichage pour tarification à deux tranches
+              <>
                 <div>
-                  <div className="text-sm font-medium">Deuxième tranche</div>
+                  <div className="text-sm font-medium">Première tranche</div>
                   <div className="pl-3 text-sm text-gray-600">
-                    <div>{details.second_tier.consumption.toFixed(2)} m³ × {details.second_tier.rate} FCFA</div>
+                    <div>{details.first_tier.consumption.toFixed(2)} m³ × {details.first_tier.rate} FCFA</div>
                     <div className="font-medium text-black">
-                      = {Math.round(details.second_tier.amount).toLocaleString()} FCFA
+                      = {Math.round(details.first_tier.amount).toLocaleString()} FCFA
                     </div>
                   </div>
                 </div>
-              )}
-            </>
-          )}
-        </div>
 
-        <div className="text-xs text-gray-500 mt-2">
-          * Calcul basé sur la tarification en vigueur
+                {details.second_tier.consumption > 0 && ( 
+                  <div>
+                    <div className="text-sm font-medium">Deuxième tranche</div>
+                    <div className="pl-3 text-sm text-gray-600">
+                      <div>{details.second_tier.consumption.toFixed(2)} m³ × {details.second_tier.rate} FCFA</div>
+                      <div className="font-medium text-black">
+                        = {Math.round(details.second_tier.amount).toLocaleString()} FCFA
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="text-xs text-gray-500 mt-2">
+            * Calcul basé sur la tarification en vigueur
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -507,6 +545,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
               {consumption !== null && (
                 <ConsumptionDetails 
                   consumption={consumption}
+                  meterId={formData.meter_id}
                 />
               )}
             </div>

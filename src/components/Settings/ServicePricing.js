@@ -10,6 +10,7 @@ import { Settings2, History, AlertCircle, Plus, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { axiosPrivate as api } from '../../utils/axios';
+import { Checkbox } from "../ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -114,6 +115,52 @@ const PricingForm = ({ formData, handleChange, handleSubmit, loading }) => {
                   Prix appliqué au-delà du seuil de consommation
                 </FormDescription>
               </FormItem>
+
+              <FormItem>
+    <FormLabel>Multiplicateur pour compteurs premium</FormLabel>
+    <FormControl>
+      <Input 
+        type="number"
+        name="premium_multiplier"
+        value={formData.premium_multiplier}
+        onChange={handleChange}
+        placeholder="Ex: 1.5"
+        step="0.1"
+      />
+    </FormControl>
+    <FormDescription>
+      Facteur appliqué au tarif standard pour les compteurs premium (ex: 1.5 = +50%)
+    </FormDescription>
+  </FormItem>
+
+  <FormItem>
+    <FormLabel>Compteurs gratuits</FormLabel>
+    <div className="flex items-center space-x-2">
+      <Checkbox
+        id="free_enabled"
+        checked={formData.free_enabled}
+        onCheckedChange={(checked) => handleChange({ 
+          target: { 
+            name: 'free_enabled', 
+            value: checked 
+          } 
+        })}
+      />
+      <label
+        htmlFor="free_enabled"
+        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+      >
+        Activer les compteurs gratuits
+      </label>
+    </div>
+    <FormDescription>
+      Permet d'avoir des compteurs exemptés de facturation (bâtiments publics, etc.)
+    </FormDescription>
+  </FormItem>
+
+
+
+
             </>
           )}
 
@@ -234,6 +281,8 @@ const PricingSettingsPage = () => {
     threshold: "",
     base_price: "",
     extra_price: "",
+    premium_multiplier: "1.5", // Valeur par défaut
+    free_enabled: true, // Activé par défaut
     effective_date: format(new Date(), 'yyyy-MM-dd') // Ajout de la date d'effectivité
   });
 
@@ -279,6 +328,8 @@ const PricingSettingsPage = () => {
             threshold: current.threshold?.toString() || "",
             base_price: current.base_price?.toString() || "",
             extra_price: current.extra_price?.toString() || "",
+            premium_multiplier: current.premium_multiplier?.toString() || "1.5",
+            free_enabled: current.free_enabled !== undefined ? current.free_enabled : true,
             effective_date: format(new Date(), 'yyyy-MM-dd')
           });
         }
@@ -332,21 +383,23 @@ const PricingSettingsPage = () => {
     try {
       const submitData = {
         base_price: Number(formData.base_price),
+        premium_multiplier: Number(formData.premium_multiplier),
+        free_enabled: formData.free_enabled === true, // Convertir en booléen
         effective_date: formData.effective_date,
       };
-
+  
       if (formData.pricing_type === 'TIERED') {
         submitData.threshold = Number(formData.threshold);
         submitData.extra_price = Number(formData.extra_price);
       }
-
+  
       await api.put('/service-pricing/update', submitData);
       
       toast({
         title: "Succès",
         description: "Configuration de tarification mise à jour avec succès."
       });
-
+  
       // Recharger les données
       const historyResponse = await api.get('/service-pricing/history');
       setPricingHistory(historyResponse.data.data);
@@ -360,7 +413,6 @@ const PricingSettingsPage = () => {
       setLoading(false);
     }
   };
-
 
 
   // Ajouter le gestionnaire de soumission pour la date d'échéance
@@ -455,6 +507,8 @@ const handleDueDateSubmit = async (e) => {
           <TableHead>Seuil (m³)</TableHead>
           <TableHead>Prix de base (FCFA)</TableHead>
           <TableHead>Prix majoré (FCFA)</TableHead>
+          <TableHead>Multiplicateur Premium</TableHead>
+          <TableHead>Compteurs gratuits</TableHead>
           <TableHead>Modifié par</TableHead> 
         </TableRow>
       </TableHeader>
@@ -477,6 +531,14 @@ const handleDueDateSubmit = async (e) => {
         <TableCell>{history.threshold || '-'}</TableCell>
         <TableCell>{history.base_price}</TableCell>
         <TableCell>{history.threshold ? history.extra_price : '-'}</TableCell>
+        <TableCell>{history.premium_multiplier || '1.5'}</TableCell>
+        
+        <TableCell>
+  <Badge variant={history.free_enabled === true ? "success" : "secondary"}>
+    {history.free_enabled === true ? "Activé" : "Désactivé"}
+  </Badge>
+</TableCell>
+
         <TableCell>
           {`${history.user.first_name} ${history.user.last_name}`}
         </TableCell>
