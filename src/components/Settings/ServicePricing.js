@@ -83,86 +83,84 @@ const PricingForm = ({ formData, handleChange, handleSubmit, loading }) => {
           </FormItem>
 
           {formData.pricing_type === 'TIERED' && (
-            <>
-              <FormItem>
-                <FormLabel>Seuil de consommation (m³)</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number"
-                    name="threshold"
-                    value={formData.threshold}
-                    onChange={handleChange}
-                    placeholder="Ex: 50"
-                  />
-                </FormControl>
-                <FormDescription>
-                  Volume d'eau en m³ avant application du tarif majoré
-                </FormDescription>
-              </FormItem>
+  <>
+    <FormItem>
+      <FormLabel>Seuil de consommation (m³)</FormLabel>
+      <FormControl>
+        <Input 
+          type="number"
+          name="threshold"
+          value={formData.threshold}
+          onChange={handleChange}
+          placeholder="Ex: 50"
+        />
+      </FormControl>
+      <FormDescription>
+        Volume d'eau en m³ avant application du tarif majoré
+      </FormDescription>
+    </FormItem>
 
-              <FormItem>
-                <FormLabel>Prix majoré (FCFA/m³)</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number"
-                    name="extra_price"
-                    value={formData.extra_price}
-                    onChange={handleChange}
-                    placeholder="Ex: 750"
-                  />
-                </FormControl>
-                <FormDescription>
-                  Prix appliqué au-delà du seuil de consommation
-                </FormDescription>
-              </FormItem>
+    <FormItem>
+      <FormLabel>Prix majoré (FCFA/m³)</FormLabel>
+      <FormControl>
+        <Input 
+          type="number"
+          name="extra_price"
+          value={formData.extra_price}
+          onChange={handleChange}
+          placeholder="Ex: 750"
+        />
+      </FormControl>
+      <FormDescription>
+        Prix appliqué au-delà du seuil de consommation
+      </FormDescription>
+    </FormItem>
+  </>
+)}
 
-              <FormItem>
-    <FormLabel>Multiplicateur pour compteurs premium</FormLabel>
-    <FormControl>
-      <Input 
-        type="number"
-        name="premium_multiplier"
-        value={formData.premium_multiplier}
-        onChange={handleChange}
-        placeholder="Ex: 1.5"
-        step="0.1"
-      />
-    </FormControl>
-    <FormDescription>
-      Facteur appliqué au tarif standard pour les compteurs premium (ex: 1.5 = +50%)
-    </FormDescription>
-  </FormItem>
+{/* Ces options doivent être en dehors du bloc conditionnel pour être toujours visibles */}
+<FormItem>
+  <FormLabel>Multiplicateur pour compteurs premium</FormLabel>
+  <FormControl>
+    <Input 
+      type="number"
+      name="premium_multiplier"
+      value={formData.premium_multiplier}
+      onChange={handleChange}
+      placeholder="Ex: 1.5"
+      step="0.1"
+    />
+  </FormControl>
+  <FormDescription>
+    Facteur appliqué au tarif standard pour les compteurs premium (ex: 1.5 = +50%)
+  </FormDescription>
+</FormItem>
 
-  <FormItem>
-    <FormLabel>Compteurs gratuits</FormLabel>
-    <div className="flex items-center space-x-2">
-      <Checkbox
-        id="free_enabled"
-        checked={formData.free_enabled}
-        onCheckedChange={(checked) => handleChange({ 
-          target: { 
-            name: 'free_enabled', 
-            value: checked 
-          } 
-        })}
-      />
-      <label
-        htmlFor="free_enabled"
-        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-      >
-        Activer les compteurs gratuits
-      </label>
-    </div>
-    <FormDescription>
-      Permet d'avoir des compteurs exemptés de facturation (bâtiments publics, etc.)
-    </FormDescription>
-  </FormItem>
+<FormItem>
+  <FormLabel>Compteurs gratuits</FormLabel>
+  <div className="flex items-center space-x-2">
+    <Checkbox
+      id="free_enabled"
+      checked={formData.free_enabled}
+      onCheckedChange={(checked) => handleChange({ 
+        target: { 
+          name: 'free_enabled', 
+          value: checked 
+        } 
+      })}
+    />
+    <label
+      htmlFor="free_enabled"
+      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+    >
+      Activer les compteurs gratuits
+    </label>
+  </div>
+  <FormDescription>
+    Permet d'avoir des compteurs exemptés de facturation (bâtiments publics, etc.)
+  </FormDescription>
+</FormItem>
 
-
-
-
-            </>
-          )}
 
           <FormItem>
             <FormLabel>Date d'application</FormLabel>
