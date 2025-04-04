@@ -116,7 +116,7 @@ const Sidebar = ({ role, isOpen, setIsOpen }) => {
           },
           { 
             title: 'Rapport', // Nouveau menu
-            path: '/reports', 
+            path: '/analytics', 
             icon: <FileBarChart className="w-5 h-5" /> 
           },
           { 

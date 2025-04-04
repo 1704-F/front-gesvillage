@@ -24,7 +24,7 @@ import WaterQuality from './components/Settings/WaterQuality';
 import ServiceInfoPage from './components/Service/ServiceInfo';
 import ManagementPage from './components/Gestion/Management';
 import ExpensePage from './components/Expense/ExpensePage';
-import ReportsPage from './components/Rapport/ReportsPage'
+import AnalyticsPage from './components/analytics/AnalyticsPage'
 
 import ConsumerPage from './components/Consumer/ConsumerPage';
 import MeterPage from './components/Meter/MeterPage';
@@ -128,7 +128,7 @@ const App = () => {
                   <Route path="/service-info" element={<ServiceInfoPage />} />
                   <Route path="/management" element={<ManagementPage />} />
                   <Route path="/expenses" element={<ExpensePage />} />
-                  <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/analytics" element={<AnalyticsPage />} />
                   <Route path="/inventory" element={<InventoryPage />} />
 
                 </>
