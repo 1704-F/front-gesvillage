@@ -132,35 +132,64 @@ const AnalyticsPage = () => {
 
  // Composant de bouton de téléchargement
  const DownloadButton = () => {
-   if (!data.serviceInfo) {
-     return null;
-   }
-   
-   const fileName = `Rapport_Analytique_${format(currentPeriod[0], 'dd-MM-yyyy')}_${format(currentPeriod[1], 'dd-MM-yyyy')}.pdf`;
-   
-   return (
-     <PDFDownloadLink
-       document={
-         <AnalyticsPDF 
-           data={data} 
-           currentPeriod={currentPeriod}
-         />
-       }
-       fileName={fileName}
-     >
-       {({ blob, url, loading, error }) => (
-         <Button 
-           variant="outline"
-           className="flex items-center gap-2 whitespace-nowrap"
-           disabled={loading}
-         >
-           <Download className="h-4 w-4" />
-           {loading ? 'Génération...' : 'Télécharger le rapport'}
-         </Button>
-       )}
-     </PDFDownloadLink>
-   );
- };
+  const [loading, setLoading] = useState(false);
+  
+  if (!data.serviceInfo) {
+    return null;
+  }
+  
+  const handleDownload = async () => {
+    try {
+      setLoading(true);
+      
+      const startDate = format(currentPeriod[0], 'yyyy-MM-dd');
+      const endDate = format(currentPeriod[1], 'yyyy-MM-dd');
+      
+      // Appel API pour télécharger le PDF
+      const response = await api.get('/analytics/export-pdf', {
+        params: {
+          start_date: startDate,
+          end_date: endDate
+        },
+        responseType: 'blob' // Important pour télécharger des fichiers
+      });
+      
+      // Créer un URL temporaire et déclencher le téléchargement
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Rapport_Analytique_${format(currentPeriod[0], 'dd-MM-yyyy')}_${format(currentPeriod[1], 'dd-MM-yyyy')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Nettoyage
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      
+    } catch (error) {
+      console.error('Erreur lors du téléchargement du rapport:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de télécharger le rapport analytique"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <Button 
+      variant="outline"
+      className="flex items-center gap-2 whitespace-nowrap"
+      disabled={loading}
+      onClick={handleDownload}
+    >
+      <Download className="h-4 w-4" />
+      {loading ? 'Génération...' : 'Télécharger le rapport'}
+    </Button>
+  );
+};
 
  if (loading) {
    return (
