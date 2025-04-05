@@ -861,7 +861,7 @@ const Pagination = ({ pagination, onPageChange }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {salaryHistory.map((salary) => (
+                {salaryHistory.map((salary) => ( 
                   <TableRow key={salary.id}>
                     <TableCell>
                       {format(new Date(salary.month), 'MMMM yyyy', { locale: fr })}

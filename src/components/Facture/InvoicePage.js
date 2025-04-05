@@ -496,12 +496,27 @@ const [dateRange, setDateRange] = useState([
           responseType: 'blob'
         });
         
-        // Créer un lien de téléchargement et déclencher le téléchargement
-        const blob = new Blob([response.data], { type: 'application/pdf' });
+        // Déterminer le type de contenu et le nom du fichier en fonction du Content-Type
+        const contentType = response.headers['content-type'];
+        let fileName, fileType;
+        
+        if (contentType === 'application/zip') {
+          fileName = `Factures_${startDate}_${endDate}.zip`;
+          fileType = 'application/zip';
+        } else {
+          // Par défaut, on considère que c'est un PDF
+          fileName = `Factures_${startDate}_${endDate}.pdf`;
+          fileType = 'application/pdf';
+        }
+        
+        console.log('Téléchargement du fichier:', fileName, 'type:', fileType);
+        
+        // Créer un lien de téléchargement avec le type et le nom corrects
+        const blob = new Blob([response.data], { type: fileType });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Factures_${startDate}_${endDate}.pdf`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         a.remove();
