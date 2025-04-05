@@ -835,7 +835,6 @@ const Pagination = ({ pagination, onPageChange }) => {
       };
       return methods[method] || method;
     };
-  
     
     if (!salaryHistory || !employeeId) {
       return null;
@@ -843,52 +842,54 @@ const Pagination = ({ pagination, onPageChange }) => {
   
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-[900px]">
+        <DialogContent className="max-w-[900px] max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>Historique des salaires</DialogTitle>
           </DialogHeader>
   
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Période</TableHead>
-                <TableHead>Base</TableHead>
-                <TableHead>Heures</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Date paiement</TableHead>
-                <TableHead>Mode</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {salaryHistory.map((salary) => (
-                <TableRow key={salary.id}>
-                  <TableCell>
-                    {format(new Date(salary.month), 'MMMM yyyy', { locale: fr })}
-                  </TableCell>
-                  <TableCell>{salary.base_salary.toLocaleString()} FCFA</TableCell>
-                  <TableCell>{salary.hours_worked || "—"}</TableCell>
-                  <TableCell>{salary.total_amount.toLocaleString()} FCFA</TableCell>
-                  <TableCell>
-                    {salary.payment_date ? 
-                      format(new Date(salary.payment_date), 'dd/MM/yyyy') : 
-                      '—'
-                    }
-                  </TableCell>
-                  <TableCell>{formatPaymentMethod(salary.payment_method) || '—'}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleExportPayslip(salary.id)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+          <div className="max-h-[60vh] overflow-y-auto">
+            <Table>
+              <TableHeader className="sticky top-0 bg-white z-10">
+                <TableRow>
+                  <TableHead>Période</TableHead>
+                  <TableHead>Base</TableHead>
+                  <TableHead>Heures</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Date paiement</TableHead>
+                  <TableHead>Mode</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {salaryHistory.map((salary) => (
+                  <TableRow key={salary.id}>
+                    <TableCell>
+                      {format(new Date(salary.month), 'MMMM yyyy', { locale: fr })}
+                    </TableCell>
+                    <TableCell>{salary.base_salary.toLocaleString()} FCFA</TableCell>
+                    <TableCell>{salary.hours_worked || "—"}</TableCell>
+                    <TableCell>{salary.total_amount.toLocaleString()} FCFA</TableCell>
+                    <TableCell>
+                      {salary.payment_date ? 
+                        format(new Date(salary.payment_date), 'dd/MM/yyyy') : 
+                        '—'
+                      }
+                    </TableCell>
+                    <TableCell>{formatPaymentMethod(salary.payment_method) || '—'}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleExportPayslip(salary.id)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
   
           <DialogFooter>
             <Button onClick={onClose}>Fermer</Button>
@@ -1181,6 +1182,7 @@ const fetchSalaryHistory = async (employeeId) => {
 };
 
 const handlePageChange = (section, page) => {
+  // D'abord mettre à jour l'état
   setPagination(prev => ({
     ...prev,
     [section]: {
@@ -1189,18 +1191,142 @@ const handlePageChange = (section, page) => {
     }
   }));
 
+  // Ensuite, appeler les fonctions de récupération avec la page directement
   switch(section) {
     case 'employees':
-      fetchEmployees();
+      api.get('/employees', {
+        params: {
+          page: page,
+          per_page: pagination.employees.perPage
+        }
+      }).then(response => {
+        setEmployees(response.data.data || []);
+        setPagination(prev => ({
+          ...prev,
+          employees: {
+            ...prev.employees,
+            totalPages: response.data.meta.total_pages,
+            total: response.data.meta.total
+          }
+        }));
+      }).catch(error => {
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les employés",
+          variant: "destructive",
+        });
+      });
       break;
+      
     case 'maintenances':
-      fetchMaintenances();
+      api.get('/maintenances', {
+        params: {
+          start_date: format(dateRange[0], 'yyyy-MM-dd'),
+          end_date: format(dateRange[1], 'yyyy-MM-dd'),
+          page: page,
+          per_page: pagination.maintenances.perPage
+        },
+      }).then(response => {
+        setMaintenances(response.data.data || []);
+        setPagination(prev => ({
+          ...prev,
+          maintenances: {
+            ...prev.maintenances,
+            totalPages: response.data.meta.total_pages,
+            total: response.data.meta.total
+          }
+        }));
+      }).catch(error => {
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les maintenances",
+          variant: "destructive",
+        });
+      });
       break;
+      
     case 'schedules':
-      fetchSchedules();
+      api.get('/schedules', {
+        params: {
+          start_date: format(dateRange[0], 'yyyy-MM-dd'),
+          end_date: format(dateRange[1], 'yyyy-MM-dd'),
+          page: page,
+          per_page: pagination.schedules.perPage
+        },
+      }).then(response => {
+        setSchedules(response.data.data || []);
+        setPagination(prev => ({
+          ...prev,
+          schedules: {
+            ...prev.schedules,
+            totalPages: response.data.meta.total_pages,
+            total: response.data.meta.total
+          }
+        }));
+      }).catch(error => {
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer le planning",
+          variant: "destructive",
+        });
+      });
       break;
+      
     case 'salaries':
-      fetchSalaries();
+      api.get('/salaries', {
+        params: {
+          month: selectedMonth,
+          year: selectedYear,
+          page: page,
+          per_page: pagination.salaries.perPage
+        }
+      }).then(response => {
+        setCurrentMonthSalaries(response.data.data || []);
+        setPagination(prev => ({
+          ...prev,
+          salaries: {
+            ...prev.salaries,
+            totalPages: response.data.meta.total_pages,
+            total: response.data.meta.total
+          }
+        }));
+      }).catch(error => {
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les salaires",
+          variant: "destructive"
+        });
+      });
+      break;
+      
+    case 'donations':
+      api.get('/donations', {
+        params: {
+          start_date: format(dateRange[0], 'yyyy-MM-dd'),
+          end_date: format(dateRange[1], 'yyyy-MM-dd'),
+          page: page,
+          per_page: pagination.donations.perPage
+        }
+      }).then(response => {
+        if (response.data && response.data.data) {
+          setDonations(response.data.data);
+          setPagination(prev => ({
+            ...prev,
+            donations: {
+              ...prev.donations,
+              totalPages: response.data.pagination.totalPages,
+              total: response.data.pagination.total
+            }
+          }));
+        }
+      }).catch(error => {
+        console.error('Erreur lors du chargement des dons:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les dons",
+          variant: "destructive"
+        });
+      });
       break;
   }
 };
