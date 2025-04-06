@@ -90,65 +90,76 @@ const formatPercent = (num) => {
 
 // Composant PDF
 
-const RelevePDF = ({ readings, dateRange }) => (
-  <Document>
-    <Page size="A4" orientation="landscape" style={styles.page}>
-      <Text style={styles.header}>Relevés de consommation</Text>
-      
-      <Text style={styles.dateRange}>
-        Période du {format(dateRange[0], 'dd/MM/yyyy')} au {format(dateRange[1], 'dd/MM/yyyy')}
-      </Text>
+const RelevePDF = ({ readings, dateRange }) => {
+  // Trier les données par numéro de compteur avant de les rendre
+  const sortedReadings = [...readings].sort((a, b) => {
+    // S'assurer que les deux relevés ont bien un compteur associé
+    if (!a.meter || !b.meter) return 0;
+    
+    // Comparer les numéros de compteur
+    return a.meter.meter_number.localeCompare(b.meter.meter_number);
+  });
 
-      <View style={styles.table}>
-        {/* En-têtes */}
-        <View style={[styles.tableRow, styles.tableHeader]}>
-          <Text style={styles.tableCell}>N°</Text>
-          <Text style={styles.tableCell}>Compteur</Text>
-          <Text style={styles.tableCell}>Consommateur</Text>
-          <Text style={styles.tableCell}>Ancien Index</Text>
-          <Text style={styles.tableCell}>Nouvel Index</Text>
-          <Text style={styles.tableCell}>Consommation (m³)</Text>
-          <Text style={styles.tableCell}>Montant (FCFA)</Text>
-          <Text style={styles.tableCell}>Date</Text>
-          <Text style={styles.tableCell}>Statut</Text>
-          <Text style={styles.tableCell}>Paiement</Text>
-          <Text style={styles.tableCell}>Date de paiement</Text>
-        </View>
+  return (
+    <Document>
+      <Page size="A4" orientation="landscape" style={styles.page}>
+        <Text style={styles.header}>Relevés de consommation</Text>
+        
+        <Text style={styles.dateRange}>
+          Période du {format(dateRange[0], 'dd/MM/yyyy')} au {format(dateRange[1], 'dd/MM/yyyy')}
+        </Text>
 
-        {/* Données */}
-        {readings.map((reading, index) => (
-          <View key={reading.id} style={styles.tableRow}>
-            <Text style={styles.tableCell}>{index + 1}</Text>
-            <Text style={styles.tableCell}>{reading.meter?.meter_number}</Text>
-            <Text style={styles.tableCell}>
-              {reading.meter?.user ? 
-                `${reading.meter.user.first_name} ${reading.meter.user.last_name}` : 
-                'N/A'}
-            </Text>
-            <Text style={styles.tableCell}>{reading.last_reading_value}</Text>
-            <Text style={styles.tableCell}>{reading.reading_value}</Text>
-            <Text style={styles.tableCell}>{reading.consumption}</Text>
-            <Text style={styles.tableCell}>
-              {formatNumber(reading.amount).toLocaleString()}
-            </Text>
-            <Text style={styles.tableCell}>
-              {format(new Date(reading.reading_date), 'dd/MM/yyyy')}
-            </Text>
-            <Text style={styles.tableCell}>
-              {reading.status === 'validated' ? 'Validé' : 'En attente'}
-            </Text>
-            <Text style={styles.tableCell}>
-              {/* Colonne de paiement - vide par défaut */}
-            </Text>
-            <Text style={styles.tableCell}>
-              {/* Colonne de date de paiement - vide par défaut */}
-            </Text>
+        <View style={styles.table}>
+          {/* En-têtes */}
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={styles.tableCell}>N°</Text>
+            <Text style={styles.tableCell}>Compteur</Text>
+            <Text style={styles.tableCell}>Consommateur</Text>
+            <Text style={styles.tableCell}>Ancien Index</Text>
+            <Text style={styles.tableCell}>Nouvel Index</Text>
+            <Text style={styles.tableCell}>Consommation (m³)</Text>
+            <Text style={styles.tableCell}>Montant (FCFA)</Text>
+            <Text style={styles.tableCell}>Date</Text>
+            <Text style={styles.tableCell}>Statut</Text>
+            <Text style={styles.tableCell}>Paiement</Text>
+            <Text style={styles.tableCell}>Date de paiement</Text>
           </View>
-        ))}
-      </View>
-    </Page>
-  </Document>
-);
+
+          {/* Données */}
+          {sortedReadings.map((reading, index) => (
+            <View key={reading.id} style={styles.tableRow}>
+              <Text style={styles.tableCell}>{index + 1}</Text>
+              <Text style={styles.tableCell}>{reading.meter?.meter_number}</Text>
+              <Text style={styles.tableCell}>
+                {reading.meter?.user ? 
+                  `${reading.meter.user.first_name} ${reading.meter.user.last_name}` : 
+                  'N/A'}
+              </Text>
+              <Text style={styles.tableCell}>{reading.last_reading_value}</Text>
+              <Text style={styles.tableCell}>{reading.reading_value}</Text>
+              <Text style={styles.tableCell}>{reading.consumption}</Text>
+              <Text style={styles.tableCell}>
+                {formatNumber(reading.amount).toLocaleString()}
+              </Text>
+              <Text style={styles.tableCell}>
+                {format(new Date(reading.reading_date), 'dd/MM/yyyy')}
+              </Text>
+              <Text style={styles.tableCell}>
+                {reading.status === 'validated' ? 'Validé' : 'En attente'}
+              </Text>
+              <Text style={styles.tableCell}>
+                {/* Colonne de paiement - vide par défaut */}
+              </Text>
+              <Text style={styles.tableCell}>
+                {/* Colonne de date de paiement - vide par défaut */}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </Page>
+    </Document>
+  );
+};
 
 const ConsumptionDetails = ({ consumption, meterId }) => {
   const [calculationDetails, setCalculationDetails] = useState(null);
