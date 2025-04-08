@@ -10,7 +10,7 @@ import {
   DialogHeader, 
   DialogTitle,
   DialogFooter,
-} from "../ui/dialog";
+} from "../ui/dialog"; 
 import {
   Select,
   SelectContent,
@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import { axiosPublic, axiosPrivate } from '../../utils/axios';
+import MeterPDFDownloadButton from './MeterPDFDownloadButton'; 
 const api = axiosPrivate; 
 
 const MeterPage = () => {
@@ -416,33 +417,39 @@ const currentMeters = meters.slice(startIndex, endIndex);
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Gestion des Compteurs</h2>
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Rechercher..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Statut" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous</SelectItem>
-              <SelectItem value="active">Actif</SelectItem>
-              <SelectItem value="inactive">Inactif</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Ajouter
-          </Button>
-        </div>
-      </div>
+  <h2 className="text-2xl font-bold">Gestion des Compteurs</h2>
+  <div className="flex items-center space-x-4">
+    <div className="relative">
+      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+      <Input
+        placeholder="Rechercher..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="pl-9"
+      />
+    </div>
+    <Select value={filterStatus} onValueChange={setFilterStatus}>
+      <SelectTrigger className="w-40">
+        <SelectValue placeholder="Statut" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">Tous</SelectItem>
+        <SelectItem value="active">Actif</SelectItem>
+        <SelectItem value="inactive">Inactif</SelectItem>
+      </SelectContent>
+    </Select>
+    <MeterPDFDownloadButton 
+      meters={meters} 
+      quartiers={quartiers} 
+      filterStatus={filterStatus} 
+    />
+    <Button onClick={handleAdd}>
+      <Plus className="h-4 w-4 mr-2" />
+      Ajouter
+    </Button>
+  </div>
+</div>
+      
 
       <Card>
         <CardContent className="p-0">
