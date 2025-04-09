@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { Button } from "../ui/button";
@@ -19,20 +19,32 @@ import {
 } from "../ui/select";
 import { Badge } from "../ui/badge";
 import { useToast } from "../ui/toast/use-toast";
-import { Search, Plus, Building2, MapPin, Settings2, User2, Phone, Trash2, Pencil, Image, Upload, X } from 'lucide-react';
+import { Search, Plus, Building2, MapPin, Settings2, User2, Phone, Trash2, Pencil, Image, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { axiosPrivate as api, BASE_URL } from '../../utils/axios';
 
 const ServicePage = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [services, setServices] = useState([]);
   const [regions, setRegions] = useState([]);
+  
+  // États pour les données géographiques à charger dynamiquement
   const [departements, setDepartements] = useState([]);
   const [arrondissements, setArrondissements] = useState([]);
   const [communes, setCommunes] = useState([]);
   const [zones, setZones] = useState([]);
-  const [hierarchyLoaded, setHierarchyLoaded] = useState(false);
+  const [loadingGeoData, setLoadingGeoData] = useState(false);
+
+  // État pour la pagination
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    totalItems: 0,
+    totalPages: 0
+  });
 
   // États pour la gestion du logo
   const [selectedLogo, setSelectedLogo] = useState(null);
@@ -56,50 +68,113 @@ const ServicePage = () => {
     zone_id: ''
   });
 
-  // Chargement des données
+  // Débouncer la recherche
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [
-          servicesRes,
-          regionsRes,
-          departementsRes,
-          arrondissementsRes,
-          communesRes,
-          zonesRes
-        ] = await Promise.all([
-          api.get('/services'),
-          api.get('/geo/regions'),
-          api.get('/geo/departements'),
-          api.get('/geo/arrondissements'),
-          api.get('/geo/communes'),
-          api.get('/geo/zones')
-        ]);
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
 
-        setServices(servicesRes.data);
-        setRegions(regionsRes.data);
-        setDepartements(departementsRes.data);
-        setArrondissements(arrondissementsRes.data);
-        setCommunes(communesRes.data);
-        setZones(zonesRes.data);
-        setHierarchyLoaded(true);
-      } catch (error) {
-        toast({
-          title: "Erreur",
-          description: "Impossible de récupérer les données",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Chargement des données avec gestion d'erreur et timeout
+  const fetchDashboardData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Ajouter un timeout de 30 secondes
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
+      const response = await api.get('/services/dashboard', {
+        params: {
+          page: pagination.page,
+          limit: pagination.limit,
+          search: debouncedSearchTerm
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      const { services, regions, pagination: paginationData } = response.data;
+      
+      setServices(services || []);
+      setRegions(regions || []);
+      setPagination(paginationData);
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement des données:', error);
+      
+      if (error.name === 'AbortError') {
+        setError("La requête a pris trop de temps. Veuillez réessayer.");
+      } else {
+        setError(error.response?.data?.message || "Une erreur est survenue lors du chargement des données.");
       }
-    };
+      
+      toast({
+        title: "Erreur",
+        description: error.name === 'AbortError' 
+          ? "La requête a pris trop de temps. Veuillez réessayer." 
+          : "Impossible de récupérer les données",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [pagination.page, pagination.limit, debouncedSearchTerm, toast]);
 
-    fetchData();
-  }, []);
+  // Chargement des données géographiques à la demande
+  const fetchGeoData = async (type, parentId) => {
+    setLoadingGeoData(true);
+    try {
+      const response = await api.get('/services/geo-data', {
+        params: { type, parentId }
+      });
+      
+      switch(type) {
+        case 'departements':
+          setDepartements(response.data);
+          setArrondissements([]);
+          setCommunes([]);
+          setZones([]);
+          break;
+        case 'arrondissements':
+          setArrondissements(response.data);
+          setCommunes([]);
+          setZones([]);
+          break;
+        case 'communes':
+          setCommunes(response.data);
+          setZones([]);
+          break;
+        case 'zones':
+          setZones(response.data);
+          break;
+        default:
+          console.error('Type de données géographiques non valide');
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des données géographiques:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer les données géographiques",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingGeoData(false);
+    }
+  };
+
+  // Chargement des données initiales
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // Effet pour initialiser le formulaire à l'édition
   useEffect(() => {
-    if (hierarchyLoaded && editingService) {
+    if (editingService) {
       setFormData(prev => ({
         ...prev,
         name: editingService.name || '',
@@ -117,28 +192,23 @@ const ServicePage = () => {
       if (editingService.logo) {
         setPreviewUrl(`${BASE_URL}/uploads/logos/${editingService.logo}`);
       }
+      
+      // Charger les données géographiques pour l'édition
+      if (editingService.region_id) {
+        fetchGeoData('departements', editingService.region_id);
+      }
+      if (editingService.departement_id) {
+        fetchGeoData('arrondissements', editingService.departement_id);
+      }
+      if (editingService.arrondissement_id) {
+        fetchGeoData('communes', editingService.arrondissement_id);
+      }
+      if (editingService.commune_id) {
+        fetchGeoData('zones', editingService.commune_id);
+      }
     }
-  }, [hierarchyLoaded, editingService]);
+  }, [editingService]);
 
-  // Filtrage des options
-  const filteredDepartements = departements.filter(d => d.region_id === parseInt(formData.region_id));
-  const filteredArrondissements = arrondissements.filter(a => a.departement_id === parseInt(formData.departement_id));
-  const filteredCommunes = communes.filter(c => c.arrondissement_id === parseInt(formData.arrondissement_id));
-  const filteredZones = zones.filter(z => z.commune_id === parseInt(formData.commune_id));
-
-  // Ajouter cette fonction dans votre composant ServicePage
-const refreshServices = async () => {
-  try {
-    const response = await api.get('/services');
-    setServices(response.data);
-  } catch (error) {
-    toast({
-      title: "Erreur",
-      description: "Impossible de rafraîchir la liste des services",
-      variant: "destructive"
-    });
-  }
-};
   // Gestion du logo
   const handleLogoChange = (event) => {
     const file = event.target.files[0];
@@ -184,13 +254,6 @@ const refreshServices = async () => {
       // Ajouter le logo s'il existe
       if (selectedLogo) {
         formDataToSend.append('logo', selectedLogo);
-        // Debug log pour vérifier le logo
-        console.log('Logo being sent:', selectedLogo);
-      }
-
-      // Log pour vérifier le contenu du FormData
-      for (let pair of formDataToSend.entries()) {
-        console.log(pair[0], pair[1]);
       }
 
       const config = {
@@ -200,15 +263,13 @@ const refreshServices = async () => {
       };
 
       if (editingService) {
-        const response = await api.put(`/services/${editingService.id}`, formDataToSend, config);
-        console.log('Update response:', response.data);
+        await api.put(`/services/${editingService.id}`, formDataToSend, config);
       } else {
-        const response = await api.post('/services', formDataToSend, config);
-        console.log('Create response:', response.data);
+        await api.post('/services', formDataToSend, config);
       }
 
       setModalOpen(false);
-      refreshServices();
+      fetchDashboardData(); // Recharger les données
       toast({
         title: "Succès",
         description: editingService ? "Service mis à jour avec succès" : "Service créé avec succès"
@@ -221,14 +282,14 @@ const refreshServices = async () => {
         variant: "destructive"
       });
     }
-};
+  };
 
   // Suppression d'un service
   const handleDelete = async (id) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce service ?')) return;
     try {
       await api.delete(`/services/${id}`);
-      setServices(services.filter(s => s.id !== id));
+      fetchDashboardData(); // Recharger les données
       toast({
         title: "Succès",
         description: "Service supprimé avec succès"
@@ -242,27 +303,25 @@ const refreshServices = async () => {
     }
   };
 
+  // Changement de page de pagination
+  const handlePageChange = (newPage) => {
+    setPagination(prev => ({
+      ...prev,
+      page: newPage
+    }));
+  };
+
   // Ouverture du modal
   const openModal = (service = null) => {
+    // Réinitialiser les données géographiques
+    setDepartements([]);
+    setArrondissements([]);
+    setCommunes([]);
+    setZones([]);
+    
     if (service) {
       setEditingService(service);
-      setFormData({
-        name: service.name || '',
-        location: service.location || '',
-        contact_person: service.contact_person || '',
-        contact_info: service.contact_info || '',
-        region_id: service.region_id?.toString() || '',
-        departement_id: service.departement_id?.toString() || '',
-        arrondissement_id: service.arrondissement_id?.toString() || '',
-        commune_id: service.commune_id?.toString() || '',
-        zone_id: service.zone_id?.toString() || ''
-      });
-      
-      if (service.logo) {
-        setPreviewUrl(`${BASE_URL}/uploads/logos/${service.logo}`);
-      } else {
-        setPreviewUrl(null);
-      }
+      // Le reste est géré par useEffect qui observe editingService
     } else {
       setEditingService(null);
       setFormData({
@@ -282,12 +341,106 @@ const refreshServices = async () => {
     setModalOpen(true);
   };
 
-  if (loading) {
+  // Gestion des changements dans le formulaire pour les champs géographiques
+  const handleRegionChange = (value) => {
+    setFormData({ 
+      ...formData, 
+      region_id: value,
+      departement_id: '',
+      arrondissement_id: '',
+      commune_id: '',
+      zone_id: ''
+    });
+    
+    if (value) {
+      fetchGeoData('departements', value);
+    } else {
+      setDepartements([]);
+      setArrondissements([]);
+      setCommunes([]);
+      setZones([]);
+    }
+  };
+
+  const handleDepartementChange = (value) => {
+    setFormData({ 
+      ...formData, 
+      departement_id: value,
+      arrondissement_id: '',
+      commune_id: '',
+      zone_id: ''
+    });
+    
+    if (value) {
+      fetchGeoData('arrondissements', value);
+    } else {
+      setArrondissements([]);
+      setCommunes([]);
+      setZones([]);
+    }
+  };
+
+  const handleArrondissementChange = (value) => {
+    setFormData({ 
+      ...formData, 
+      arrondissement_id: value,
+      commune_id: '',
+      zone_id: ''
+    });
+    
+    if (value) {
+      fetchGeoData('communes', value);
+    } else {
+      setCommunes([]);
+      setZones([]);
+    }
+  };
+
+  const handleCommuneChange = (value) => {
+    setFormData({ 
+      ...formData, 
+      commune_id: value,
+      zone_id: ''
+    });
+    
+    if (value) {
+      fetchGeoData('zones', value);
+    } else {
+      setZones([]);
+    }
+  };
+
+  // Fonction pour afficher un état d'erreur
+  const renderError = () => (
+    <div className="p-6 text-center">
+      <div className="mb-4 text-red-500">
+        <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <p className="text-lg font-medium">{error || "Une erreur est survenue"}</p>
+      <Button 
+        className="mt-4" 
+        onClick={fetchDashboardData}
+      >
+        Réessayer
+      </Button>
+    </div>
+  );
+
+  if (loading && !services.length) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4" />
+          <p className="text-gray-500">Chargement des données...</p>
+        </div>
       </div>
     );
+  }
+
+  if (error && !services.length) {
+    return renderError();
   }
 
   return (
@@ -318,6 +471,12 @@ const refreshServices = async () => {
 
       {/* Table des services */}
       <Card>
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+          </div>
+        )}
+        
         <Table>
           <TableHeader>
             <TableRow>
@@ -331,12 +490,8 @@ const refreshServices = async () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {services
-              .filter(service => 
-                service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                service.location?.toLowerCase().includes(searchTerm.toLowerCase())
-              )
-              .map((service) => (
+            {services.length > 0 ? (
+              services.map((service) => (
                 <TableRow key={service.id}>
                   <TableCell>
                     {service.logo ? (
@@ -362,7 +517,7 @@ const refreshServices = async () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {zones.find(z => z.id === parseInt(service.zone_id))?.name || 'Non défini'}
+                    {service.zoneName || 'Non défini'}
                   </TableCell>
                   <TableCell>
                     <Badge variant={service.active ? "success" : "secondary"}>
@@ -388,12 +543,70 @@ const refreshServices = async () => {
                     </div>
                   </TableCell>
                 </TableRow>
-            ))}
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  <p className="text-gray-500">Aucun service trouvé</p>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
+        
+        {/* Pagination */}
+        <div className="flex items-center justify-between p-4 border-t">
+          <div className="text-sm text-gray-500">
+            Affichage de {pagination.totalItems ? (pagination.page - 1) * pagination.limit + 1 : 0} à {Math.min(pagination.page * pagination.limit, pagination.totalItems)} sur {pagination.totalItems} services
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={pagination.page === 1 || loading}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <span className="text-sm">
+              Page {pagination.page} sur {pagination.totalPages || 1}
+            </span>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={pagination.page >= pagination.totalPages || loading}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            
+            <Select 
+              value={pagination.limit.toString()} 
+              onValueChange={(value) => {
+                setPagination(prev => ({
+                  ...prev,
+                  page: 1,
+                  limit: parseInt(value)
+                }));
+              }}
+            >
+              <SelectTrigger className="w-[100px]">
+                <SelectValue placeholder="Lignes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 lignes</SelectItem>
+                <SelectItem value="25">25 lignes</SelectItem>
+                <SelectItem value="50">50 lignes</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </Card>
 
-      {/* Modal de formulaire */}
+      {/* Modal de formulaire avec layout horizontal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-[900px]">
           <DialogHeader>
@@ -423,223 +636,193 @@ const refreshServices = async () => {
                               type="button"
                               onClick={handleRemoveLogo}
                               className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="w-32 h-32 border-2 border-dashed rounded flex items-center justify-center bg-gray-50">
-                            <Upload className="w-8 h-8 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col space-y-2">
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleLogoChange}
-                          accept="image/*"
-                          className="hidden"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => fileInputRef.current?.click()}
-                        >
-                          <Image className="w-4 h-4 mr-2" />
-                          Choisir un logo
-                        </Button>
-                        <span className="text-xs text-gray-500">
-                          Format: PNG, JPG (max 5MB)
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="w-32 h-32 border-2 border-dashed rounded flex items-center justify-center bg-gray-50">
+            <Upload className="w-8 h-8 text-gray-400" />
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col space-y-2">
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleLogoChange}
+          accept="image/*"
+          className="hidden"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Image className="w-4 h-4 mr-2" />
+          Choisir un logo
+        </Button>
+        <span className="text-xs text-gray-500">
+          Format: PNG, JPG (max 5MB)
+        </span>
+      </div>
+    </div>
+  </div>
 
-                  {/* Autres champs du formulaire */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Nom du service</label>
-                    <Input
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Nom du service"
-                      required
-                    />
-                  </div>
+  {/* Autres champs du formulaire */}
+  <div className="space-y-2">
+    <label className="text-sm font-medium">Nom du service</label>
+    <Input
+      value={formData.name}
+      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+      placeholder="Nom du service"
+      required
+    />
+  </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Localisation</label>
-                    <Input
-                      value={formData.location}
-                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      placeholder="Localisation"
-                    />
-                  </div>
+  <div className="space-y-2">
+    <label className="text-sm font-medium">Localisation</label>
+    <Input
+      value={formData.location}
+      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+      placeholder="Localisation"
+    />
+  </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Personne à contacter</label>
-                    <Input
-                      value={formData.contact_person}
-                      onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                      placeholder="Nom du contact"
-                    />
-                  </div>
+  <div className="space-y-2">
+    <label className="text-sm font-medium">Personne à contacter</label>
+    <Input
+      value={formData.contact_person}
+      onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+      placeholder="Nom du contact"
+    />
+  </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Informations de contact</label>
-                    <Input
-                      value={formData.contact_info}
-                      onChange={(e) => setFormData({ ...formData, contact_info: e.target.value })}
-                      placeholder="Numéro de téléphone, email, etc."
-                    />
-                  </div>
-                </div>
+  <div className="space-y-2">
+    <label className="text-sm font-medium">Informations de contact</label>
+    <Input
+      value={formData.contact_info}
+      onChange={(e) => setFormData({ ...formData, contact_info: e.target.value })}
+      placeholder="Numéro de téléphone, email, etc."
+    />
+  </div>
+</div>
 
-                {/* Deuxième colonne - Sélection des zones */}
-                <div className="space-y-4">
-                  {/* Select Région */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Région</label>
-                    <Select
-                      value={formData.region_id}
-                      onValueChange={(value) => 
-                        setFormData({ 
-                          ...formData, 
-                          region_id: value,
-                          departement_id: '',
-                          arrondissement_id: '',
-                          commune_id: '',
-                          zone_id: ''
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une région" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {regions.map((region) => (
-                          <SelectItem key={region.id} value={region.id.toString()}>
-                            {region.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+{/* Deuxième colonne - Sélection des zones */}
+<div className="space-y-4">
+  {/* Select Région */}
+  <div className="space-y-2">
+    <label className="text-sm font-medium">Région</label>
+    <Select
+      value={formData.region_id}
+      onValueChange={handleRegionChange}
+    >
+      <SelectTrigger className={loadingGeoData ? "opacity-70" : ""}>
+        <SelectValue placeholder="Sélectionner une région" />
+      </SelectTrigger>
+      <SelectContent>
+        {regions.map((region) => (
+          <SelectItem key={region.id} value={region.id.toString()}>
+            {region.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
 
-                  {/* Select Département */}
-                  {formData.region_id && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Département</label>
-                      <Select
-                        value={formData.departement_id}
-                        onValueChange={(value) => 
-                          setFormData({ 
-                            ...formData, 
-                            departement_id: value,
-                            arrondissement_id: '',
-                            commune_id: '',
-                            zone_id: ''
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un département" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredDepartements.map((departement) => (
-                            <SelectItem key={departement.id} value={departement.id.toString()}>
-                              {departement.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+  {/* Select Département */}
+  {formData.region_id && (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Département</label>
+      <Select
+        value={formData.departement_id}
+        onValueChange={handleDepartementChange}
+      >
+        <SelectTrigger className={loadingGeoData ? "opacity-70" : ""}>
+          <SelectValue placeholder="Sélectionner un département" />
+        </SelectTrigger>
+        <SelectContent>
+          {departements.map((departement) => (
+            <SelectItem key={departement.id} value={departement.id.toString()}>
+              {departement.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )}
 
-                  {/* Select Arrondissement */}
-                  {formData.departement_id && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Arrondissement</label>
-                      <Select
-                        value={formData.arrondissement_id}
-                        onValueChange={(value) => 
-                          setFormData({ 
-                            ...formData, 
-                            arrondissement_id: value,
-                            commune_id: '',
-                            zone_id: ''
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un arrondissement" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredArrondissements.map((arrondissement) => (
-                            <SelectItem key={arrondissement.id} value={arrondissement.id.toString()}>
-                              {arrondissement.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+  {/* Select Arrondissement */}
+  {formData.departement_id && (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Arrondissement</label>
+      <Select
+        value={formData.arrondissement_id}
+        onValueChange={handleArrondissementChange}
+      >
+        <SelectTrigger className={loadingGeoData ? "opacity-70" : ""}>
+          <SelectValue placeholder="Sélectionner un arrondissement" />
+        </SelectTrigger>
+        <SelectContent>
+          {arrondissements.map((arrondissement) => (
+            <SelectItem key={arrondissement.id} value={arrondissement.id.toString()}>
+              {arrondissement.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )}
 
-                  {/* Select Commune */}
-                  {formData.arrondissement_id && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Commune</label>
-                      <Select
-                        value={formData.commune_id}
-                        onValueChange={(value) => 
-                          setFormData({ 
-                            ...formData, 
-                            commune_id: value,
-                            zone_id: ''
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner une commune" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredCommunes.map((commune) => (
-                            <SelectItem key={commune.id} value={commune.id.toString()}>
-                              {commune.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+  {/* Select Commune */}
+  {formData.arrondissement_id && (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Commune</label>
+      <Select
+        value={formData.commune_id}
+        onValueChange={handleCommuneChange}
+      >
+        <SelectTrigger className={loadingGeoData ? "opacity-70" : ""}>
+          <SelectValue placeholder="Sélectionner une commune" />
+        </SelectTrigger>
+        <SelectContent>
+          {communes.map((commune) => (
+            <SelectItem key={commune.id} value={commune.id.toString()}>
+              {commune.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )}
 
-                  {/* Select Zone */}
-                  {formData.commune_id && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Zone</label>
-                      <Select
-                        value={formData.zone_id}
-                        onValueChange={(value) => 
-                          setFormData({ 
-                            ...formData, 
-                            zone_id: value
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner une zone" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredZones.map((zone) => (
-                            <SelectItem key={zone.id} value={zone.id.toString()}>
-                              {zone.name} {zone.type ? `(${zone.type})` : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
+  {/* Select Zone */}
+  {formData.commune_id && (
+    <div className="space-y-2">
+      <label className="text-sm font-medium">Zone</label>
+      <Select
+        value={formData.zone_id}
+        onValueChange={(value) => 
+          setFormData({ 
+            ...formData, 
+            zone_id: value
+          })
+        }
+      >
+        <SelectTrigger className={loadingGeoData ? "opacity-70" : ""}>
+          <SelectValue placeholder="Sélectionner une zone" />
+        </SelectTrigger>
+        <SelectContent>
+          {zones.map((zone) => (
+            <SelectItem key={zone.id} value={zone.id.toString()}>
+              {zone.name} {zone.type ? `(${zone.type})` : ''}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )}
+</div>
               </div>
             </div>
 
@@ -647,7 +830,7 @@ const refreshServices = async () => {
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
                 Annuler
               </Button>
-              <Button type="submit">
+              <Button type="submit" disabled={loading || loadingGeoData}>
                 {editingService ? "Modifier" : "Ajouter"}
               </Button>
             </DialogFooter>
@@ -659,3 +842,4 @@ const refreshServices = async () => {
 };
 
 export default ServicePage;
+                              
