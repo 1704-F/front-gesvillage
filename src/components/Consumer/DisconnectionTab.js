@@ -26,7 +26,11 @@ import {
   Filter, 
   Download,
   Check,
-  Eye
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  FileDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { axiosPrivate as api } from '../../utils/axios';
@@ -34,15 +38,23 @@ import { axiosPrivate as api } from '../../utils/axios';
 // Composant pour afficher l'onglet des bons de coupure
 const DisconnectionTab = () => {
   const { toast } = useToast();
+  
+  // État de chargement et gestion des erreurs
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // États pour les données
   const [consumers, setConsumers] = useState([]);
-  const [viewDetailModal, setViewDetailModal] = useState(false);
   const [selectedConsumer, setSelectedConsumer] = useState(null);
+  const [employees, setEmployees] = useState([]);
+  
+  // États pour les modals
+  const [viewDetailModal, setViewDetailModal] = useState(false);
   const [executeModal, setExecuteModal] = useState(false);
+  
+  // États pour le formulaire d'exécution
   const [employeeId, setEmployeeId] = useState('');
   const [notes, setNotes] = useState('');
-  const [employees, setEmployees] = useState([]);
-
   const [applyPenalty, setApplyPenalty] = useState(false);
   const [penaltyAmount, setPenaltyAmount] = useState('');
   
@@ -50,20 +62,72 @@ const DisconnectionTab = () => {
   const [filters, setFilters] = useState({
     min_invoices: 2,
     min_amount: 0,
+    search: ''
   });
   
-  // Fonction pour obtenir les consommateurs avec factures impayées
+  // États pour la pagination
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    totalItems: 0,
+    totalPages: 0
+  });
+  
+  // Débounce pour la recherche
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  
+  // Effet pour le debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+  
+  // Effet pour appliquer la recherche
+  useEffect(() => {
+    if (debouncedSearch !== filters.search) {
+      setFilters(prev => ({
+        ...prev,
+        search: debouncedSearch
+      }));
+      // Revenir à la première page lors d'une nouvelle recherche
+      setPagination(prev => ({
+        ...prev,
+        page: 1
+      }));
+    }
+  }, [debouncedSearch]);
+  
+  // Fonction pour obtenir les consommateurs avec factures impayées (avec pagination)
   const fetchConsumersWithUnpaidInvoices = useCallback(async () => {
     setLoading(true);
+    setError(null);
+    
     try {
       const response = await api.get('/consumers/with-unpaid-invoices', {
         params: {
           min_invoices: filters.min_invoices,
-          min_amount: filters.min_amount
+          min_amount: filters.min_amount,
+          search: filters.search,
+          page: pagination.page,
+          limit: pagination.limit
         }
       });
-      setConsumers(response.data.data);
+      
+      setConsumers(response.data.data || []);
+      
+      if (response.data.pagination) {
+        setPagination(prev => ({
+          ...prev,
+          totalItems: response.data.pagination.totalItems,
+          totalPages: response.data.pagination.totalPages
+        }));
+      }
     } catch (error) {
+      setError(error.response?.data?.message || "Impossible de récupérer les données");
       toast({
         variant: "destructive",
         title: "Erreur",
@@ -72,7 +136,22 @@ const DisconnectionTab = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters, toast]);
+  }, [filters, pagination.page, pagination.limit, toast]);
+
+  // Fonction pour obtenir les détails d'un consommateur spécifique
+  const fetchConsumerDetails = async (consumerId) => {
+    try {
+      const response = await api.get(`/consumers/${consumerId}/unpaid-details`);
+      return response.data.data;
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de récupérer les détails du consommateur"
+      });
+      return null;
+    }
+  };
 
   // Fonction pour obtenir les employés pour le formulaire d'exécution
   const fetchEmployees = async () => {
@@ -84,6 +163,7 @@ const DisconnectionTab = () => {
     }
   };
 
+  // Charger les données initiales
   useEffect(() => {
     fetchConsumersWithUnpaidInvoices();
     fetchEmployees();
@@ -138,7 +218,7 @@ const DisconnectionTab = () => {
     }
   };
 
-  // Fonction pour télécharger un PDF de bon de coupure
+  // Fonction pour télécharger un PDF de bon de coupure individuel
   const handleDownloadPDF = async (consumerId) => {
     try {
       const response = await api.get(`/consumers/${consumerId}/disconnection-notice/pdf`, {
@@ -160,10 +240,54 @@ const DisconnectionTab = () => {
     }
   };
 
+  // Fonction pour télécharger le PDF récapitulatif
+  const handleDownloadSummaryPDF = async () => {
+    try {
+      const response = await api.get('/disconnection-notices/summary-pdf', {
+        params: {
+          min_invoices: filters.min_invoices,
+          min_amount: filters.min_amount
+        },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const today = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `rapport-avis-coupure-${today}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast({
+        title: "Succès",
+        description: "Téléchargement du rapport PDF en cours"
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de générer le rapport PDF"
+      });
+    }
+  };
+
   // Fonction pour afficher les détails des factures impayées
-  const handleViewDetails = (consumer) => {
-    setSelectedConsumer(consumer);
-    setViewDetailModal(true);
+  const handleViewDetails = async (consumer) => {
+    // Si nous avons déjà toutes les informations détaillées
+    if (consumer.unpaid_invoices) {
+      setSelectedConsumer(consumer);
+      setViewDetailModal(true);
+      return;
+    }
+    
+    // Sinon, récupérer les détails complets
+    const details = await fetchConsumerDetails(consumer.id);
+    if (details) {
+      setSelectedConsumer(details);
+      setViewDetailModal(true);
+    }
   };
 
   // Fonction pour ouvrir le modal d'exécution
@@ -174,7 +298,21 @@ const DisconnectionTab = () => {
 
   // Fonction pour appliquer les filtres
   const handleApplyFilters = () => {
+    // Réinitialiser la pagination à la première page
+    setPagination(prev => ({
+      ...prev,
+      page: 1
+    }));
+    
     fetchConsumersWithUnpaidInvoices();
+  };
+
+  // Fonction pour changer de page
+  const handlePageChange = (newPage) => {
+    setPagination(prev => ({
+      ...prev,
+      page: newPage
+    }));
   };
 
   // Statut du bon de coupure
@@ -187,6 +325,20 @@ const DisconnectionTab = () => {
       return { label: "Généré", variant: "default" };
     }
   };
+
+  // Afficher un message d'erreur si nécessaire
+  if (error && !loading && consumers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Erreur de chargement</h3>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <Button onClick={fetchConsumersWithUnpaidInvoices}>
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -215,15 +367,40 @@ const DisconnectionTab = () => {
             />
           </div>
           
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Rechercher..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-[220px]"
+            />
+          </div>
+          
           <Button onClick={handleApplyFilters}>
             <Filter className="h-4 w-4 mr-2" />
             Appliquer
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            onClick={handleDownloadSummaryPDF}
+            disabled={consumers.length === 0}
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            Télécharger rapport
           </Button>
         </div>
       </Card>
 
       {/* Tableau des consommateurs */}
       <Card>
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+          </div>
+        )}
+        
         <Table>
           <TableHeader>
             <TableRow>
@@ -237,16 +414,10 @@ const DisconnectionTab = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {consumers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8">
-                  Chargement des données...
-                </TableCell>
-              </TableRow>
-            ) : consumers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  Aucun consommateur éligible à la coupure
+                  {loading ? "Chargement des données..." : "Aucun consommateur éligible à la coupure"}
                 </TableCell>
               </TableRow>
             ) : (
@@ -261,25 +432,23 @@ const DisconnectionTab = () => {
                     <TableCell>{consumer.phone_number}</TableCell>
                     <TableCell>{consumer.unpaid_invoices_count}</TableCell>
                     <TableCell>
-  {(() => {
-    const invoicesTotal = Number(consumer.total_unpaid_amount);
-    const penaltyAmount = Number(consumer.disconnection_notice?.penalty_amount || 0);
-    const grandTotal = invoicesTotal + penaltyAmount;
-    
-    return (
-      <>
-        {grandTotal.toLocaleString()} FCFA
-        {penaltyAmount > 0 && (
-          <Badge variant="outline" className="ml-2">
-            +{penaltyAmount.toLocaleString()} pénalité
-          </Badge>
-        )}
-      </>
-    );
-  })()}
-</TableCell>
-
-                   
+                      {(() => {
+                        const invoicesTotal = Number(consumer.total_unpaid_amount);
+                        const penaltyAmount = Number(consumer.disconnection_notice?.penalty_amount || 0);
+                        const grandTotal = invoicesTotal + penaltyAmount;
+                        
+                        return (
+                          <>
+                            {grandTotal.toLocaleString()} FCFA
+                            {penaltyAmount > 0 && (
+                              <Badge variant="outline" className="ml-2">
+                                +{penaltyAmount.toLocaleString()} pénalité
+                              </Badge>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>
                       {consumer.oldest_unpaid_invoice ? 
                         format(new Date(consumer.oldest_unpaid_invoice.due_date), 'dd/MM/yyyy') : 
@@ -350,6 +519,59 @@ const DisconnectionTab = () => {
             )}
           </TableBody>
         </Table>
+        
+        {/* Pagination */}
+        {consumers.length > 0 && (
+          <div className="flex items-center justify-between p-4 border-t">
+            <div className="text-sm text-gray-500">
+              Affichage de {pagination.totalItems ? (pagination.page - 1) * pagination.limit + 1 : 0} à {Math.min(pagination.page * pagination.limit, pagination.totalItems)} sur {pagination.totalItems} consommateurs
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1 || loading}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <span className="text-sm">
+                Page {pagination.page} sur {pagination.totalPages || 1}
+              </span>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page >= pagination.totalPages || loading}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              
+              <Select 
+                value={pagination.limit.toString()} 
+                onValueChange={(value) => {
+                  setPagination(prev => ({
+                    ...prev,
+                    page: 1,
+                    limit: parseInt(value)
+                  }));
+                }}
+              >
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue placeholder="Lignes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 lignes</SelectItem>
+                  <SelectItem value="25">25 lignes</SelectItem>
+                  <SelectItem value="50">50 lignes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Modal détails des factures impayées */}
@@ -397,30 +619,26 @@ const DisconnectionTab = () => {
           </Table>
 
           <div className="flex justify-between mt-4">
-  <div>
-    <span className="text-sm text-gray-500">Total dû:</span>
-    <span className="ml-2 font-bold">
-      {(
-        Number(selectedConsumer?.total_unpaid_amount || 0) + 
-        Number(selectedConsumer?.disconnection_notice?.penalty_amount || 0)
-      ).toLocaleString()} FCFA
-    </span>
-    {selectedConsumer?.disconnection_notice?.penalty_amount > 0 && (
-      <span className="text-xs text-gray-500 ml-2">
-        (inclut une pénalité de {Number(selectedConsumer.disconnection_notice.penalty_amount).toLocaleString()} FCFA)
-      </span>
-    )}
-  </div>
-  
-  <div>
-    <span className="text-sm text-gray-500">Factures impayées:</span>
-    <span className="ml-2 font-bold">{selectedConsumer?.unpaid_invoices_count}</span>
-  </div>
-</div>
-
-   
-
-         
+            <div>
+              <span className="text-sm text-gray-500">Total dû:</span>
+              <span className="ml-2 font-bold">
+                {(
+                  Number(selectedConsumer?.total_unpaid_amount || 0) + 
+                  Number(selectedConsumer?.disconnection_notice?.penalty_amount || 0)
+                ).toLocaleString()} FCFA
+              </span>
+              {selectedConsumer?.disconnection_notice?.penalty_amount > 0 && (
+                <span className="text-xs text-gray-500 ml-2">
+                  (inclut une pénalité de {Number(selectedConsumer.disconnection_notice.penalty_amount).toLocaleString()} FCFA)
+                </span>
+              )}
+            </div>
+            
+            <div>
+              <span className="text-sm text-gray-500">Factures impayées:</span>
+              <span className="ml-2 font-bold">{selectedConsumer?.unpaid_invoices_count}</span>
+            </div>
+          </div>
 
           <DialogFooter>
             <Button 
@@ -457,84 +675,82 @@ const DisconnectionTab = () => {
 
       {/* Modal pour exécuter un bon de coupure */}
       <Dialog open={executeModal} onOpenChange={setExecuteModal}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Exécuter le bon de coupure</DialogTitle>
-    </DialogHeader>
-    
-    <div className="space-y-4 py-4">
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Employé ayant effectué la coupure</label>
-        <Select value={employeeId} onValueChange={setEmployeeId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Sélectionner un employé" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Non spécifié</SelectItem>
-            {employees.map(employee => (
-              <SelectItem key={employee.id} value={employee.id.toString()}>
-                {employee.first_name} {employee.last_name} ({employee.job_title})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      
-      {/* Section pour la pénalité de retard */}
-      <div className="space-y-2 border p-3 rounded-md">
-        <div className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            id="applyPenalty"
-            checked={applyPenalty}
-            onChange={(e) => setApplyPenalty(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300"
-          />
-          <label htmlFor="applyPenalty" className="text-sm font-medium">
-            Appliquer une pénalité de retard
-          </label>
-        </div>
-        
-        {applyPenalty && (
-          <div className="mt-2">
-            <label className="text-sm font-medium">Montant de la pénalité (FCFA)</label>
-            <Input
-              type="number"
-              value={penaltyAmount}
-              onChange={(e) => setPenaltyAmount(e.target.value)}
-              placeholder="Montant en FCFA"
-              min="0"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Laissez vide pour une pénalité sans montant fixe
-            </p>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Exécuter le bon de coupure</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Employé ayant effectué la coupure</label>
+              <Select value={employeeId} onValueChange={setEmployeeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un employé" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Non spécifié</SelectItem>
+                  {employees.map(employee => (
+                    <SelectItem key={employee.id} value={employee.id.toString()}>
+                      {employee.first_name} {employee.last_name} ({employee.job_title})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Section pour la pénalité de retard */}
+            <div className="space-y-2 border p-3 rounded-md">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="applyPenalty"
+                  checked={applyPenalty}
+                  onChange={(e) => setApplyPenalty(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <label htmlFor="applyPenalty" className="text-sm font-medium">
+                  Appliquer une pénalité de retard
+                </label>
+              </div>
+              
+              {applyPenalty && (
+                <div className="mt-2">
+                  <label className="text-sm font-medium">Montant de la pénalité (FCFA)</label>
+                  <Input
+                    type="number"
+                    value={penaltyAmount}
+                    onChange={(e) => setPenaltyAmount(e.target.value)}
+                    placeholder="Montant en FCFA"
+                    min="0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Laissez vide pour une pénalité sans montant fixe
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Notes (optionnel)</label>
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Notes concernant l'exécution"
+              />
+            </div>
           </div>
-        )}
-      </div>
-      
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Notes (optionnel)</label>
-        <Input
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Notes concernant l'exécution"
-        />
-      </div>
-    </div>
-    
-    <DialogFooter>
-      <Button variant="outline" onClick={() => setExecuteModal(false)}>
-        Annuler
-      </Button>
-      <Button onClick={handleExecuteDisconnection}>
-        <Check className="h-4 w-4 mr-2" />
-        Confirmer l'exécution
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
-
-
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExecuteModal(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleExecuteDisconnection}>
+              <Check className="h-4 w-4 mr-2" />
+              Confirmer l'exécution
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
