@@ -1,291 +1,230 @@
 // src/components/analytics/AnalyticsPDF.jsx
 import React from 'react';
-import { Document, Page, View, Text, StyleSheet, Image } from '@react-pdf/renderer';
+import { 
+  Document, 
+  Page, 
+  Text, 
+  View, 
+  StyleSheet, 
+  Image, 
+  Font, 
+  pdf 
+} from '@react-pdf/renderer';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 
-// Créer des styles pour le PDF
+// Sections PDF spécifiques
+import PDFOverviewSection from './pdf-sections/PDFOverviewSection';
+import PDFConsumersSection from './pdf-sections/PDFConsumersSection';
+import PDFMetersSection from './pdf-sections/PDFMetersSection';
+import PDFConsumptionSection from './pdf-sections/PDFConsumptionSection';
+import PDFInvoicesSection from './pdf-sections/PDFInvoicesSection';
+import PDFExpensesSection from './pdf-sections/PDFExpensesSection';
+import PDFSummarySection from './pdf-sections/PDFSummarySection';
+import { BASE_URL } from '../../utils/axios';
+
+// Styles pour le PDF
 const styles = StyleSheet.create({
   page: {
     padding: 30,
-    fontSize: 12,
+    backgroundColor: '#ffffff',
+    fontFamily: 'Helvetica',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between', 
     marginBottom: 20,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: {
+    flexDirection: 'column',
+  },
+  headerRight: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
   },
   logo: {
-    width: 80,
-    height: 80,
-  },
-  serviceInfo: {
-    flexDirection: 'column',
+    width: 60,
+    height: 60,
   },
   title: {
     fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 20,
     marginBottom: 10,
-    color: '#2563EB',
     textAlign: 'center',
+    color: '#2081E2',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 12,
     marginBottom: 20,
-    color: '#6B7280',
     textAlign: 'center',
+    color: '#4B5563',
   },
-  section: {
-    marginTop: 15,
-    marginBottom: 10,
-  },
-  sectionTitle: {
+  serviceName: {
     fontSize: 16,
-    marginBottom: 10,
-    backgroundColor: '#E5E7EB',
-    padding: 5,
-  },
-  table: {
-    display: 'table',
-    width: 'auto',
-    borderStyle: 'solid',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginBottom: 10,
-  },
-  tableRow: {
-    flexDirection: 'row',
-  },
-  tableColHeader: {
-    width: '33.33%',
-    borderStyle: 'solid',
-    borderBottomWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F3F4F6',
-    padding: 5,
     fontWeight: 'bold',
+    color: '#2081E2',
   },
-  tableCol: {
-    width: '33.33%',
-    borderStyle: 'solid',
-    borderRightWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 5,
-  },
-  metricsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 10,
-  },
-  metricCard: {
-    width: '30%',
-    margin: '1.5%',
-    padding: 10,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 5,
-  },
-  metricTitle: {
+  serviceInfo: {
     fontSize: 10,
-    color: '#6B7280',
+    color: '#4B5563',
   },
-  metricValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginTop: 5,
+  pageNumber: {
+    position: 'absolute',
+    bottom: 30,
+    left: 0,
+    right: 0,
+    fontSize: 10,
+    textAlign: 'center',
+    color: '#9CA3AF',
   },
   footer: {
     position: 'absolute',
-    bottom: 30,
-    left: 30,
-    right: 30,
-    textAlign: 'center',
+    bottom: 40,
+    left: 0,
+    right: 0,
     fontSize: 10,
-    color: '#6B7280',
+    textAlign: 'center',
+    color: '#9CA3AF',
   },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 10,
+    marginBottom: 10,
+    color: '#2081E2',
+  },
+  // Ajoutez ces styles dans la section StyleSheet.create
+emitterInfo: {
+  marginTop: 20,
+  marginBottom: 15,
+  padding: 10,
+  backgroundColor: '#F9FAFB',
+  borderRadius: 5,
+},
+emitterTitle: {
+  fontSize: 11,
+  fontWeight: 'bold',
+  marginBottom: 5,
+},
+emitterName: {
+  fontSize: 14,
+  fontWeight: 'bold',
+  color: '#2081E2',
+  marginBottom: 5,
+},
+emitterDetail: {
+  fontSize: 9,
+  color: '#4B5563',
+  marginBottom: 2,
+},
 });
 
-const AnalyticsPDF = ({ data, currentPeriod }) => {
-  const { consumers, meters, consumption, invoices, expenses, summary, serviceInfo } = data;
-  
-  // Formater les dates pour l'affichage
-  const startDate = format(currentPeriod[0], 'dd MMMM yyyy', { locale: fr });
-  const endDate = format(currentPeriod[1], 'dd MMMM yyyy', { locale: fr });
-  
+// Composant principal pour le PDF
+const AnalyticsPDF = ({ data, period }) => {
+  const { 
+    consumers, 
+    meters, 
+    consumption, 
+    invoices, 
+    expenses, 
+    summary, 
+    serviceInfo 
+  } = data || {};
+
   return (
     <Document>
+      {/* Page de garde */}
       <Page size="A4" style={styles.page}>
-        {/* En-tête */}
-        <View style={styles.header}>
-          {serviceInfo?.logo && (
-            <Image
-              src={`${process.env.REACT_APP_API_URL}/${serviceInfo.logo}`}
-              style={styles.logo}
-            />
-          )}
-          <View style={styles.serviceInfo}>
-            <Text>{serviceInfo?.name || 'GesVillage'}</Text>
-            <Text>{serviceInfo?.location || ''}</Text>
-            <Text>{serviceInfo?.contact_info || ''}</Text>
-          </View>
-        </View>
+
+     
+<View style={styles.header}>
+  <View style={styles.headerLeft}>
+  {serviceInfo?.logo && (
+  <Image 
+    src={`${BASE_URL}/uploads/logos/${serviceInfo.logo}`} 
+    style={styles.logo} 
+  />
+)}
+  </View>
+  <View style={styles.headerRight}>
+    <Text style={styles.serviceName}>{serviceInfo?.name || 'GesVillage'}</Text>
+    <Text style={styles.emitterDetail}>Adresse : {serviceInfo?.location || 'N/A'}</Text>
+  <Text style={styles.emitterDetail}>Région : {serviceInfo?.region?.name || 'N/A'}</Text>
+  <Text style={styles.emitterDetail}>Commune : {serviceInfo?.commune?.name || 'N/A'}</Text>
+  <Text style={styles.emitterDetail}>{serviceInfo?.zone?.type || 'Village'} : {serviceInfo?.zone?.name || 'N/A'}</Text>
+    <Text style={styles.serviceInfo}>{serviceInfo?.contact_info || ''}</Text>
+  </View>
+</View>
+
+
+
+        <Text style={styles.title}>RAPPORT ANALYTIQUE</Text>
+        <Text style={styles.subtitle}>
+          Période: {format(period[0], 'dd MMMM yyyy')} - {format(period[1], 'dd MMMM yyyy')}
+        </Text>
+
+
+
+        <PDFOverviewSection data={data} />
         
-        {/* Titre du rapport */}
-        <Text style={styles.title}>Rapport Analytique</Text>
-        <Text style={styles.subtitle}>Période: {startDate} - {endDate}</Text>
-        
-        {/* Section Résumé */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Résumé</Text>
-          
-          <View style={styles.metricsContainer}>
-          <View style={styles.metricCard}>
-             <Text style={styles.metricTitle}>Consommateurs Actifs</Text>
-             <Text style={styles.metricValue}>{consumers?.stats?.activeConsumers || 0}</Text>
-           </View>
-           
-           <View style={styles.metricCard}>
-             <Text style={styles.metricTitle}>Compteurs Actifs</Text>
-             <Text style={styles.metricValue}>{meters?.stats?.activeMeters || 0}</Text>
-           </View>
-           
-           <View style={styles.metricCard}>
-             <Text style={styles.metricTitle}>Consommation Totale</Text>
-             <Text style={styles.metricValue}>{consumption?.stats?.totalConsumption || 0} m³</Text>
-           </View>
-           
-           <View style={styles.metricCard}>
-             <Text style={styles.metricTitle}>Revenus Totaux</Text>
-             <Text style={styles.metricValue}>{summary?.stats?.totalRevenue || 0} FCFA</Text>
-           </View>
-           
-           <View style={styles.metricCard}>
-             <Text style={styles.metricTitle}>Dépenses Totales</Text>
-             <Text style={styles.metricValue}>{summary?.stats?.totalExpense || 0} FCFA</Text>
-           </View>
-           
-           <View style={styles.metricCard}>
-             <Text style={styles.metricTitle}>Marge Opérationnelle</Text>
-             <Text style={styles.metricValue}>{summary?.stats?.margin || 0}%</Text>
-           </View>
-         </View>
-       </View>
-       
-       {/* Section Finances */}
-       <View style={styles.section} break>
-         <Text style={styles.sectionTitle}>Finances</Text>
-         
-         <View style={styles.table}>
-           <View style={styles.tableRow}>
-             <Text style={styles.tableColHeader}>Catégorie</Text>
-             <Text style={styles.tableColHeader}>Revenus (FCFA)</Text>
-             <Text style={styles.tableColHeader}>Dépenses (FCFA)</Text>
-           </View>
-           
-           <View style={styles.tableRow}>
-             <Text style={styles.tableCol}>Factures d'eau</Text>
-             <Text style={styles.tableCol}>{summary?.stats?.invoiceRevenue || 0}</Text>
-             <Text style={styles.tableCol}>-</Text>
-           </View>
-           
-           <View style={styles.tableRow}>
-             <Text style={styles.tableCol}>Dons</Text>
-             <Text style={styles.tableCol}>{summary?.stats?.donationRevenue || 0}</Text>
-             <Text style={styles.tableCol}>-</Text>
-           </View>
-           
-           <View style={styles.tableRow}>
-             <Text style={styles.tableCol}>Opérationnelles</Text>
-             <Text style={styles.tableCol}>-</Text>
-             <Text style={styles.tableCol}>{summary?.stats?.operationalExpense || 0}</Text>
-           </View>
-           
-           <View style={styles.tableRow}>
-             <Text style={styles.tableCol}>Salaires</Text>
-             <Text style={styles.tableCol}>-</Text>
-             <Text style={styles.tableCol}>{summary?.stats?.salaryExpense || 0}</Text>
-           </View>
-           
-           <View style={styles.tableRow}>
-             <Text style={styles.tableCol}>TOTAL</Text>
-             <Text style={styles.tableCol}>{summary?.stats?.totalRevenue || 0}</Text>
-             <Text style={styles.tableCol}>{summary?.stats?.totalExpense || 0}</Text>
-           </View>
-         </View>
-         
-         <Text>Bénéfice Net: {summary?.stats?.profit || 0} FCFA</Text>
-         <Text>Ratio Dépenses/Revenus: {summary?.stats?.expenseRatio || 0}%</Text>
-       </View>
-       
-       {/* Section Consommation */}
-       <View style={styles.section} break>
-         <Text style={styles.sectionTitle}>Consommation</Text>
-         
-         <Text>Consommation Totale: {consumption?.stats?.totalConsumption || 0} m³</Text>
-         <Text>Consommation Moyenne par Compteur: {consumption?.stats?.averageConsumption || 0} m³</Text>
-         
-         <Text style={{ marginTop: 10, marginBottom: 5, fontWeight: 'bold' }}>Top 5 Quartiers par Consommation</Text>
-         <View style={styles.table}>
-           <View style={styles.tableRow}>
-             <Text style={styles.tableColHeader}>Quartier</Text>
-             <Text style={styles.tableColHeader}>Consommation (m³)</Text>
-             <Text style={styles.tableColHeader}>% du Total</Text>
-           </View>
-           
-           {consumption?.byZone?.slice(0, 5).map((zone, index) => (
-             <View style={styles.tableRow} key={index}>
-               <Text style={styles.tableCol}>{zone.name}</Text>
-               <Text style={styles.tableCol}>{zone.total_consumption}</Text>
-               <Text style={styles.tableCol}>
-                 {consumption.stats.totalConsumption ? 
-                   ((zone.total_consumption / consumption.stats.totalConsumption) * 100).toFixed(1) + '%' : 
-                   '0%'
-                 }
-               </Text>
-             </View>
-           ))}
-         </View>
-       </View>
-       
-       {/* Section Consommateurs */}
-       <View style={styles.section} break>
-         <Text style={styles.sectionTitle}>Consommateurs</Text>
-         
-         <Text>Total Consommateurs: {consumers?.stats?.totalConsumers || 0}</Text>
-         <Text>Consommateurs Actifs: {consumers?.stats?.activeConsumers || 0} ({consumers?.stats?.activeRate?.toFixed(1) || 0}%)</Text>
-         <Text>Nouveaux Consommateurs: {consumers?.stats?.newConsumers || 0}</Text>
-         
-         <Text style={{ marginTop: 10, marginBottom: 5, fontWeight: 'bold' }}>Distribution par Quartier</Text>
-         <View style={styles.table}>
-           <View style={styles.tableRow}>
-             <Text style={styles.tableColHeader}>Quartier</Text>
-             <Text style={styles.tableColHeader}>Nombre</Text>
-             <Text style={styles.tableColHeader}>% du Total</Text>
-           </View>
-           
-           {consumers?.distribution?.slice(0, 5).map((zone, index) => (
-             <View style={styles.tableRow} key={index}>
-               <Text style={styles.tableCol}>{zone.name}</Text>
-               <Text style={styles.tableCol}>{zone.consumer_count}</Text>
-               <Text style={styles.tableCol}>
-                 {consumers.stats.totalConsumers ? 
-                   ((zone.consumer_count / consumers.stats.totalConsumers) * 100).toFixed(1) + '%' : 
-                   '0%'
-                 }
-               </Text>
-             </View>
-           ))}
-         </View>
-       </View>
-       
-       {/* Pied de page */}
-       <View style={styles.footer}>
-         <Text>Rapport généré le {format(new Date(), 'dd MMMM yyyy à HH:mm', { locale: fr })}</Text>
-         <Text>GesVillage - Module Analytique</Text>
-       </View>
-     </Page>
-   </Document>
- );
+        <Text style={styles.footer}>
+          Rapport généré le {format(new Date(), 'dd MMMM yyyy à HH:mm')}
+        </Text>
+        <Text style={styles.pageNumber}>1</Text>
+      </Page>
+
+      {/* Page Consommateurs */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Analyse des Consommateurs</Text>
+        <PDFConsumersSection data={consumers} />
+        <Text style={styles.pageNumber}>2</Text>
+      </Page>
+
+      {/* Page Compteurs */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Analyse des Compteurs</Text>
+        <PDFMetersSection data={meters} />
+        <Text style={styles.pageNumber}>3</Text>
+      </Page>
+
+      {/* Page Consommation */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Analyse de la Consommation</Text>
+        <PDFConsumptionSection data={consumption} />
+        <Text style={styles.pageNumber}>4</Text>
+      </Page>
+
+      {/* Page Factures */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Analyse des Factures</Text>
+        <PDFInvoicesSection data={invoices} />
+        <Text style={styles.pageNumber}>5</Text>
+      </Page>
+
+      {/* Page Dépenses */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Analyse des Dépenses</Text>
+        <PDFExpensesSection data={expenses} />
+        <Text style={styles.pageNumber}>6</Text>
+      </Page>
+
+      {/* Page Bilan */}
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.sectionTitle}>Bilan Financier</Text>
+        <PDFSummarySection data={summary} />
+        <Text style={styles.footer}>
+          GesVillage - Module Analytique
+        </Text>
+        <Text style={styles.pageNumber}>7</Text>
+      </Page>
+    </Document>
+  );
+};
+
+// Fonction pour générer le PDF de manière asynchrone
+export const generateAnalyticsPDF = async (data, period) => {
+  return pdf(<AnalyticsPDF data={data} period={period} />).toBlob();
 };
 
 export default AnalyticsPDF;
-           

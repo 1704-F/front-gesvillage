@@ -19,7 +19,7 @@ import ExpensesSection from './sections/ExpensesSection';
 import SummarySection from './sections/SummarySection';
 import HistoricalBalanceSheetSection from './HistoricalBalanceSheetSection';
 
-
+import DownloadButton from './DownloadButton';
 // Composant PDF
 import AnalyticsPDF from './AnalyticsPDF';
 
@@ -131,65 +131,22 @@ const AnalyticsPage = () => {
  }, [currentPeriod[0], currentPeriod[1]]);
 
  // Composant de bouton de téléchargement
- const DownloadButton = () => {
-  const [loading, setLoading] = useState(false);
-  
+ const DownloadButtonSection = () => {
   if (!data.serviceInfo) {
     return null;
   }
   
-  const handleDownload = async () => {
-    try {
-      setLoading(true);
-      
-      const startDate = format(currentPeriod[0], 'yyyy-MM-dd');
-      const endDate = format(currentPeriod[1], 'yyyy-MM-dd');
-      
-      // Appel API pour télécharger le PDF
-      const response = await api.get('/analytics/export-pdf', {
-        params: {
-          start_date: startDate,
-          end_date: endDate
-        },
-        responseType: 'blob' // Important pour télécharger des fichiers
-      });
-      
-      // Créer un URL temporaire et déclencher le téléchargement
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Rapport_Analytique_${format(currentPeriod[0], 'dd-MM-yyyy')}_${format(currentPeriod[1], 'dd-MM-yyyy')}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      
-      // Nettoyage
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(link);
-      
-    } catch (error) {
-      console.error('Erreur lors du téléchargement du rapport:', error);
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de télécharger le rapport analytique"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-  
   return (
-    <Button 
-      variant="outline"
-      className="flex items-center gap-2 whitespace-nowrap"
-      disabled={loading}
-      onClick={handleDownload}
-    >
-      <Download className="h-4 w-4" />
-      {loading ? 'Génération...' : 'Télécharger le rapport'}
-    </Button>
+    <div className="ml-4">
+      <DownloadButton 
+        data={data}
+        period={currentPeriod}
+      />
+    </div>
   );
 };
+
+
 
  if (loading) {
    return (
@@ -212,11 +169,17 @@ const AnalyticsPage = () => {
            onCurrentRangeChange={setCurrentPeriod}
          />
 
-         {data.serviceInfo && (
-           <div className="ml-4">
-             <DownloadButton />
-           </div>
-         )}
+{data.serviceInfo && (
+  <div className="ml-4">
+    <DownloadButton 
+      data={data}
+      period={currentPeriod}
+    />
+  </div>
+)}
+
+         
+
        </div>
      </div>
 
