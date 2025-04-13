@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { lazy, Suspense } from 'react';
 import { Card } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { Button } from "../ui/button";
@@ -24,9 +25,13 @@ import {
   Check,
   Download,
   FileText,
-  GiftIcon
+  GiftIcon,
+  CreditCard
 } from 'lucide-react';
+
 import { axiosPrivate as api } from '../../utils/axios';
+
+const LoansPage = lazy(() => import('../../pages/LoansPage'));
 
 // Composant pour le formulaire d'employé
 const EmployeeForm = ({ isOpen, onClose, editingEmployee, onSubmit }) => {
@@ -1844,6 +1849,13 @@ const handleDownloadMaintenance = async (maintenanceId) => {
            Dons ({donations.length})
           </TabsTrigger>
 
+          <TabsTrigger value="loans">
+  <CreditCard className="w-4 h-4 mr-2" />
+  Emprunts
+</TabsTrigger>
+
+
+
           <TabsTrigger value="salaries">
            <DollarSign className="w-4 h-4 mr-2" />
             Salaires
@@ -2379,6 +2391,18 @@ const handleDownloadMaintenance = async (maintenanceId) => {
     />
   </Card>
 </TabsContent>
+
+<TabsContent value="loans">
+  <Suspense fallback={
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+    </div>
+  }>
+    <LoansPage />
+  </Suspense>
+</TabsContent>
+
+
 
 
 

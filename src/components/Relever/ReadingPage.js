@@ -1270,6 +1270,20 @@ useEffect(() => {
           </TabsTrigger>
         </TabsList>
 
+        {activeTab === "readings" && readings.length === 0 && !loading && (
+  <div className="bg-blue-50 p-6 rounded-lg flex items-center space-x-4 mb-4">
+    <Calendar className="h-10 w-10 text-blue-500" />
+    <div>
+      <h3 className="text-lg font-medium text-blue-800">Sélectionnez une période</h3>
+      <p className="text-blue-600">
+        Veuillez sélectionner les dates de début et de fin pour afficher les relevés de consommation correspondants.
+      </p>
+    </div>
+  </div>
+)}
+
+
+
         <TabsContent value="readings">
           <Card>
             <Table>
