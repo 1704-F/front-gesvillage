@@ -20,6 +20,13 @@ const LoanForm = ({ isOpen, onClose, editingLoan, employees, onSubmit }) => {
     responsibles: []
   });
 
+  // État séparé pour la sélection en cours d'un responsable
+  const [currentResponsible, setCurrentResponsible] = useState({
+    employee_id: '',
+    role: 'manager'
+  });
+
+  // État pour la liste des responsables sélectionnés
   const [selectedResponsibles, setSelectedResponsibles] = useState([]);
 
   useEffect(() => {
@@ -40,11 +47,13 @@ const LoanForm = ({ isOpen, onClose, editingLoan, employees, onSubmit }) => {
           role: r.LoanResponsible?.role || 'manager',
           name: `${r.first_name} ${r.last_name}`
         })));
+      } else {
+        setSelectedResponsibles([]);
       }
     } else {
       resetForm();
     }
-  }, [editingLoan]);
+  }, [editingLoan, isOpen]); // Ajout de isOpen pour réinitialiser le formulaire quand il s'ouvre
 
   const resetForm = () => {
     setFormData({
@@ -60,6 +69,10 @@ const LoanForm = ({ isOpen, onClose, editingLoan, employees, onSubmit }) => {
       responsibles: []
     });
     setSelectedResponsibles([]);
+    setCurrentResponsible({
+      employee_id: '',
+      role: 'manager'
+    });
   };
 
   const handleSubmit = (e) => {
@@ -78,31 +91,35 @@ const LoanForm = ({ isOpen, onClose, editingLoan, employees, onSubmit }) => {
   };
 
   const handleAddResponsible = () => {
-    if (!formData.responsible_id || !formData.responsible_role) return;
+    if (!currentResponsible.employee_id) return;
     
-    const employee = employees.find(e => e.id.toString() === formData.responsible_id);
+    const employee = employees.find(e => e.id.toString() === currentResponsible.employee_id);
     if (!employee) return;
     
     const newResponsible = {
-      employee_id: formData.responsible_id,
-      role: formData.responsible_role,
+      employee_id: currentResponsible.employee_id,
+      role: currentResponsible.role,
       name: `${employee.first_name} ${employee.last_name}`
     };
     
-    setSelectedResponsibles([...selectedResponsibles, newResponsible]);
+    // Vérifier si ce responsable existe déjà
+    const exists = selectedResponsibles.some(
+      r => r.employee_id === newResponsible.employee_id && r.role === newResponsible.role
+    );
     
-    // Reset selection fields
-    setFormData({
-      ...formData,
-      responsible_id: '',
-      responsible_role: 'manager'
-    });
+    if (!exists) {
+      setSelectedResponsibles(prev => [...prev, newResponsible]);
+      
+      // Reset selection fields
+      setCurrentResponsible({
+        employee_id: '',
+        role: 'manager'
+      });
+    }
   };
 
   const handleRemoveResponsible = (index) => {
-    const updatedResponsibles = [...selectedResponsibles];
-    updatedResponsibles.splice(index, 1);
-    setSelectedResponsibles(updatedResponsibles);
+    setSelectedResponsibles(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -226,8 +243,8 @@ const LoanForm = ({ isOpen, onClose, editingLoan, employees, onSubmit }) => {
             
             <div className="grid grid-cols-[2fr_1fr_auto] gap-2 mb-2">
               <Select
-                value={formData.responsible_id || ''}
-                onValueChange={(value) => setFormData({ ...formData, responsible_id: value })}
+                value={currentResponsible.employee_id}
+                onValueChange={(value) => setCurrentResponsible(prev => ({ ...prev, employee_id: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un employé" />
@@ -242,8 +259,8 @@ const LoanForm = ({ isOpen, onClose, editingLoan, employees, onSubmit }) => {
               </Select>
               
               <Select
-                value={formData.responsible_role || 'manager'}
-                onValueChange={(value) => setFormData({ ...formData, responsible_role: value })}
+                value={currentResponsible.role}
+                onValueChange={(value) => setCurrentResponsible(prev => ({ ...prev, role: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Rôle" />

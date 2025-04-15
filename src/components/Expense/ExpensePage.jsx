@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Badge } from "../ui/badge";
 import { useToast } from "../ui/toast/use-toast";
+import ExpenseStatistics from './ExpenseStatistics';
 
 import { 
   DollarSign,  // Pour les montants
@@ -34,6 +35,7 @@ const ExpensePage = () => {
   const [categoryModal, setCategoryModal] = useState({ isOpen: false, editing: null });
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [employees, setEmployees] = useState([]);
+  const [statistics, setStatistics] = useState(null);
 
  // Nouveaux états pour la pagination
  const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -45,13 +47,18 @@ const ExpensePage = () => {
    totalPages: 0,
  });
 
+ const [searchTerm, setSearchTerm] = useState('');
+
+ const [sortField, setSortField] = useState('date');
+ const [sortOrder, setSortOrder] = useState('DESC');
+
   // États pour les filtres
    const [dateRange, setDateRange] = useState([
       (() => {
-        const date = new Date('2024-01-01');
-        //const date = new Date();
-        //date.setMonth(date.getMonth() - 1);
-        //date.setDate(1);
+        
+        const date = new Date();
+        date.setMonth(date.getMonth() - 1);
+        date.setDate(1);
         return date;
       })(),
       new Date()
@@ -69,7 +76,8 @@ const ExpensePage = () => {
   useEffect(() => {
     Promise.all([
       fetchExpenses(),
-      fetchCategories()
+      fetchCategories(),
+      fetchStatistics()
     ]).finally(() => setLoading(false));
   }, [dateRange, statusFilter, categoryFilter]);
 
@@ -86,6 +94,9 @@ const ExpensePage = () => {
           end_date: dateRange[1] ? format(dateRange[1], 'yyyy-MM-dd') : undefined,
           status: statusFilter !== 'all' ? statusFilter : undefined,
           category: categoryFilter !== 'all' ? categoryFilter : undefined,
+          search: searchTerm || undefined,
+          sort_by: sortField,
+          sort_order: sortOrder
         },
       });
       setExpenses(response.data.data);
@@ -276,6 +287,22 @@ const ExpensePage = () => {
     }
   };
 
+  const fetchStatistics = async () => {
+    try {
+      const response = await api.get('/expenses/statistics', {
+        params: {
+          start_date: dateRange[0] ? format(dateRange[0], 'yyyy-MM-dd') : undefined,
+          end_date: dateRange[1] ? format(dateRange[1], 'yyyy-MM-dd') : undefined
+        }
+      });
+      setStatistics(response.data.data);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques:', error);
+    }
+  };
+
+
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -350,7 +377,9 @@ const ExpensePage = () => {
 </Button>
 
         </div>
+        
       </div>
+      <ExpenseStatistics statistics={statistics} />
 
       
 {/* Table des dépenses */}
@@ -1017,4 +1046,4 @@ const ExpenseDetails = ({ expense, onClose }) => {
 
 
 
-export default ExpensePage;
+export default ExpensePage; 

@@ -183,9 +183,15 @@ const LoansPage = () => {
         }
       });
       
-      // Ajouter les responsables
+      // Ajouter les responsables (en tant que JSON stringifié)
       if (data.responsibles && data.responsibles.length > 0) {
-        formData.append('responsibles', JSON.stringify(data.responsibles));
+        // Assurez-vous que chaque responsable a un employee_id et un role
+        const validResponsibles = data.responsibles.filter(
+          resp => resp.employee_id && resp.role
+        );
+        
+        console.log('Responsables envoyés:', validResponsibles);
+        formData.append('responsibles', JSON.stringify(validResponsibles));
       }
       
       // Ajouter le fichier s'il existe
@@ -292,29 +298,53 @@ const LoansPage = () => {
     setRepaymentModal({ isOpen: true, loan });
   };
 
-  const handleDownloadAttachment = async (attachmentId) => {
+  const getAttachmentInfo = async (attachmentId) => {
     try {
-      const response = await api.get(`/loans/attachments/${attachmentId}`, {
-        responseType: 'blob'
-      });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `attachment-${attachmentId}`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      // Cette requête doit être ajoutée à votre contrôleur et vos routes
+      const response = await api.get(`/loans/attachments/${attachmentId}/info`);
+      return response.data.data;
     } catch (error) {
-      console.error('Erreur lors du téléchargement de la pièce jointe:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de télécharger la pièce jointe",
-        variant: "destructive"
-      });
+      console.error('Erreur lors de la récupération des infos de la pièce jointe:', error);
+      return null;
     }
   };
+
+ // Modifiez la fonction handleDownloadAttachment dans votre fichier LoansPage.jsx
+ const handleDownloadAttachment = async (attachmentId) => {
+  try {
+    // Obtenir d'abord les infos de la pièce jointe pour connaître son nom original
+    const attachmentInfo = await getAttachmentInfo(attachmentId);
+    
+    const response = await api.get(`/loans/attachments/${attachmentId}`, {
+      responseType: 'blob'
+    });
+    
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Utiliser le nom original du fichier s'il est disponible
+    if (attachmentInfo && attachmentInfo.file_name) {
+      link.setAttribute('download', attachmentInfo.file_name);
+    } else {
+      // Sinon, ne pas spécifier de nom et laisser le navigateur le déterminer
+      // basé sur les en-têtes HTTP
+      link.setAttribute('download', '');
+    }
+    
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Erreur lors du téléchargement de la pièce jointe:', error);
+    toast({
+      title: "Erreur",
+      description: "Impossible de télécharger la pièce jointe",
+      variant: "destructive"
+    });
+  }
+};
 
   // Helper pour formatter les données
   const formatDate = (dateString) => {

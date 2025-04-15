@@ -441,28 +441,42 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
   <SelectTrigger>
     <SelectValue placeholder="Sélectionner un compteur" />
   </SelectTrigger>
+
   <SelectContent>
-    <div className="sticky top-0 bg-white p-2">
-      <Input
-        placeholder="Rechercher un compteur..."
-        value={searchMeter}
-        onChange={(e) => setSearchMeter(e.target.value)}
-      />
-    </div>
-    <ScrollArea className="h-72">
-      {meters
-        .filter(meter => 
-          `${meter.meter_number} ${meter.user?.first_name} ${meter.user?.last_name} ${meter.serial_number}`
-          .toLowerCase()
-          .includes(searchMeter.toLowerCase())
-        )
-        .map((meter) => (
-          <SelectItem key={meter.id} value={String(meter.id)}>
-            {`${meter.meter_number} - ${meter.user?.first_name} ${meter.user?.last_name} (${meter.user?.name})`}
-          </SelectItem>
-        ))}
-    </ScrollArea>
-  </SelectContent>
+  <div className="sticky top-0 bg-white p-2">
+    <Input
+      placeholder="Rechercher un compteur..."
+      value={searchMeter}
+      onChange={(e) => setSearchMeter(e.target.value)}
+    />
+  </div>
+  <ScrollArea className="h-72">
+    {meters
+      .sort((a, b) => {
+        // Extraire les parties numériques si possible
+        const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
+        const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
+        
+        if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
+          // Si les préfixes sont identiques (ex: MTR-), comparer les numéros
+          return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+        }
+        // Sinon comparer les chaînes entières
+        return a.meter_number.localeCompare(b.meter_number);
+      })
+      .filter(meter => 
+        `${meter.meter_number} ${meter.user?.first_name} ${meter.user?.last_name} ${meter.serial_number}`
+        .toLowerCase()
+        .includes(searchMeter.toLowerCase())
+      )
+      .map((meter) => (
+        <SelectItem key={meter.id} value={String(meter.id)}>
+          {`${meter.meter_number} - ${meter.user?.first_name} ${meter.user?.last_name} (${meter.user?.name})`}
+        </SelectItem>
+      ))}
+  </ScrollArea>
+</SelectContent>
+
 </Select>
 
                 </div>
@@ -672,6 +686,20 @@ const MetersWithoutReadings = ({ dateRange }) => {
     }
   };
 
+ // Triez les compteurs avant de les afficher
+const sortedMeters = [...meters].sort((a, b) => {
+  // Extraire les parties numériques si possible
+  const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
+  const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
+  
+  if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
+    // Si les préfixes sont identiques (ex: MTR-), comparer les numéros
+    return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+  }
+  // Sinon comparer les chaînes entières
+  return a.meter_number.localeCompare(b.meter_number);
+});
+
   // Premier useEffect pour le chargement initial
   useEffect(() => {
     if (dateRange[0] && dateRange[1]) {
@@ -724,56 +752,54 @@ const MetersWithoutReadings = ({ dateRange }) => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {loading ? (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center py-8">
-                Chargement des données...
-              </TableCell>
-            </TableRow>
-          ) : meters.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center py-8">
-                <div className="flex flex-col items-center justify-center text-gray-500">
-                  <FileText className="h-8 w-8 mb-2" />
-                  <p>Tous les compteurs ont des relevés pour cette période.</p>
-                </div>
-              </TableCell>
-            </TableRow>
-          ) : (
-            meters.map((meter, index) => (
-              <TableRow key={meter.id}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{meter.meter_number}</TableCell>
-                <TableCell>{meter.serial_number || 'N/A'}</TableCell>
-                <TableCell>
-                  {meter.user ? 
-                    <div>
-                      <div className="font-medium">{meter.user.first_name} {meter.user.last_name}</div>
-                      <div className="text-sm text-gray-500">{meter.user.name}</div>
-                    </div> : 
-                    'N/A'}
-                </TableCell>
-                <TableCell>{meter.location || 'N/A'}</TableCell>
-                <TableCell>
-                  <Button 
-                    size="sm" 
-                    onClick={() => {
-                      // Ici vous pourriez implémenter une redirection vers le formulaire
-                      // d'ajout de relevé avec ce compteur présélectionné
-                      window.dispatchEvent(new CustomEvent('create-reading-for-meter', { 
-                        detail: { meterId: meter.id }
-                      }));
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Ajouter un relevé
-                  </Button>
-                </TableCell>
+        {loading ? (
+  <TableRow>
+    <TableCell colSpan={6} className="text-center py-8">
+      Chargement des données...
+    </TableCell>
+  </TableRow>
+) : sortedMeters.length === 0 ? (
+  <TableRow>
+    <TableCell colSpan={6} className="text-center py-8">
+      <div className="flex flex-col items-center justify-center text-gray-500">
+        <FileText className="h-8 w-8 mb-2" />
+        <p>Tous les compteurs ont des relevés pour cette période.</p>
+      </div>
+    </TableCell>
+  </TableRow>
+) : (
+  sortedMeters.map((meter, index) => (
+    <TableRow key={meter.id}>
+      <TableCell>{index + 1}</TableCell>
+      <TableCell>{meter.meter_number}</TableCell>
+      <TableCell>{meter.serial_number || 'N/A'}</TableCell>
+      <TableCell>
+        {meter.user ? 
+          <div>
+            <div className="font-medium">{meter.user.first_name} {meter.user.last_name}</div>
+            <div className="text-sm text-gray-500">{meter.user.name}</div>
+          </div> : 
+          'N/A'}
+      </TableCell>
+      <TableCell>{meter.location || 'N/A'}</TableCell>
+      <TableCell>
+        <Button 
+          size="sm" 
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('create-reading-for-meter', { 
+              detail: { meterId: meter.id }
+            }));
+          }}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Ajouter un relevé
+        </Button>
+      </TableCell>
+    </TableRow>
+  ))
+)}
+         
 
-               
-              </TableRow>
-            ))
-          )}
         </TableBody>
       </Table>
     </Card>
@@ -815,7 +841,27 @@ const ReadingPage = () => {
 
   const [selectedMeterId, setSelectedMeterId] = useState(null);
 
+    // Fonction de tri pour les numéros de compteur
+const sortByMeterNumber = (a, b) => {
+  // S'assurer que les deux objets ont un compteur associé
+  if (!a.meter || !b.meter) return 0;
+  
+  // Extraire les parties numériques si possible
+  const aMatch = a.meter.meter_number.match(/(\D+)-?(\d+)/);
+  const bMatch = b.meter.meter_number.match(/(\D+)-?(\d+)/);
+  
+  if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
+    // Si les préfixes sont identiques (ex: MTR-), comparer les numéros
+    return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+  }
+  // Sinon comparer les chaînes entières
+  return a.meter.meter_number.localeCompare(b.meter.meter_number);
+};
+
   const currentReadings = readings;
+  const sortedReadings = [...currentReadings].sort(sortByMeterNumber);
+
+  
 
 
   
@@ -840,6 +886,8 @@ const ReadingPage = () => {
     window.addEventListener('create-reading-for-meter', handleCreateReadingForMeter);
     return () => window.removeEventListener('create-reading-for-meter', handleCreateReadingForMeter);
   }, [meters]);
+
+
 
 
   const fetchDashboardData = async () => {
@@ -1316,11 +1364,11 @@ useEffect(() => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentReadings.map((reading, index) => (
-                  <TableRow 
-                    key={reading.id}
-                    className={reading.status === 'validated' ? 'bg-green-50/50' : ''}
-                  >
+              {sortedReadings.map((reading, index) => (
+  <TableRow 
+    key={reading.id}
+    className={reading.status === 'validated' ? 'bg-green-50/50' : ''}
+  >
                     <TableCell>
                       <input
                         type="checkbox"
