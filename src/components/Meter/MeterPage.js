@@ -34,6 +34,7 @@ import {
 } from "../ui/alert-dialog";
 import { axiosPublic, axiosPrivate } from '../../utils/axios';
 import MeterPDFDownloadButton from './MeterPDFDownloadButton'; 
+import MeterStatistics from './MeterStatistics';
 const api = axiosPrivate; 
 
 const MeterPage = () => {
@@ -51,6 +52,7 @@ const MeterPage = () => {
 
  // États
 const [meters, setMeters] = useState([]); // Déplacer en premier
+const [loading, setLoading] = useState(true);
 const [currentPage, setCurrentPage] = useState(1);
 const [itemsPerPage, setItemsPerPage] = useState(50);
 const [consumers, setConsumers] = useState([]);
@@ -60,7 +62,9 @@ const [selectedMeter, setSelectedMeter] = useState(null);
 const [searchTerm, setSearchTerm] = useState('');
 const [nextMeterNumber, setNextMeterNumber] = useState('');
 const [filterStatus, setFilterStatus] = useState('active');
+const [statusFilter, setStatusFilter] = useState('active');
 const [quartiers, setQuartiers] = useState([]);
+const [statistics, setStatistics] = useState(null);
 const { toast } = useToast();
 
 
@@ -72,9 +76,13 @@ const currentMeters = meters.slice(startIndex, endIndex);
 
   // Chargement initial des données
   useEffect(() => {
-    fetchMeters();
-    fetchConsumers();
-  }, [filterStatus]);
+    Promise.all([
+      fetchMeters(),
+      fetchConsumers(),
+      fetchStatistics()
+    ]).finally(() => setLoading(false));
+  }, [statusFilter]);
+
 
   useEffect(() => {
     const fetchQuartiers = async () => {
@@ -96,14 +104,29 @@ const currentMeters = meters.slice(startIndex, endIndex);
   const fetchMeters = async () => {
     try {
       const response = await api.get('/meters', {
-        params: { status: filterStatus === 'all' ? '' : filterStatus },
+        params: { status: statusFilter !== 'all' ? statusFilter : undefined }
       });
-      setMeters(response.data.data);
+      
+      // Tri des compteurs par numéro croissant
+      const sortedMeters = response.data.data.sort((a, b) => {
+        // Extraire les parties numériques
+        const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
+        const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
+        
+        if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
+          // Si les préfixes sont identiques (ex: MTR-), comparer les numéros
+          return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+        }
+        // Sinon comparer les chaînes entières
+        return a.meter_number.localeCompare(b.meter_number);
+      });
+      
+      setMeters(sortedMeters);
     } catch (error) {
       toast({
+        variant: "destructive",
         title: "Erreur",
-        description: "Impossible de récupérer les compteurs",
-        variant: "destructive"
+        description: "Impossible de récupérer les compteurs."
       });
     }
   };
@@ -117,6 +140,20 @@ const currentMeters = meters.slice(startIndex, endIndex);
         title: "Erreur",
         description: "Impossible de récupérer la liste des consommateurs",
         variant: "destructive"
+      });
+    }
+  };
+
+  const fetchStatistics = async () => {
+    try {
+      const response = await api.get('/meters/statistics');
+      setStatistics(response.data.data);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de récupérer les statistiques."
       });
     }
   };
@@ -449,6 +486,8 @@ const currentMeters = meters.slice(startIndex, endIndex);
     </Button>
   </div>
 </div>
+{/* Section des statistiques */}
+<MeterStatistics statistics={statistics} />
       
 
       <Card>
@@ -457,7 +496,6 @@ const currentMeters = meters.slice(startIndex, endIndex);
             <TableHeader>
               <TableRow>
                 <TableHead>Numéro</TableHead>
-                <TableHead>N° Série</TableHead>
                 <TableHead>Consommateur</TableHead>
                 <TableHead>Emplacement</TableHead>
                 <TableHead>Type</TableHead>
@@ -474,21 +512,29 @@ const currentMeters = meters.slice(startIndex, endIndex);
       )
                 .map(meter => (
                   <TableRow key={meter.id}>
-                    <TableCell>{meter.meter_number}</TableCell>
-                    
-
                     <TableCell>
-  <div className="flex items-center space-x-2">
-    {normalizeString(meter.serial_number)}
+  <div>
+    <div className="font-medium">{meter.meter_number}</div>
+    <div className="text-xs text-gray-500">
+      {meter.serial_number || 'N/A'}
+    </div>
   </div>
 </TableCell>
+                    
 
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <User className="h-4 w-4" />
-                        <span>{meter.user?.first_name} {meter.user?.last_name}</span>
-                      </div>
-                    </TableCell>
+                
+
+<TableCell>
+  <div>
+    <div className="flex items-center space-x-2">
+      <User className="h-4 w-4" />
+      <span>{meter.user?.first_name} {meter.user?.last_name}</span>
+    </div>
+    <div className="text-xs text-gray-500 ml-6">
+    {meter.user?.name || 'N/A'}  {meter.user?.phone_number || 'N/A'} 
+    </div>
+  </div>
+</TableCell>
 
                     <TableCell>
   <div className="flex items-center space-x-2">

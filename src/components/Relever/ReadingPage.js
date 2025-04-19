@@ -781,7 +781,7 @@ const sortedMeters = [...meters].sort((a, b) => {
           </div> : 
           'N/A'}
       </TableCell>
-      <TableCell>{meter.location || 'N/A'}</TableCell>
+      <TableCell>{meter.quartier?.name || meter.location || 'N/A'}</TableCell>
       <TableCell>
         <Button 
           size="sm" 
