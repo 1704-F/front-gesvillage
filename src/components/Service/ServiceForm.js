@@ -167,6 +167,23 @@ const ServicePage = () => {
     }
   };
 
+  const handleToggleAppAuthorization = async (serviceId) => {
+    try {
+      await api.patch(`/services/${serviceId}/toggle-app-authorization`);
+      fetchDashboardData(); // Recharger les données
+      toast({
+        title: "Succès",
+        description: "Autorisation d'application mise à jour avec succès"
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour l'autorisation d'application",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Chargement des données initiales
   useEffect(() => {
     fetchDashboardData();
@@ -242,7 +259,7 @@ const ServicePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const formDataToSend = new FormData();
+      const formDataToSend = new FormData(); 
 
       // Ajouter tous les champs du formulaire
       Object.keys(formData).forEach(key => {
@@ -486,6 +503,7 @@ const ServicePage = () => {
               <TableHead>Contact</TableHead>
               <TableHead>Zone</TableHead>
               <TableHead>Statut</TableHead>
+              <TableHead>App mobile</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -519,11 +537,21 @@ const ServicePage = () => {
                   <TableCell>
                     {service.zoneName || 'Non défini'}
                   </TableCell>
+
                   <TableCell>
                     <Badge variant={service.active ? "success" : "secondary"}>
                       {service.active ? 'Actif' : 'Inactif'}
                     </Badge>
                   </TableCell>
+                  <TableCell>
+  <Badge 
+    variant={service.app_authorized ? "success" : "outline"} 
+    className="cursor-pointer"
+    onClick={() => handleToggleAppAuthorization(service.id)}
+  >
+    {service.app_authorized ? 'Autorisé' : 'Non autorisé'}
+  </Badge>
+</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button
