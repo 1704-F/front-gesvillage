@@ -87,7 +87,7 @@ const currentMeters = meters.slice(startIndex, endIndex);
   useEffect(() => {
     const fetchQuartiers = async () => {
       try {
-        const response = await api.get('/geo/zones/quartiers');
+        const response = await api.get('/geo/zones/quartiers'); 
         setQuartiers(response.data.data);
       } catch (error) {
         toast({
@@ -465,21 +465,24 @@ const currentMeters = meters.slice(startIndex, endIndex);
         className="pl-9"
       />
     </div>
-    <Select value={filterStatus} onValueChange={setFilterStatus}>
-      <SelectTrigger className="w-40">
-        <SelectValue placeholder="Statut" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="all">Tous</SelectItem>
-        <SelectItem value="active">Actif</SelectItem>
-        <SelectItem value="inactive">Inactif</SelectItem>
-      </SelectContent>
-    </Select>
-    <MeterPDFDownloadButton 
-      meters={meters} 
-      quartiers={quartiers} 
-      filterStatus={filterStatus} 
-    />
+
+    <Select value={statusFilter} onValueChange={setStatusFilter}>
+  <SelectTrigger className="w-40">
+    <SelectValue placeholder="Statut" />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="all">Tous</SelectItem>
+    <SelectItem value="active">Actif</SelectItem>
+    <SelectItem value="inactive">Inactif</SelectItem> 
+  </SelectContent>
+</Select>
+
+    
+<MeterPDFDownloadButton 
+  meters={meters} 
+  quartiers={quartiers} 
+  filterStatus={statusFilter} // Changez filterStatus par statusFilter ici
+/>
     <Button onClick={handleAdd}>
       <Plus className="h-4 w-4 mr-2" />
       Ajouter

@@ -28,10 +28,13 @@ import {
   GiftIcon,
   CreditCard
 } from 'lucide-react';
+import SalaryStatistics from '../../components/salaries/SalaryStatistics';
 
 import { axiosPrivate as api } from '../../utils/axios';
 
+
 const LoansPage = lazy(() => import('../../pages/LoansPage'));
+
 
 // Composant pour le formulaire d'employé
 const EmployeeForm = ({ isOpen, onClose, editingEmployee, onSubmit }) => {
@@ -904,6 +907,176 @@ const Pagination = ({ pagination, onPageChange }) => {
     );
   };
 
+  const MissingEmployeesModal = ({ isOpen, onClose, month, year, onGenerate }) => {
+    const [missingEmployees, setMissingEmployees] = useState([]);
+    const [selectedEmployees, setSelectedEmployees] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
+    
+    useEffect(() => {
+      if (isOpen) {
+        fetchMissingEmployees();
+      }
+    }, [isOpen, month, year]);
+    
+    const fetchMissingEmployees = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/salaries/missing-employees', {
+          params: { month, year }
+        });
+        
+        if (response.data.success) {
+          setMissingEmployees(response.data.data);
+        }
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les employés sans salaire",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    const handleSelectAll = (checked) => {
+      if (checked) {
+        setSelectedEmployees(missingEmployees.map(emp => emp.id));
+      } else {
+        setSelectedEmployees([]);
+      }
+    };
+    
+    const handleSelectEmployee = (checked, empId) => {
+      if (checked) {
+        setSelectedEmployees(prev => [...prev, empId]);
+      } else {
+        setSelectedEmployees(prev => prev.filter(id => id !== empId));
+      }
+    };
+    
+    const handleGenerate = async () => {
+      if (selectedEmployees.length === 0) {
+        toast({
+          title: "Avertissement",
+          description: "Veuillez sélectionner au moins un employé",
+          variant: "warning"
+        });
+        return;
+      }
+      
+      try {
+        const response = await api.post('/salaries/generate', {
+          month,
+          year,
+          employee_ids: selectedEmployees
+        });
+        
+        if (response.data.success) {
+          toast({
+            title: "Succès",
+            description: `${response.data.data.generated.length} salaires générés avec succès`
+          });
+          onGenerate();
+          onClose();
+        }
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de générer les salaires",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>
+              Employés sans salaire - {month}/{year}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+            </div>
+          ) : missingEmployees.length === 0 ? (
+            <div className="py-8 text-center text-gray-500">
+              Tous les employés ont un salaire généré pour ce mois.
+            </div>
+          ) : (
+            <>
+              <div className="pb-4 border-b flex items-center">
+                <Checkbox 
+                  checked={selectedEmployees.length === missingEmployees.length}
+                  onCheckedChange={handleSelectAll}
+                  id="select-all"
+                />
+                <label htmlFor="select-all" className="ml-2 text-sm font-medium">
+                  Sélectionner tous ({missingEmployees.length})
+                </label>
+              </div>
+              
+              <div className="max-h-[400px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12"></TableHead>
+                      <TableHead>Nom</TableHead>
+                      <TableHead>Poste</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Salaire de base</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {missingEmployees.map((employee) => (
+                      <TableRow key={employee.id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedEmployees.includes(employee.id)}
+                            onCheckedChange={(checked) => handleSelectEmployee(checked, employee.id)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {employee.first_name} {employee.last_name}
+                        </TableCell>
+                        <TableCell>{employee.job_title}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {employee.type === 'salary' ? 'Salarié' : 'Horaire'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {parseFloat(employee.salary).toLocaleString()} FCFA
+                          {employee.type === 'hourly' && '/heure'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={onClose}>
+                  Annuler
+                </Button>
+                <Button 
+                  onClick={handleGenerate}
+                  disabled={selectedEmployees.length === 0}
+                >
+                  Générer {selectedEmployees.length > 0 && `(${selectedEmployees.length})`}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
 
   const ManagementPage = () => {
     // États
@@ -939,6 +1112,7 @@ const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear())
 const [paymentModalData, setPaymentModalData] = useState(null);
 const [paymentMethod, setPaymentMethod] = useState('');
 const [paymentComments, setPaymentComments] = useState('');
+const [salaryStats, setSalaryStats] = useState(null);
 
 const [showHistory, setShowHistory] = useState(false);
 
@@ -981,6 +1155,8 @@ const [pagination, setPagination] = useState({
     total: 0
   }
 });
+
+const [missingEmployeesModalOpen, setMissingEmployeesModalOpen] = useState(false);
 
     
     // États des filtres
@@ -1163,6 +1339,27 @@ const handleProcessPayment = async () => {
         toast({
           title: "Erreur",
           description: "Impossible de récupérer les salaires",
+          variant: "destructive"
+        });
+      }
+    };
+
+    const fetchSalaryStatistics = async () => {
+      try {
+        const response = await api.get('/salaries/statistics', {
+          params: {
+            month: selectedMonth,
+            year: selectedYear
+          }
+        });
+        
+        if (response.data.success) {
+          setSalaryStats(response.data.data);
+        }
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les statistiques des salaires",
           variant: "destructive"
         });
       }
@@ -1459,8 +1656,17 @@ const generateMonthlySalaries = async () => {
 
 // Effect pour charger les salaires quand le mois/année change
 useEffect(() => {
-  fetchSalaries();
-}, [selectedMonth, selectedYear]);
+  if (activeTab === 'salaries') {
+    fetchSalaries();
+    fetchSalaryStatistics();
+  }
+}, [activeTab, selectedMonth, selectedYear]);
+
+useEffect(() => {
+  if (activeTab === 'salaries' && !salaryStats) {
+    fetchSalaryStatistics();
+  }
+}, [activeTab]);
       
 
     // Handlers pour les employés
@@ -1836,7 +2042,7 @@ const handleDownloadMaintenance = async (maintenanceId) => {
 
           <TabsTrigger value="maintenance">
             <Wrench className="w-4 h-4 mr-2" />
-            Maintenances ({maintenances.length})
+            Maintenances ({maintenances.length}) 
           </TabsTrigger>
 
           <TabsTrigger value="schedule">
@@ -2117,6 +2323,7 @@ const handleDownloadMaintenance = async (maintenanceId) => {
         </TabsContent>
 
         <TabsContent value="salaries">
+        <SalaryStatistics statistics={salaryStats} />
   <Card>
     {/* En-tête avec filtres */}
     <div className="p-4 border-b flex justify-between items-center">
@@ -2166,14 +2373,25 @@ const handleDownloadMaintenance = async (maintenanceId) => {
           </SelectContent>
         </Select>
       </div>
-
-      <Button 
-  onClick={() => setBulkPaymentModal(true)}
-  disabled={selectedSalaries.length === 0}
->
-  <DollarSign className="w-4 h-4 mr-2" />
-  Payer les salaires ({selectedSalaries.length})
-</Button>
+      <div className="flex gap-2">
+        {/* Nouveau bouton pour gérer les employés sans salaire */}
+        <Button 
+          variant="outline"
+          onClick={() => setMissingEmployeesModalOpen(true)}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Ajouter salaires manquants
+        </Button>
+        
+        {/* Bouton existant pour le paiement groupé */}
+        <Button 
+          onClick={() => setBulkPaymentModal(true)}
+          disabled={selectedSalaries.length === 0}
+        >
+          <DollarSign className="w-4 h-4 mr-2" />
+          Payer les salaires ({selectedSalaries.length})
+        </Button>
+      </div>
 
     </div>
 
@@ -2275,7 +2493,20 @@ const handleDownloadMaintenance = async (maintenanceId) => {
     />
     
   </Card>
+
+  <MissingEmployeesModal
+    isOpen={missingEmployeesModalOpen}
+    onClose={() => setMissingEmployeesModalOpen(false)}
+    month={selectedMonth}
+    year={selectedYear}
+    onGenerate={fetchSalaries} // Pour rafraîchir la liste après génération
+  />
+  
+
+
         </TabsContent>
+
+
         <TabsContent value="donations">
   <Card>
     <Table>
@@ -2556,6 +2787,8 @@ const handleDownloadMaintenance = async (maintenanceId) => {
 
 
 
+
+
 {showHistory && (
   <SalaryHistory
     employeeId={selectedEmployee?.id}
@@ -2573,5 +2806,6 @@ const handleDownloadMaintenance = async (maintenanceId) => {
     </div>
   );
 };
+
 
 export default ManagementPage;

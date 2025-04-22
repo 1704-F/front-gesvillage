@@ -1,3 +1,4 @@
+//components/loans/LoanStatistics.js
 import React from 'react';
 import { Card } from "../ui/card";
 import { 
