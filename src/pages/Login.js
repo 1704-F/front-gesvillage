@@ -8,7 +8,7 @@ import { Button } from "../../src/components/ui/button";
 import { Alert } from "../../src/components/ui/alert";
 import { AlertDescription } from "../../src/components/ui/alert";
 import { axiosPublic } from "../utils/axios";
-import { Users, Calculator, FileText, BarChart, AlertCircle, MessageCircle, X } from 'lucide-react';
+import { Users, Calculator, FileText, BarChart, AlertCircle, MessageCircle, X, Smartphone  } from 'lucide-react';
 
 const Login = () => {
   const [userType, setUserType] = useState('admin'); // 'admin' ou 'consumer'
@@ -77,37 +77,50 @@ const Login = () => {
         
         <div className="flex-grow flex flex-col justify-center">
           <h2 className="text-4xl font-bold mb-6">
-            Gérez votre consommation d&apos;eau intelligemment
+            De l&apos;eau accessible, une gestion responsable
           </h2>
           <p className="text-xl mb-8 text-blue-100">
             Optimisez votre consommation d&apos;eau, réduisez vos factures et contribuez à la préservation des ressources.
           </p>
+
           <div className="space-y-4">
+          <div className="mt-8 mb-4">
+    <h3 className="text-xl font-semibold mb-4">Desktop</h3>
+  </div>
+  
             <div className="flex items-center space-x-4">
               <div className="bg-white/20 p-3 rounded-lg">
                 <BarChart className="w-6 h-6" />
               </div>
-              <span className="text-lg">Gestion des compteurs</span>
+              <span className="text-lg">Gestion des compteurs, consommateurs</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="bg-white/20 p-3 rounded-lg">
-                <Users className="w-6 h-6" />
-              </div>
-              <span className="text-lg">Gestion des consommateurs</span>
-            </div>
+          
             <div className="flex items-center space-x-4">
               <div className="bg-white/20 p-3 rounded-lg">
                 <Calculator className="w-6 h-6" />
               </div>
-              <span className="text-lg">Gestion de la facturation</span>
+              <span className="text-lg">Gestion de la facturation & Rapports mensuel</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="bg-white/20 p-3 rounded-lg">
-                <FileText className="w-6 h-6" />
-              </div>
-              <span className="text-lg">Rapports mensuel des consommations</span>
-            </div>
+    
+
+            <div className="mt-8 mb-4">
+    <h3 className="text-xl font-semibold mb-4">Applications mobiles</h3>
+  </div>
+  
+  <div className="flex items-center space-x-4">
+    <div className="bg-white/20 p-3 rounded-lg">
+      <Smartphone className="w-6 h-6" />
+    </div>
+    <span className="text-lg">Application releveurs</span>
+  </div>
+  <div className="flex items-center space-x-4">
+    <div className="bg-white/20 p-3 rounded-lg">
+      <Smartphone className="w-6 h-6" />
+    </div>
+    <span className="text-lg">Application consommateurs</span>
+  </div>
           </div>
+
         </div>
       </div>
 
