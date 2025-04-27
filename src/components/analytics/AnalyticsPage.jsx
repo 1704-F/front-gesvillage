@@ -160,7 +160,7 @@ const AnalyticsPage = () => {
    <div className="p-6 space-y-6">
      {/* Header */}
      <div className="flex justify-between items-center">
-       <h1 className="text-2xl font-bold">Module Analytique</h1>
+       <h1 className="text-2xl font-bold">Rapport</h1>
 
        <div className="flex items-center gap-4">
          {/* Sélecteurs de dates */}

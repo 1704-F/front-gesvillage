@@ -11,6 +11,14 @@ import {
   Plus,
   BarChart
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+
 import { axiosPrivate as api } from '../utils/axios';
 
 import InventoryItemsTab from '../components/inventory/InventoryItemsTab';
@@ -36,15 +44,51 @@ const InventoryPage = () => {
   const [itemModal, setItemModal] = useState({ isOpen: false, editing: null });
   const [movementModal, setMovementModal] = useState({ isOpen: false, type: 'in', itemId: null });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Pour la liste des articles (à ajouter après setItems)
+const totalPagesItems = Math.ceil(items.length / itemsPerPage);
+const startIndexItems = (currentPage - 1) * itemsPerPage;
+const endIndexItems = startIndexItems + itemsPerPage;
+const currentItems = items.slice(startIndexItems, endIndexItems);
+
+// Pour les catégories
+const totalPagesCategories = Math.ceil(categories.length / itemsPerPage);
+const startIndexCategories = (currentPage - 1) * itemsPerPage;
+const endIndexCategories = startIndexCategories + itemsPerPage;
+const currentCategories = categories.slice(startIndexCategories, endIndexCategories);
+
+// Pour les mouvements si nécessaire
+const totalPagesMovements = Math.ceil(movements.length / itemsPerPage);
+const startIndexMovements = (currentPage - 1) * itemsPerPage;
+const endIndexMovements = startIndexMovements + itemsPerPage;
+const currentMovements = movements.slice(startIndexMovements, endIndexMovements);
+
   // Chargement initial des données
   useEffect(() => {
-    Promise.all([
-      fetchCategories(),
-      fetchItems(),
-      fetchMovements(),
-      fetchEmployees(),
-      fetchStats()
-    ]).finally(() => setLoading(false));
+    const fetchDashboardData = async () => {
+      try {
+        const response = await api.get('/inventory/dashboard');
+        const { categories, items, movements, stats, employees } = response.data;
+        
+        setCategories(categories);
+        setItems(items);
+        setMovements(movements);
+        setStats(stats);
+        setEmployees(employees);
+      } catch (error) {
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les données du dashboard",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
   }, []);
 
   // Récupération des catégories
@@ -262,9 +306,14 @@ const InventoryPage = () => {
             </Button>
           </div>
         )}
-      </div>
+      </div> 
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={(value) => {
+  setActiveTab(value);
+  setCurrentPage(1); // Réinitialiser à la première page lors du changement d'onglet
+}}>
+
+      
         <TabsList>
           <TabsTrigger value="items">
             <Package className="w-4 h-4 mr-2" />
@@ -285,18 +334,20 @@ const InventoryPage = () => {
         </TabsList>
 
         <TabsContent value="items">
-          <InventoryItemsTab 
-            items={items} 
-            categories={categories}
-            onEdit={(item) => setItemModal({ isOpen: true, editing: item })}
-            onDelete={handleDeleteItem}
-            onAddMovement={(item, type) => setMovementModal({ isOpen: true, type, itemId: item.id })}
-          />
-        </TabsContent>
+  <InventoryItemsTab 
+    items={currentItems}  // Changement ici
+    categories={categories}
+    onEdit={(item) => setItemModal({ isOpen: true, editing: item })}
+    onDelete={handleDeleteItem}
+    onAddMovement={(item, type) => setMovementModal({ isOpen: true, type, itemId: item.id })}
+  />
+</TabsContent>
+
+        
 
         <TabsContent value="categories">
           <CategoriesTab 
-            categories={categories} 
+            categories={currentCategories} 
             onEdit={(category) => setCategoryModal({ isOpen: true, editing: category })}
             onDelete={handleDeleteCategory}
           />
@@ -304,7 +355,7 @@ const InventoryPage = () => {
 
         <TabsContent value="movements">
           <MovementsTab 
-            movements={movements}
+            movements={currentMovements}
           />
         </TabsContent>
 
@@ -312,6 +363,84 @@ const InventoryPage = () => {
           <StatsTab stats={stats} />
         </TabsContent>
       </Tabs>
+
+      {activeTab !== 'stats' && (
+
+      <div className="flex items-center justify-between mt-4 px-2">
+  <div className="flex items-center gap-2">
+    <span className="text-sm text-gray-600">Lignes par page:</span>
+    <Select
+      value={String(itemsPerPage)}
+      onValueChange={(value) => {
+        setItemsPerPage(Number(value));
+        setCurrentPage(1);
+      }}
+    >
+      <SelectTrigger className="w-[70px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="10">10</SelectItem>
+        <SelectItem value="100">100</SelectItem>
+        <SelectItem value="500">500</SelectItem>
+        <SelectItem value="1000">1000</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+
+  <div className="flex items-center gap-2">
+
+  <span className="text-sm text-gray-600">
+  {activeTab === 'items' 
+    ? items.length === 0 ? 'Aucun article' : `${startIndexItems + 1}-${Math.min(endIndexItems, items.length)} sur ${items.length}`
+    : activeTab === 'movements'
+    ? movements.length === 0 ? 'Aucun mouvement' : `${startIndexMovements + 1}-${Math.min(endIndexMovements, movements.length)} sur ${movements.length}`
+    : activeTab === 'categories'
+    ? categories.length === 0 ? 'Aucune catégorie' : `${startIndexCategories + 1}-${Math.min(endIndexCategories, categories.length)} sur ${categories.length}`
+    : activeTab === 'stats'
+    ? 'Statistiques'
+    : ''}
+</span>
+
+  
+
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+      disabled={currentPage === 1 || 
+        (activeTab === 'items' && items.length === 0) ||
+        (activeTab === 'movements' && movements.length === 0) ||
+        (activeTab === 'categories' && categories.length === 0)}
+
+      
+    >
+      Précédent
+    </Button>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setCurrentPage(prev => {
+        const maxPage = activeTab === 'items' ? totalPagesItems : 
+               activeTab === 'movements' ? totalPagesMovements : 
+               activeTab === 'categories' ? totalPagesCategories : 1;
+
+        return Math.min(prev + 1, maxPage);
+      })}
+
+      disabled={(activeTab === 'items' && (currentPage === totalPagesItems || items.length === 0)) || 
+        (activeTab === 'movements' && (currentPage === totalPagesMovements || movements.length === 0)) ||
+        (activeTab === 'categories' && (currentPage === totalPagesCategories || categories.length === 0)) ||
+        (activeTab === 'stats')}
+      
+
+    >
+      Suivant
+    </Button>
+  </div>
+</div>
+)}
+
 
       {/* Modaux de formulaires */}
       {categoryModal.isOpen && (
@@ -348,4 +477,4 @@ const InventoryPage = () => {
   );
 };
 
-export default InventoryPage;
+export default InventoryPage; 

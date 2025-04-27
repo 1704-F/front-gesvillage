@@ -71,6 +71,21 @@ const styles = StyleSheet.create({
   totalRow: {
     backgroundColor: '#ECFDF5',  // Légère teinte verte
     fontWeight: 'bold',
+  },
+  resultatRow: {
+    backgroundColor: '#FEF3C7',  // Légère teinte jaune pour le résultat d'exploitation
+    fontWeight: 'bold',
+  },
+  tresorerieHeader: {
+    borderTopWidth: 2,
+    borderTopColor: '#6B7280',
+    marginTop: 10,
+    backgroundColor: '#F3F4F6',
+    fontWeight: 'bold',
+  },
+  tresorerieTotal: {
+    backgroundColor: '#EDE9FE',  // Légère teinte violette pour la variation de trésorerie
+    fontWeight: 'bold',
   }
 });
 
@@ -110,7 +125,7 @@ const PDFSummarySection = ({ data }) => {
           value={`${formatNumber(stats?.totalExpense || 0)} FCFA`}
         />
         <PDFMetricCard
-          title="Bénéfice Net"
+          title="Résultat d'exploitation"
           value={`${formatNumber(stats?.profit || 0)} FCFA`}
         />
         <PDFMetricCard
@@ -125,6 +140,15 @@ const PDFSummarySection = ({ data }) => {
           title="Revenus par Factures"
           value={`${formatNumber(stats?.invoiceRevenue || 0)} FCFA`}
           subtitle={`(${((stats?.invoiceRevenue || 0) / (stats?.totalRevenue || 1) * 100).toFixed(1) || 0}%)`}
+        />
+        <PDFMetricCard
+          title="Emprunts en cours"
+          value={`${formatNumber(stats?.loanRemaining || 0)} FCFA`}
+          subtitle={`Total: ${formatNumber(stats?.loanTotal || 0)} FCFA`}
+        />
+        <PDFMetricCard
+          title="Variation de trésorerie"
+          value={`${formatNumber(stats?.netCashFlow || 0)} FCFA`}
         />
       </View>
 
@@ -146,7 +170,7 @@ const PDFSummarySection = ({ data }) => {
       <View style={{ flexDirection: 'row' }}>
         {/* Répartition des revenus */}
         <View style={{ width: '50%' }}>
-          <Text style={styles.sectionTitle}>Répartition des Revenus</Text>
+          <Text style={styles.sectionTitle}>Répartition des Revenus</Text> 
           <View style={styles.chartContainer}>
             <PDFPieChart
               data={revenueData}
@@ -235,9 +259,9 @@ const PDFSummarySection = ({ data }) => {
           <Text style={styles.col3}>100%</Text>
         </View>
         
-        {/* Bénéfice net */}
-        <View style={[styles.row, styles.tableRow, styles.totalRow]}>
-          <Text style={styles.col1}>Bénéfice Net</Text>
+        {/* Résultat d'exploitation */}
+        <View style={[styles.row, styles.tableRow, styles.resultatRow]}>
+          <Text style={styles.col1}>Résultat d'exploitation</Text>
           <Text style={styles.col2}>{formatNumber(stats.profit || 0)}</Text>
           <Text style={styles.col3}>
             {stats.totalRevenue ? 
@@ -245,6 +269,37 @@ const PDFSummarySection = ({ data }) => {
               '0%'
             }
           </Text>
+        </View>
+        
+        {/* Section trésorerie */}
+        <View style={[styles.row, styles.tableRow, styles.tresorerieHeader]}>
+          <Text style={styles.col1}>MOUVEMENTS DE TRÉSORERIE</Text>
+          <Text style={styles.col2}></Text>
+          <Text style={styles.col3}></Text>
+        </View>
+        
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Emprunts reçus</Text>
+          <Text style={styles.col2}>{formatNumber(stats?.loanTotal || 0)}</Text>
+          <Text style={styles.col3}>+</Text>
+        </View>
+        
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Remboursements d'emprunts</Text>
+          <Text style={styles.col2}>{formatNumber(stats?.loanRepayment || 0)}</Text>
+          <Text style={styles.col3}>-</Text>
+        </View>
+        
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Emprunts en défaut</Text>
+          <Text style={styles.col2}>{formatNumber(stats?.defaultedLoan || 0)}</Text>
+          <Text style={styles.col3}>!</Text>
+        </View>
+        
+        <View style={[styles.row, styles.tableRow, styles.tresorerieTotal]}>
+          <Text style={styles.col1}>Variation de trésorerie</Text>
+          <Text style={styles.col2}>{formatNumber(stats?.netCashFlow || 0)}</Text>
+          <Text style={styles.col3}></Text>
         </View>
       </View>
     </View>

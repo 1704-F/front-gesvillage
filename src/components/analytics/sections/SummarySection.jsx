@@ -3,13 +3,13 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "../../ui/card";
 import { Badge } from "../../ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../../ui/table";
-import { ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign, TrendingDown, Activity, Target, BarChart3 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign, TrendingDown, Activity, Target, BarChart3, Wallet } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Tooltip, Legend, CartesianGrid, XAxis, YAxis, Cell, ResponsiveContainer, ComposedChart, Area } from 'recharts';
 
 // Fonction pour formater les nombres avec séparateur de milliers
 const formatNumber = (num) => {
     if (isNaN(num)) return '0';
-    return new Intl.NumberFormat('fr-FR').format(num);
+    return new Intl.NumberFormat('fr-FR').format(num); 
   };
 
 const SummarySection = ({ data, period }) => {
@@ -89,12 +89,28 @@ const SummarySection = ({ data, period }) => {
 />
 
 <MetricCard
-  title="Revenus par Factures"
+  title="Revenus Factures d'eau"
   value={`${formatNumber(stats?.invoiceRevenue || 0)} FCFA`}
   subtitle={`(${((stats?.invoiceRevenue || 0) / (stats?.totalRevenue || 1) * 100).toFixed(1) || 0}%)`}
   trend="up"
   icon={BarChart3}
 />
+<MetricCard
+  title="Emprunts en cours"
+  value={`${formatNumber(stats?.loanRemaining || 0)} FCFA`}
+  subtitle={`Total: ${formatNumber(stats?.loanTotal || 0)} FCFA`}
+  trend="neutral"
+  icon={Wallet}
+/>
+
+<MetricCard
+  title="Variation de trésorerie"
+  value={`${formatNumber(stats?.netCashFlow || 0)} FCFA`}
+  trend={parseFloat(stats?.netCashFlow || 0) > 0 ? 'up' : 'down'}
+  icon={Wallet}
+/>
+
+
       </div>
 
       {/* Graphique d'évolution financière */}
@@ -305,21 +321,59 @@ const SummarySection = ({ data, period }) => {
                  }
                </TableCell>
              </TableRow>
+
              <TableRow className="bg-red-50">
-               <TableCell className="font-bold">Total Dépenses</TableCell>
-               <TableCell className="text-right font-bold">{formatNumber(stats.totalExpense || 0)}</TableCell>
-               <TableCell className="text-right">100%</TableCell>
-             </TableRow>
-             <TableRow className="bg-green-50">
-               <TableCell className="font-bold">Bénéfice Net</TableCell>
-               <TableCell className="text-right font-bold">{formatNumber(stats.profit || 0)}</TableCell>
-               <TableCell className="text-right">
-                 {stats.totalRevenue ? 
-                   `${((stats.profit / stats.totalRevenue) * 100).toFixed(1)}%` : 
-                   '0%'
-                 }
-               </TableCell>
-             </TableRow>
+  <TableCell className="font-bold">Total Dépenses</TableCell>
+  <TableCell className="text-right font-bold">{formatNumber(stats.totalExpense || 0)}</TableCell>
+  <TableCell className="text-right">100%</TableCell>
+</TableRow>
+
+<TableRow className="bg-green-50">
+  <TableCell className="font-bold">Résultat d'exploitation</TableCell>
+  <TableCell className="text-right font-bold">{formatNumber(stats.profit || 0)}</TableCell>
+  <TableCell className="text-right">
+    {stats.totalRevenue ? 
+      `${((stats.profit / stats.totalRevenue) * 100).toFixed(1)}%` : 
+      '0%'
+    }
+  </TableCell>
+</TableRow>
+
+{/* Section séparée pour les mouvements de trésorerie */}
+<TableRow className="border-t-2 border-gray-300">
+  <TableCell className="font-bold pt-4">MOUVEMENTS DE TRÉSORERIE</TableCell>
+  <TableCell></TableCell>
+  <TableCell></TableCell>
+</TableRow>
+
+<TableRow>
+  <TableCell className="font-medium">Emprunts reçus</TableCell>
+  <TableCell className="text-right">{formatNumber(stats?.loanTotal || 0)}</TableCell>
+  <TableCell className="text-right">+</TableCell>
+</TableRow>
+
+<TableRow>
+  <TableCell className="font-medium">Remboursements d'emprunts</TableCell>
+  <TableCell className="text-right">{formatNumber(stats?.loanRepayment || 0)}</TableCell>
+  <TableCell className="text-right">-</TableCell>
+</TableRow>
+
+<TableRow>
+  <TableCell className="font-medium">Emprunts en défaut</TableCell>
+  <TableCell className="text-right">{formatNumber(stats?.defaultedLoan || 0)}</TableCell>
+  <TableCell className="text-right">!</TableCell>
+</TableRow>
+
+<TableRow className="bg-purple-50">
+  <TableCell className="font-bold">Variation de trésorerie</TableCell>
+  <TableCell className="text-right font-bold">{formatNumber(stats?.netCashFlow || 0)}</TableCell>
+  <TableCell className="text-right"></TableCell>
+</TableRow>
+
+
+
+  
+
            </TableBody>
          </Table>
        </CardContent>

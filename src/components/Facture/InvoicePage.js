@@ -107,7 +107,7 @@ const GenerateInvoiceDialog = ({
                           if (checked) {
                             setSelectedReadings(readings.map(r => r.id));
                           } else {
-                            setSelectedReadings([]);
+                            setSelectedReadings([]); 
                           }
                         }}
                       />

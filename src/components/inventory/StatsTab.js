@@ -38,7 +38,7 @@ const StatsTab = ({ stats }) => {
           </div>
         </Card>
 
-        <Card className="p-4 flex flex-col">
+        <Card className="p-4 flex flex-col"> 
           <h3 className="text-sm font-medium mb-2 flex items-center">
             <DollarSign className="w-4 h-4 mr-2 text-green-500" /> 
             Valeur du stock

@@ -159,7 +159,7 @@ const AnalyticsPDF = ({ data, period }) => {
 
 
 
-        <Text style={styles.title}>RAPPORT ANALYTIQUE</Text>
+        <Text style={styles.title}>RAPPORT</Text>
         <Text style={styles.subtitle}>
           Période: {format(period[0], 'dd MMMM yyyy')} - {format(period[1], 'dd MMMM yyyy')}
         </Text>
@@ -214,7 +214,7 @@ const AnalyticsPDF = ({ data, period }) => {
         <Text style={styles.sectionTitle}>Bilan Financier</Text>
         <PDFSummarySection data={summary} />
         <Text style={styles.footer}>
-          GesVillage - Module Analytique
+          GesVillage - Rapport
         </Text>
         <Text style={styles.pageNumber}>7</Text>
       </Page>

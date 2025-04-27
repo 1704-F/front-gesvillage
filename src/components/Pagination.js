@@ -1,9 +1,10 @@
+// src/components/Pagination.js
 import React from 'react';
 import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
- * Composant de pagination réutilisable
+ * Composant de pagination réutilisable 
  * 
  * @param {Object} pagination - Objet contenant les informations de pagination
  * @param {number} pagination.currentPage - Page actuelle
