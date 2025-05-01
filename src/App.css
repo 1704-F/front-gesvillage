@@ -36,3 +36,21 @@
     transform: rotate(360deg);
   }
 }
+
+@keyframes fillDrop {
+  0% {
+    height: 0;
+  }
+  100% {
+    height: 100%;
+  }
+}
+
+.animate-fill-drop {
+  animation: fillDrop 1.5s infinite;
+}
+
+.rounded-t-half {
+  border-top-left-radius: 100%;
+  border-top-right-radius: 100%;
+}

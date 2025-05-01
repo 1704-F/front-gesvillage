@@ -1,7 +1,7 @@
 // MeterProblemBadge.js - Indicateur visuel pour les problèmes
 import React from 'react';
 import { Badge } from "../ui/badge";
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Check  } from 'lucide-react';
 
 // Traduction des types de problèmes pour l'affichage
 const problemTypeLabels = {
@@ -24,7 +24,12 @@ const problemTypeLabels = {
 
 const MeterProblemBadge = ({ meter }) => {
   if (!meter.has_problem) {
-    return null;
+    return (
+      <Badge variant="outline" className="flex items-center gap-1">
+        <Check className="h-3 w-3" />
+        Aucun
+      </Badge>
+    );
   }
 
   const problemLabel = problemTypeLabels[meter.problem_type] || "Problème non spécifié";

@@ -38,3 +38,16 @@ code {
 .leaflet-control-zoom a:hover {
   background-color: #F3F4F6 !important;
 }
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 1.5s linear infinite;
+}

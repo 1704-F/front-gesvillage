@@ -4,6 +4,29 @@ import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-
 import { Download } from 'lucide-react';
 import { Button } from "../ui/button";
 
+// Fonction pour obtenir le libellé du problème
+const getProblemLabel = (problemType) => {
+  const problemTypeLabels = {
+    blocage_mecanisme: "Blocage du mécanisme",
+    fuite_interne: "Fuite interne",
+    casse_fissure: "Casse ou fissure",
+    deterioration_joints: "Détérioration des joints",
+    mauvais_positionnement: "Mauvais positionnement",
+    usure_composants: "Usure des composants",
+    sous_comptage: "Sous-comptage",
+    sur_comptage: "Sur-comptage",
+    lecture_illisible: "Lecture illisible",
+    absence_entretien: "Absence d'entretien",
+    conditions_climatiques: "Conditions climatiques extrêmes",
+    environnement_non_protege: "Environnement non protégé",
+    bulles_air: "Bulles d'air dans les canalisations",
+    fraude_manipulation: "Fraude ou manipulation",
+    autre: "Autre problème"
+  };
+
+  return problemTypeLabels[problemType] || "Problème non spécifié";
+};
+
 // Définition des styles pour le PDF
 const styles = StyleSheet.create({
   page: {
@@ -121,9 +144,10 @@ const MetersPDF = ({ meters, quartiers }) => {
           <Text style={styles.smallCell}>Numéro</Text>
           <Text style={styles.smallCell}>N° Série</Text>
           <Text style={styles.largeCell}>Consommateur</Text>
-          <Text style={styles.largeCell}>Emplacement</Text>
+          <Text style={styles.smallCell}>Emplacement</Text>
           <Text style={styles.smallCell}>Facturation</Text>
           <Text style={styles.smallCell}>Statut</Text>
+          <Text style={styles.largeCell}>Problème</Text>
           <Text style={styles.emptyCell}>Ancien Index</Text>
           <Text style={styles.emptyCell}>Nouvel Index</Text>
           <Text style={styles.emptyCell}>Observations</Text>
@@ -141,8 +165,15 @@ const MetersPDF = ({ meters, quartiers }) => {
                   {quartierData.name} ({quartierData.meters.length} compteur{quartierData.meters.length > 1 ? 's' : ''})
                 </Text>
                 
-                {quartierData.meters.map((meter, meterIndex) => (
-                  <View key={meter.id} style={styles.tableRow}>
+                {quartierData.meters.map((meter, meterIndex) => {
+  // Déterminer le style de la ligne en fonction de l'état du problème
+  const rowStyle = meter.has_problem 
+    ? { ...styles.tableRow, backgroundColor: '#ffdddd' } // Fond rouge clair pour les compteurs avec problème
+    : styles.tableRow;
+
+
+    return (
+      <View key={meter.id} style={rowStyle}>
                     <Text style={styles.smallCell}>{meter.meter_number}</Text>
                     <Text style={styles.smallCell}>{meter.serial_number || 'N/A'}</Text>
                     <Text style={styles.largeCell}>
@@ -150,7 +181,7 @@ const MetersPDF = ({ meters, quartiers }) => {
                         ? `${meter.user.first_name} ${meter.user.last_name}`
                         : 'Non assigné'}
                     </Text>
-                    <Text style={styles.largeCell}>{meter.quartier?.name || 'Non spécifié'}</Text>
+                    <Text style={styles.smallCell}>{meter.quartier?.name || 'Non spécifié'}</Text>
                     <Text style={styles.smallCell}>
                       {meter.billing_type === 'premium' ? 'Premium' : 
                        meter.billing_type === 'free' ? 'Gratuit' : 
@@ -159,11 +190,20 @@ const MetersPDF = ({ meters, quartiers }) => {
                     <Text style={styles.smallCell}>
                       {meter.status === 'active' ? 'Actif' : 'Inactif'}
                     </Text>
+                    <Text style={styles.largeCell}> {/* Ajoutez cette cellule */}
+      {meter.has_problem 
+        ? getProblemLabel(meter.problem_type) 
+        : 'Aucun'}
+    </Text>
+
                     <Text style={styles.emptyCell}></Text>
                     <Text style={styles.emptyCell}></Text>
                     <Text style={styles.emptyCell}></Text>
                   </View>
-                ))}
+              );
+            })}
+
+
               </View>
             );
           })}

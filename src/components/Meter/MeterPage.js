@@ -38,6 +38,7 @@ import MeterPDFDownloadButton from './MeterPDFDownloadButton';
 import MeterProblemBadge from './MeterProblemBadge';
 import MeterProblemDialog from './MeterProblemDialog';
 import MeterStatistics from './MeterStatistics';
+import WaterDropLoader from './WaterDropLoader';
 const api = axiosPrivate; 
 
 const MeterPage = () => {
@@ -488,6 +489,11 @@ const handleProblemSuccess = (updatedMeter) => {
 
   return (
     <div className="p-6 space-y-6">
+      {loading ? (
+        <WaterDropLoader />
+      ) : (
+        <>
+
       <div className="flex justify-between items-center">
   <h2 className="text-2xl font-bold">Gestion des Compteurs</h2>
   <div className="flex items-center space-x-4">
@@ -694,6 +700,9 @@ const handleProblemSuccess = (updatedMeter) => {
 
         </CardContent>
       </Card>
+
+      </>
+      )}
 
       <MeterForm 
         isOpen={isModalOpen}
