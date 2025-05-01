@@ -84,9 +84,9 @@ const MeterStatistics = ({ statistics }) => {
         
       </div>
       
-      {/* Deuxième ligne - Répartition par catégories */}
+      {/* Deuxième ligne - Répartition par catégories 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Répartition par type de facturation */}
+   
         <Card className="p-4">
           <h3 className="text-lg font-medium mb-3 flex items-center">
             <CreditCard className="h-5 w-5 mr-2 text-blue-500" />
@@ -160,7 +160,7 @@ const MeterStatistics = ({ statistics }) => {
           </div>
         </Card>
         
-        {/* Répartition par quartier */}
+ 
         <Card className="p-4">
           <h3 className="text-lg font-medium mb-3 flex items-center">
             <MapPin className="h-5 w-5 mr-2 text-red-500" />
@@ -200,7 +200,7 @@ const MeterStatistics = ({ statistics }) => {
           </div>
         </Card>
         
-        {/* Répartition par type de compteur 
+    
         <Card className="p-4">
           <h3 className="text-lg font-medium mb-3 flex items-center">
             <Tag className="h-5 w-5 mr-2 text-green-500" />
@@ -239,8 +239,10 @@ const MeterStatistics = ({ statistics }) => {
             </table>
           </div>
         </Card>
-        */}
+        
       </div>
+*/}
+
     </div>
   );
 };

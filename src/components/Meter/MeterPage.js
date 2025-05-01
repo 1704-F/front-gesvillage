@@ -1,3 +1,4 @@
+//Meter/MeterPage
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
@@ -21,7 +22,7 @@ import {
 import { Badge } from "../ui/badge";
 import { Switch } from "../ui/switch";
 import { useToast } from "../ui/toast/use-toast";
-import { MapPin, Pencil, Trash2, Plus, Search, User } from 'lucide-react';
+import { MapPin, Pencil, Trash2, Plus, Search, User, AlertTriangle } from 'lucide-react'; 
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +35,8 @@ import {
 } from "../ui/alert-dialog";
 import { axiosPublic, axiosPrivate } from '../../utils/axios';
 import MeterPDFDownloadButton from './MeterPDFDownloadButton'; 
+import MeterProblemBadge from './MeterProblemBadge';
+import MeterProblemDialog from './MeterProblemDialog';
 import MeterStatistics from './MeterStatistics';
 const api = axiosPrivate; 
 
@@ -65,14 +68,29 @@ const [filterStatus, setFilterStatus] = useState('active');
 const [statusFilter, setStatusFilter] = useState('active');
 const [quartiers, setQuartiers] = useState([]);
 const [statistics, setStatistics] = useState(null);
+const [isProblemDialogOpen, setIsProblemDialogOpen] = useState(false);
+const [problemFilterActive, setProblemFilterActive] = useState(false);
+
 const { toast } = useToast();
+
+// Filtrer les compteurs après la recherche, le statut et le filtre de problème
+const filteredMeters = meters
+.filter(meter => 
+  // Filtrer par recherche
+  (meter.meter_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+   `${meter.user?.first_name || ''} ${meter.user?.last_name || ''}`.toLowerCase().includes(searchTerm.toLowerCase())) &&
+  // Filtrer par statut
+  (statusFilter === 'all' || meter.status === statusFilter) &&
+  // Filtrer par problème
+  (!problemFilterActive || meter.has_problem)
+);
 
 
 // Calculer les indices pour la pagination après la déclaration de meters
-const totalPages = Math.ceil(meters.length / itemsPerPage);
+const totalPages = Math.ceil(filteredMeters.length / itemsPerPage);
 const startIndex = (currentPage - 1) * itemsPerPage;
 const endIndex = startIndex + itemsPerPage;
-const currentMeters = meters.slice(startIndex, endIndex);
+const currentMeters = filteredMeters.slice(startIndex, endIndex);
 
   // Chargement initial des données
   useEffect(() => {
@@ -100,6 +118,7 @@ const currentMeters = meters.slice(startIndex, endIndex);
     
     fetchQuartiers();
   }, []);
+
   // Fonctions de récupération des données
   const fetchMeters = async () => {
     try {
@@ -250,6 +269,22 @@ const currentMeters = meters.slice(startIndex, endIndex);
       });
     }
   };
+
+ 
+
+  // Ajoutez cette fonction pour gérer le signalement d'un problème
+const handleReportProblem = (meter) => {
+  setSelectedMeter(meter);
+  setIsProblemDialogOpen(true);
+};
+
+// Ajoutez cette fonction pour mettre à jour les compteurs après signalement/résolution d'un problème
+const handleProblemSuccess = (updatedMeter) => {
+  setMeters(prev => prev.map(meter => 
+    meter.id === updatedMeter.id ? updatedMeter : meter
+  ));
+ 
+};
 
   // Composant de formulaire modal
   const MeterForm = ({ isOpen, onClose, editMeter }) => {
@@ -477,6 +512,15 @@ const currentMeters = meters.slice(startIndex, endIndex);
   </SelectContent>
 </Select>
 
+<Button
+            variant={problemFilterActive ? "default" : "outline"}
+            onClick={() => setProblemFilterActive(!problemFilterActive)}
+            className="flex items-center space-x-1"
+          >
+            <AlertTriangle className="h-4 w-4 mr-1" />
+            <span>Problèmes</span>
+          </Button>
+
     
 <MeterPDFDownloadButton 
   meters={meters} 
@@ -503,16 +547,14 @@ const currentMeters = meters.slice(startIndex, endIndex);
                 <TableHead>Emplacement</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Facturation</TableHead>
+                <TableHead>Problème</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
             {currentMeters
-      .filter(meter => 
-        meter.meter_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        `${meter.user?.first_name} ${meter.user?.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      
                 .map(meter => (
                   <TableRow key={meter.id}>
                     <TableCell>
@@ -565,6 +607,9 @@ const currentMeters = meters.slice(startIndex, endIndex);
              'Standard'}
           </Badge>
         </TableCell>
+        <TableCell>
+                    <MeterProblemBadge meter={meter} />
+                  </TableCell>
 
 
 
@@ -585,6 +630,13 @@ const currentMeters = meters.slice(startIndex, endIndex);
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
+                        <Button 
+                        variant={meter.has_problem ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={() => handleReportProblem(meter)}
+                      >
+                        <AlertTriangle className="h-4 w-4" />
+                      </Button>
                        
                       </div>
                     </TableCell>
@@ -616,9 +668,11 @@ const currentMeters = meters.slice(startIndex, endIndex);
     </div>
 
     <div className="flex items-center gap-2">
-      <span className="text-sm text-gray-600">
-        {startIndex + 1}-{Math.min(endIndex, meters.length)} sur {meters.length}
-      </span>
+
+    <span className="text-sm text-gray-600">
+  {startIndex + 1}-{Math.min(endIndex, filteredMeters.length)} sur {filteredMeters.length}
+</span>
+
       <Button
         variant="outline"
         size="sm"
@@ -646,6 +700,13 @@ const currentMeters = meters.slice(startIndex, endIndex);
         onClose={() => setIsModalOpen(false)}
         editMeter={selectedMeter}
       />
+
+<MeterProblemDialog 
+  isOpen={isProblemDialogOpen}
+  onClose={() => setIsProblemDialogOpen(false)}
+  meter={selectedMeter}
+  onSuccess={handleProblemSuccess}
+/>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
