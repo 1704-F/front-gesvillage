@@ -72,6 +72,9 @@ const [statistics, setStatistics] = useState(null);
 const [isProblemDialogOpen, setIsProblemDialogOpen] = useState(false);
 const [problemFilterActive, setProblemFilterActive] = useState(false);
 
+const [isPermanentDeleteDialogOpen, setIsPermanentDeleteDialogOpen] = useState(false);
+const [canDelete, setCanDelete] = useState(true); // Si le compteur peut être supprimé
+
 const { toast } = useToast();
 
 // Filtrer les compteurs après la recherche, le statut et le filtre de problème
@@ -270,6 +273,50 @@ const currentMeters = filteredMeters.slice(startIndex, endIndex);
       });
     }
   };
+
+  // Fonction pour vérifier si un compteur peut être supprimé
+const handlePermanentDelete = async (meter) => {
+  setSelectedMeter(meter);
+  
+  try {
+    // Vérifier si le compteur a des relevés
+    const response = await api.get(`/meters/${meter.id}/can-delete`);
+    setCanDelete(response.data.canDelete);
+    setIsPermanentDeleteDialogOpen(true);
+  } catch (error) {
+    toast({
+      title: "Erreur",
+      description: "Impossible de vérifier si le compteur peut être supprimé",
+      variant: "destructive"
+    });
+  }
+};
+
+// Fonction pour confirmer la suppression définitive
+const handlePermanentDeleteConfirm = async () => {
+  try {
+    if (!canDelete) {
+      setIsPermanentDeleteDialogOpen(false);
+      return;
+    }
+    
+    await api.delete(`/meters/${selectedMeter.id}/permanent`);
+    toast({
+      title: "Succès",
+      description: "Compteur supprimé définitivement avec succès"
+    });
+    fetchMeters();
+  } catch (error) {
+    toast({
+      title: "Erreur",
+      description: error.response?.data?.message || "Impossible de supprimer définitivement le compteur",
+      variant: "destructive"
+    });
+  } finally {
+    setIsPermanentDeleteDialogOpen(false);
+    setSelectedMeter(null);
+  }
+};
 
  
 
@@ -643,6 +690,16 @@ const handleProblemSuccess = (updatedMeter) => {
                       >
                         <AlertTriangle className="h-4 w-4" />
                       </Button>
+
+                      {meter.status === 'inactive' && (
+      <Button 
+        variant="destructive" 
+        size="sm"
+        onClick={() => handlePermanentDelete(meter)}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    )}
                        
                       </div>
                     </TableCell>
@@ -733,6 +790,30 @@ const handleProblemSuccess = (updatedMeter) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Ajouter ce dialogue de confirmation pour la suppression définitive */}
+<AlertDialog open={isPermanentDeleteDialogOpen} onOpenChange={setIsPermanentDeleteDialogOpen}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Suppression définitive</AlertDialogTitle>
+      <AlertDialogDescription>
+        {canDelete 
+          ? "Cette action ne peut pas être annulée. Le compteur sera définitivement supprimé de la base de données."
+          : "Ce compteur ne peut pas être supprimé car il possède des relevés associés."}
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Annuler</AlertDialogCancel>
+      {canDelete && (
+        <AlertDialogAction onClick={handlePermanentDeleteConfirm} className="bg-red-600 hover:bg-red-700">
+          Supprimer définitivement
+        </AlertDialogAction>
+      )}
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+
+
     </div>
   );
 };
