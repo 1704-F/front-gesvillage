@@ -5,6 +5,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from ".
 import { ScrollArea } from "../ui/scroll-area";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 import { 
   Dialog, 
   DialogContent, 
@@ -22,7 +23,7 @@ import {
 import { Badge } from "../ui/badge";
 import { Switch } from "../ui/switch";
 import { useToast } from "../ui/toast/use-toast";
-import { MapPin, Pencil, Trash2, Plus, Search, User, AlertTriangle } from 'lucide-react'; 
+import { MapPin, Pencil, Trash2, Plus, Search, User, AlertTriangle, History } from 'lucide-react'; 
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +40,7 @@ import MeterProblemBadge from './MeterProblemBadge';
 import MeterProblemDialog from './MeterProblemDialog';
 import MeterStatistics from './MeterStatistics';
 import WaterDropLoader from './WaterDropLoader';
+import MeterUserHistoryDialog from './MeterUserHistoryDialog'; 
 const api = axiosPrivate; 
 
 const MeterPage = () => {
@@ -71,6 +73,7 @@ const [quartiers, setQuartiers] = useState([]);
 const [statistics, setStatistics] = useState(null);
 const [isProblemDialogOpen, setIsProblemDialogOpen] = useState(false);
 const [problemFilterActive, setProblemFilterActive] = useState(false);
+const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
 
 const [isPermanentDeleteDialogOpen, setIsPermanentDeleteDialogOpen] = useState(false);
 const [canDelete, setCanDelete] = useState(true); // Si le compteur peut être supprimé
@@ -274,6 +277,11 @@ const currentMeters = filteredMeters.slice(startIndex, endIndex);
     }
   };
 
+  const handleShowHistory = (meter) => {
+    setSelectedMeter(meter);
+    setIsHistoryDialogOpen(true);
+  };
+
   // Fonction pour vérifier si un compteur peut être supprimé
 const handlePermanentDelete = async (meter) => {
   setSelectedMeter(meter);
@@ -349,6 +357,7 @@ const handleProblemSuccess = (updatedMeter) => {
     });
     const [searchConsumer, setSearchConsumer] = useState('');
     const [isSelectOpen, setIsSelectOpen] = useState(false);
+    const [showChangeReason, setShowChangeReason] = useState(false);
 
   // Réinitialiser le formulaire quand editMeter change
   useEffect(() => {
@@ -364,6 +373,15 @@ const handleProblemSuccess = (updatedMeter) => {
       });
     }
   }, [editMeter]);
+
+  useEffect(() => {
+    // Si l'utilisateur change, afficher le champ de raison
+    if (editMeter && formData.user_id && formData.user_id !== editMeter.user?.id?.toString()) {
+      setShowChangeReason(true);
+    } else {
+      setShowChangeReason(false);
+    }
+  }, [formData.user_id, editMeter]);
 
 
     const handleChange = (field, value) => {
@@ -438,6 +456,18 @@ const handleProblemSuccess = (updatedMeter) => {
             </SelectContent>
           </Select>
         </div>
+
+        {showChangeReason && (
+  <div className="space-y-2 mt-4">
+    <label className="text-sm font-medium">Raison du changement</label>
+    <Textarea
+      placeholder="Indiquez la raison du changement de consommateur..."
+      value={formData.change_reason || ""}
+      onChange={(e) => handleChange('change_reason', e.target.value)}
+      rows={3}
+    />
+  </div>
+)}
 
 
 
@@ -691,6 +721,17 @@ const handleProblemSuccess = (updatedMeter) => {
                         <AlertTriangle className="h-4 w-4" />
                       </Button>
 
+                       {/* Nouveau bouton pour l'historique des utilisateurs */}
+    <Button 
+      variant="outline" 
+      size="sm"
+      onClick={() => handleShowHistory(meter)}
+    >
+      <History className="h-4 w-4" />
+    </Button>
+
+
+
                       {meter.status === 'inactive' && (
       <Button 
         variant="destructive" 
@@ -772,6 +813,12 @@ const handleProblemSuccess = (updatedMeter) => {
   onClose={() => setIsProblemDialogOpen(false)}
   meter={selectedMeter}
   onSuccess={handleProblemSuccess}
+/>
+
+<MeterUserHistoryDialog 
+  isOpen={isHistoryDialogOpen}
+  onClose={() => setIsHistoryDialogOpen(false)}
+  meterId={selectedMeter?.id}
 />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
