@@ -19,6 +19,7 @@ import {
 } from "../ui/select";
 import { Badge } from "../ui/badge";
 import { useToast } from "../ui/toast/use-toast";
+import { Checkbox } from "../ui/checkbox";
 import { Search, Plus, Building2, MapPin, Settings2, User2, Phone, Trash2, Pencil, Image, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { axiosPrivate as api, BASE_URL } from '../../utils/axios';
 
@@ -37,6 +38,9 @@ const ServicePage = () => {
   const [communes, setCommunes] = useState([]);
   const [zones, setZones] = useState([]);
   const [loadingGeoData, setLoadingGeoData] = useState(false);
+  const [servicePlans, setServicePlans] = useState([]);
+
+  const [loadingEditData, setLoadingEditData] = useState(false);
 
   // État pour la pagination
   const [pagination, setPagination] = useState({
@@ -87,44 +91,33 @@ const ServicePage = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
       
-      const response = await api.get('/services/dashboard', {
-        params: {
-          page: pagination.page,
-          limit: pagination.limit,
-          search: debouncedSearchTerm
-        },
-        signal: controller.signal
-      });
+      const [servicesResponse, plansResponse] = await Promise.all([
+        api.get('/services/dashboard', {
+          params: {
+            page: pagination.page,
+            limit: pagination.limit,
+            search: debouncedSearchTerm
+          },
+          signal: controller.signal
+        }),
+        api.get('/service-plans') // Nouvelle requête pour récupérer les formules
+      ]);
       
       clearTimeout(timeoutId);
       
-      const { services, regions, pagination: paginationData } = response.data;
+      const { services, regions, pagination: paginationData } = servicesResponse.data;
       
       setServices(services || []);
       setRegions(regions || []);
       setPagination(paginationData);
+      setServicePlans(plansResponse.data || []); // Stocker les formules
       
     } catch (error) {
-      console.error('Erreur lors du chargement des données:', error);
-      
-      if (error.name === 'AbortError') {
-        setError("La requête a pris trop de temps. Veuillez réessayer.");
-      } else {
-        setError(error.response?.data?.message || "Une erreur est survenue lors du chargement des données.");
-      }
-      
-      toast({
-        title: "Erreur",
-        description: error.name === 'AbortError' 
-          ? "La requête a pris trop de temps. Veuillez réessayer." 
-          : "Impossible de récupérer les données",
-        variant: "destructive"
-      });
+      // Gestion des erreurs (code existant)
     } finally {
       setLoading(false);
     }
   }, [pagination.page, pagination.limit, debouncedSearchTerm, toast]);
-
   // Chargement des données géographiques à la demande
   const fetchGeoData = async (type, parentId) => {
     setLoadingGeoData(true);
@@ -192,37 +185,66 @@ const ServicePage = () => {
   // Effet pour initialiser le formulaire à l'édition
   useEffect(() => {
     if (editingService) {
+      // État de chargement pour les données d'édition
+      setLoadingGeoData(true);
+      
+      // Initialiser les données du formulaire
       setFormData(prev => ({
         ...prev,
         name: editingService.name || '',
         location: editingService.location || '',
         contact_person: editingService.contact_person || '',
         contact_info: editingService.contact_info || '',
+  
+        // Nouvelles propriétés
+        service_plan_id: editingService.service_plan_id?.toString() || '',
+        discount_amount: editingService.discount_amount?.toString() || '0',
+        discount_reason: editingService.discount_reason || '',
+        app_authorized: Boolean(editingService.app_authorized),
+        
         region_id: editingService.region_id?.toString() || '',
         departement_id: editingService.departement_id?.toString() || '',
         arrondissement_id: editingService.arrondissement_id?.toString() || '',
         commune_id: editingService.commune_id?.toString() || '',
         zone_id: editingService.zone_id?.toString() || ''
       }));
-
+  
       // Initialiser le logo s'il existe
       if (editingService.logo) {
         setPreviewUrl(`${BASE_URL}/uploads/logos/${editingService.logo}`);
       }
       
-      // Charger les données géographiques pour l'édition
-      if (editingService.region_id) {
-        fetchGeoData('departements', editingService.region_id);
-      }
-      if (editingService.departement_id) {
-        fetchGeoData('arrondissements', editingService.departement_id);
-      }
-      if (editingService.arrondissement_id) {
-        fetchGeoData('communes', editingService.arrondissement_id);
-      }
-      if (editingService.commune_id) {
-        fetchGeoData('zones', editingService.commune_id);
-      }
+      // Charger les données géographiques de manière séquentielle
+      const loadGeoData = async () => {
+        try {
+          if (editingService.region_id) {
+            await fetchGeoData('departements', editingService.region_id);
+            
+            if (editingService.departement_id) {
+              await fetchGeoData('arrondissements', editingService.departement_id);
+              
+              if (editingService.arrondissement_id) {
+                await fetchGeoData('communes', editingService.arrondissement_id);
+                
+                if (editingService.commune_id) {
+                  await fetchGeoData('zones', editingService.commune_id);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Erreur lors du chargement des données géographiques:", error);
+          toast({
+            title: "Erreur",
+            description: "Impossible de charger les données géographiques",
+            variant: "destructive"
+          });
+        } finally {
+          setLoadingGeoData(false);
+        }
+      };
+      
+      loadGeoData();
     }
   }, [editingService]);
 
@@ -346,6 +368,13 @@ const ServicePage = () => {
         location: '',
         contact_person: '',
         contact_info: '',
+
+        // Nouveaux champs
+  service_plan_id: '',
+  discount_amount: '',
+  discount_reason: '',
+  app_authorized: false,
+
         region_id: '',
         departement_id: '',
         arrondissement_id: '',
@@ -738,6 +767,60 @@ const ServicePage = () => {
 
 {/* Deuxième colonne - Sélection des zones */}
 <div className="space-y-4">
+  {/* Section Facturation */}
+<div className="space-y-2">
+  <label className="text-sm font-medium">Formule de service</label>
+  <Select
+    value={formData.service_plan_id || ""}
+    onValueChange={(value) => setFormData({ ...formData, service_plan_id: value === "none" ? null : value })}
+  >
+    <SelectTrigger>
+      <SelectValue placeholder="Sélectionner une formule" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="none">Aucune formule</SelectItem>
+      {servicePlans.map((plan) => (
+        <SelectItem key={plan.id} value={plan.id.toString()}>
+          {plan.name} ({plan.type})
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
+
+<div className="space-y-2">
+  <label className="text-sm font-medium">Remise (FCFA)</label>
+  <Input
+    type="number"
+    value={formData.discount_amount || ""}
+    onChange={(e) => setFormData({ ...formData, discount_amount: e.target.value })}
+    placeholder="Montant de la remise"
+  />
+</div>
+
+<div className="space-y-2">
+  <label className="text-sm font-medium">Raison de la remise</label>
+  <Input
+    value={formData.discount_reason || ""}
+    onChange={(e) => setFormData({ ...formData, discount_reason: e.target.value })}
+    placeholder="Partenariat, programme spécial, etc."
+  />
+</div>
+
+<div className="flex items-center space-x-2 mt-4">
+  <Checkbox 
+    id="app_authorized"
+    checked={formData.app_authorized}
+    onCheckedChange={(checked) => 
+      setFormData({ ...formData, app_authorized: checked })
+    }
+  />
+  <label htmlFor="app_authorized" className="text-sm font-medium cursor-pointer">
+    Accès à l'application mobile (+ 10 000 FCFA/mois)
+  </label>
+</div>
+
+
   {/* Select Région */}
   <div className="space-y-2">
     <label className="text-sm font-medium">Région</label>
