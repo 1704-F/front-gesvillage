@@ -605,11 +605,13 @@ const handleProblemSuccess = (updatedMeter) => {
           </Button>
 
     
-<MeterPDFDownloadButton 
-  meters={meters} 
+          <MeterPDFDownloadButton 
+  meters={filteredMeters} 
   quartiers={quartiers} 
-  filterStatus={statusFilter} // Changez filterStatus par statusFilter ici
+  filterStatus={statusFilter}
+  problemFilterActive={problemFilterActive}
 />
+
     <Button onClick={handleAdd}>
       <Plus className="h-4 w-4 mr-2" />
       Ajouter

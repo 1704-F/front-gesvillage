@@ -213,8 +213,21 @@ const MetersPDF = ({ meters, quartiers }) => {
 };
 
 // Bouton de téléchargement PDF
-const MeterPDFDownloadButton = ({ meters, quartiers, filterStatus }) => {
-  const filename = `compteurs-${filterStatus === 'all' ? 'tous' : filterStatus}-${new Date().toISOString().split('T')[0]}.pdf`;
+const MeterPDFDownloadButton = ({ meters, quartiers, filterStatus, problemFilterActive }) => {
+  let fileNameParts = ['compteurs'];
+  
+  // Ajouter le statut au nom de fichier
+  if (filterStatus !== 'all') {
+    fileNameParts.push(filterStatus);
+  }
+  
+  // Ajouter l'indication du filtre de problème
+  if (problemFilterActive) {
+    fileNameParts.push('problemes');
+  }
+  
+  // Assembler le nom du fichier
+  const filename = `${fileNameParts.join('-')}-${new Date().toISOString().split('T')[0]}.pdf`;
   
   return (
     <PDFDownloadLink 

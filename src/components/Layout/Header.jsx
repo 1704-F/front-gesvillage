@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, LogOut, User } from "lucide-react";
+import { Bell, LogOut, User, FileText } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -16,6 +16,8 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
   const [adminProfile, setAdminProfile] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+   const [service, setService] = useState(null);
+  
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -34,16 +36,56 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
 
   const fetchNotifications = async () => {
     try {
-      const response = await axiosPrivate.get("/notifications");
-      setNotifications(response.data);
-      setUnreadCount(
-        response.data.filter((notif) => notif.status === "unread").length
-      );
+      // 1. D'abord, obtenir l'ID du service actuel
+      const serviceResponse = await axiosPrivate.get("/services/info-optimized");
+      const serviceId = serviceResponse.data.data.service.id;
+      
+      // 2. Récupérer les notifications standard
+      const notificationsResponse = await axiosPrivate.get("/notifications");
+      
+      // 3. Récupérer les factures en attente UNIQUEMENT pour ce service
+      const invoicesResponse = await axiosPrivate.get("/service-billing", {
+        params: {
+          status: "pending",
+          service_id: serviceId // Important: filtrer par service_id
+        }
+      });
+      
+      // 4. Transformer les factures en format notification
+      let invoiceNotifications = [];
+      if (invoicesResponse.data.data && invoicesResponse.data.data.billings) {
+        invoiceNotifications = invoicesResponse.data.data.billings.map(invoice => {
+          const periodStart = new Date(invoice.billing_period_start);
+          const month = periodStart.toLocaleString('fr-FR', { month: 'long' });
+          
+          return {
+            id: `invoice-${invoice.id}`,
+            message: `Votre facture de ${month} est disponible (Réf: ${invoice.reference})`,
+            status: "unread",
+            created_at: invoice.created_at,
+            type: "invoice",
+            invoice_id: invoice.id
+          };
+        });
+      }
+      
+      // 5. Fusionner les notifications
+      const allNotifications = [...invoiceNotifications, ...notificationsResponse.data];
+      allNotifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
+      setNotifications(allNotifications);
+      setUnreadCount(allNotifications.filter(notif => notif.status === "unread").length);
     } catch (error) {
       console.error("Erreur lors de la récupération des notifications :", error);
     }
   };
 
+  const navigateToInvoice = (invoiceId) => {
+    navigate("/service-info?tab=billing");
+  };
+  
+
+ 
   useEffect(() => {  
     fetchProfile();
     fetchNotifications();
@@ -158,35 +200,53 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
               <h3 className="font-semibold">Notifications</h3>
             </div>
             <ScrollArea className="h-80">
-              {notifications.length > 0 ? (
-                notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-3 border-b last:border-b-0 ${
-                      notification.status === "read"
-                        ? "bg-white"
-                        : "bg-blue-50"
-                    }`}
-                  >
-                    <p className="text-sm text-gray-600">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(notification.created_at).toLocaleDateString(
-                        "fr-FR",
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        }
-                      )}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <div className="p-4 text-center text-gray-500">
-                  Aucune notification
-                </div>
-              )}
+
+            {notifications.length > 0 ? (
+  notifications.map((notification) => (
+    <div
+      key={notification.id}
+      className={`p-3 border-b last:border-b-0 cursor-pointer ${
+        notification.status === "read"
+          ? "bg-white"
+          : notification.type === "invoice" 
+            ? "bg-red-50" // Style spécial pour les factures
+            : "bg-blue-50"
+      }`}
+      onClick={() => {
+        // Si c'est une notification de facture, naviguer vers la page de facturation
+        if (notification.type === "invoice") {
+          navigateToInvoice(notification.invoice_id);
+        }
+        // Sinon, marquer comme lue (à implémenter si nécessaire)
+      }}
+    >
+      <div className="flex items-start">
+        {notification.type === "invoice" && (
+          <FileText className="w-5 h-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+        )}
+        <div className="flex-1">
+          <p className="text-sm text-gray-600">
+            {notification.message}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            {new Date(notification.created_at).toLocaleDateString(
+              "fr-FR",
+              {
+                hour: "2-digit",
+                minute: "2-digit",
+              }
+            )}
+          </p>
+        </div>
+      </div>
+    </div>
+  ))
+) : (
+  <div className="p-4 text-center text-gray-500">
+    Aucune notification
+  </div>
+)}
+             
             </ScrollArea>
           </PopoverContent>
         </Popover>
