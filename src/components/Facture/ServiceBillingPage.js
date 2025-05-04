@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Card } from "../ui/card";
 import {
   Table,
@@ -644,9 +644,11 @@ const ServiceBillingPage = () => {
                 <TableCell>
                   {Math.round(billing.total_due).toLocaleString()}
                 </TableCell>
+
                 <TableCell>
                   {`${format(new Date(billing.billing_period_start), 'dd/MM/yy')} au ${format(new Date(billing.billing_period_end), 'dd/MM/yy')}`}
                 </TableCell>
+                
                 <TableCell>
                   {format(new Date(billing.due_date), 'dd/MM/yyyy')}
                 </TableCell>

@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import PumpingRecordForm from './PumpingRecordForm'; // Le composant de formulaire que nous avons créé
 import ViewPumpingRecordModal from './ViewPumpingRecordModal'; // Le composant de vue détaillée
+import PumpingRecordPDFDownloadButton from './PumpingRecordPDFDownloadButton';
+import SinglePumpingRecordPDFButton from './SinglePumpingRecordPDFButton';
 import { Card } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { Button } from "../ui/button";
@@ -411,6 +413,20 @@ const PumpingRecordsTab = ({
   const [viewPumpingModal, setViewPumpingModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
 
+  // États pour les filtres
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // États pour la pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const [paginatedRecords, setPaginatedRecords] = useState([]);
+
+  // Définir filteredRecords en tant qu'état
+  const [filteredRecords, setFilteredRecords] = useState([]);
+
   // Chargement initial des données
   useEffect(() => {
     Promise.all([
@@ -418,6 +434,54 @@ const PumpingRecordsTab = ({
       fetchEmployees()
     ]).finally(() => setLoading(false));
   }, []);
+
+  // Mettre à jour les records filtrés quand les filtres ou les données changent
+  useEffect(() => {
+    if (pumpingRecords.length > 0) {
+      const filtered = pumpingRecords.filter(record => {
+        let matches = true;
+        
+        // Filtre par source
+        if (sourceFilter !== 'all') {
+          matches = matches && record.source?.id.toString() === sourceFilter;
+        }
+        
+        // Filtre par statut
+        if (statusFilter !== 'all') {
+          matches = matches && record.status === statusFilter;
+        }
+        
+        return matches;
+      });
+      setFilteredRecords(filtered);
+    } else {
+      setFilteredRecords([]);
+    }
+  }, [pumpingRecords, sourceFilter, statusFilter]);
+
+  // Mettre à jour la pagination quand les données filtrées changent
+  useEffect(() => {
+    // Calculer le nombre total de pages
+    const totalPagesCount = Math.ceil(filteredRecords.length / pageSize);
+    setTotalPages(totalPagesCount);
+    
+    // S'assurer que la page courante est valide
+    if (currentPage > totalPagesCount && totalPagesCount > 0) {
+      setCurrentPage(1);
+    } else {
+      // Extraire les enregistrements pour la page courante
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      setPaginatedRecords(filteredRecords.slice(startIndex, endIndex));
+    }
+  }, [filteredRecords, currentPage, pageSize]);
+
+  // Si currentPage est modifié ailleurs, mettre à jour les enregistrements paginés
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    setPaginatedRecords(filteredRecords.slice(startIndex, endIndex));
+  }, [currentPage, pageSize, filteredRecords]);
 
   useEffect(() => {
     if (shouldRefresh) {
@@ -427,34 +491,34 @@ const PumpingRecordsTab = ({
     }
   }, [shouldRefresh, onRefreshComplete]);
 
-
   // Récupération des enregistrements de pompage
   const fetchPumpingRecords = async () => {
     try {
       const response = await api.get('/water-quality/pumping');
       setPumpingRecords(response.data);
+      setCurrentPage(1); // Réinitialiser à la première page lors du chargement des données
+      return response.data;
     } catch (error) {
       toast({
         title: "Erreur",
         description: "Impossible de récupérer les enregistrements de pompage",
         variant: "destructive",
       });
+      return [];
     }
   };
 
- 
   const fetchEmployees = async () => {
     try {
       const response = await api.get('/employees');
       setEmployees(response.data.data || []);
+      return response.data.data || [];
     } catch (error) {
       console.error("Erreur:", error);
       setEmployees([]);
+      return [];
     }
   };
-
-
-
 
   // Suppression d'un enregistrement de pompage
   const handleDeletePumping = async (id) => {
@@ -532,16 +596,176 @@ const PumpingRecordsTab = ({
     return `${hours}h ${mins}min`;
   };
 
+  // Fonction pour paginer les enregistrements
+  const paginateRecords = (records) => {
+    // Calculer le nombre total de pages
+    const totalPagesCount = Math.ceil(records.length / pageSize);
+    setTotalPages(totalPagesCount);
+    
+    // S'assurer que la page courante est valide
+    if (currentPage > totalPagesCount && totalPagesCount > 0) {
+      setCurrentPage(1);
+    }
+    
+    // Extraire les enregistrements pour la page courante
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return records.slice(startIndex, endIndex);
+  };
+
+  // Composant de pagination
+  const Pagination = ({ filteredCount }) => {
+    return (
+      <div className="flex items-center justify-between mt-4">
+        <div className="text-sm text-gray-500">
+          Affichage de {filteredCount > 0 ? ((currentPage - 1) * pageSize) + 1 : 0} à {Math.min(currentPage * pageSize, filteredCount)} sur {filteredCount} enregistrements
+        </div>
+        
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Précédent
+          </Button>
+          
+          <div className="flex items-center space-x-1">
+            {[...Array(Math.min(totalPages, 5)).keys()].map(index => {
+              // Afficher jusqu'à 5 boutons de page
+              let pageNumber;
+              if (totalPages <= 5) {
+                // Si moins de 5 pages, afficher toutes les pages
+                pageNumber = index + 1;
+              } else if (currentPage <= 3) {
+                // Si on est près du début
+                pageNumber = index + 1;
+              } else if (currentPage >= totalPages - 2) {
+                // Si on est près de la fin
+                pageNumber = totalPages - 4 + index;
+              } else {
+                // Si on est au milieu
+                pageNumber = currentPage - 2 + index;
+              }
+              
+              return (
+                <Button 
+                  key={pageNumber}
+                  variant={currentPage === pageNumber ? "default" : "outline"} 
+                  size="sm"
+                  onClick={() => setCurrentPage(pageNumber)}
+                  className="w-8 h-8 p-0"
+                >
+                  {pageNumber}
+                </Button>
+              );
+            })}
+            
+            {totalPages > 5 && currentPage < totalPages - 2 && (
+              <>
+                <span className="mx-1">...</span>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setCurrentPage(totalPages)}
+                  className="w-8 h-8 p-0"
+                >
+                  {totalPages}
+                </Button>
+              </>
+            )}
+          </div>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages || totalPages === 0}
+          >
+            Suivant
+          </Button>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-500">Éléments par page:</span>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => {
+              setPageSize(Number(value));
+              setCurrentPage(1); // Retour à la première page lors du changement de taille
+            }}
+          >
+            <SelectTrigger className="w-16 h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+              <SelectItem value="1000">1000</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return <div className="flex justify-center p-6">Chargement...</div>;
   }
 
+
+  // Paginer les enregistrements filtrés
   
 
   return (
     <>
-    
+      {/* Filtres et bouton de téléchargement */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex space-x-4">
+          <Select
+            value={sourceFilter}
+            onValueChange={setSourceFilter}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Toutes les sources" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les sources</SelectItem>
+              {sources.map(source => (
+                <SelectItem key={source.id} value={source.id.toString()}>
+                  {source.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
+          <Select
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Tous les statuts" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              <SelectItem value="pending">En attente</SelectItem>
+              <SelectItem value="validated">Validé</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {/* Bouton de téléchargement PDF pour tous les enregistrements filtrés */}
+        <PumpingRecordPDFDownloadButton 
+          pumpingRecords={filteredRecords} 
+          sources={sources}
+          filterStatus={statusFilter}
+          sourceFilter={sourceFilter}
+        />
+      </div>
+
+      {/* Tableau des enregistrements */}
       <Card>
         <Table>
           <TableHeader>
@@ -556,14 +780,14 @@ const PumpingRecordsTab = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pumpingRecords.length === 0 ? (
+            {paginatedRecords.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-6">
                   Aucun enregistrement de pompage trouvé
                 </TableCell>
               </TableRow>
             ) : (
-              pumpingRecords.map((record) => (
+              paginatedRecords.map((record) => (
                 <TableRow key={record.id}>
                   <TableCell>{record.source?.name || 'N/A'}</TableCell>
                   <TableCell>
@@ -592,15 +816,18 @@ const PumpingRecordsTab = ({
                         <FileText className="w-4 h-4" />
                       </Button>
                       
+                      {/* Bouton de téléchargement PDF individuel */}
+                      <SinglePumpingRecordPDFButton record={record} />
+                      
                       {record.status !== 'validated' && (
                         <>
                           <Button 
-    variant="outline" 
-    size="sm"
-    onClick={() => onEdit(record)}
-  >
-    <Pencil className="w-4 h-4" />
-  </Button>
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => onEdit(record)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
                           
                           <Button 
                             variant="outline"
@@ -628,8 +855,10 @@ const PumpingRecordsTab = ({
         </Table>
       </Card>
 
-     
+      {/* Pagination en bas du tableau */}
+      {filteredRecords.length > 0 && <Pagination filteredCount={filteredRecords.length} />}
 
+      {/* Modal de détails */}
       <ViewPumpingRecordModal
         isOpen={viewPumpingModal}
         onClose={() => {
@@ -641,6 +870,7 @@ const PumpingRecordsTab = ({
     </>
   );
 };
+
 
 
 // Composant principal
