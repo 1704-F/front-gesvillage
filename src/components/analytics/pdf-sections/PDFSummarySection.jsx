@@ -86,6 +86,17 @@ const styles = StyleSheet.create({
   tresorerieTotal: {
     backgroundColor: '#EDE9FE',  // Légère teinte violette pour la variation de trésorerie
     fontWeight: 'bold',
+  },
+  cumulativeHeader: {
+    borderTopWidth: 2,
+    borderTopColor: '#6B7280',
+    marginTop: 10,
+    backgroundColor: '#F5F3FF', // Teinte violet clair pour la section cumulative
+    fontWeight: 'bold',
+  },
+  cumulativeTotal: {
+    backgroundColor: '#EDE9FE', // Teinte violette pour le bilan cumulatif
+    fontWeight: 'bold',
   }
 });
 
@@ -152,6 +163,26 @@ const PDFSummarySection = ({ data }) => {
         />
       </View>
 
+      <Text style={styles.sectionTitle}>Bilan cumulatif depuis le début de l'année</Text>
+<View style={styles.metricsGrid}>
+  <PDFMetricCard
+    title="Revenus totaux cumulés"
+    value={`${formatNumber(stats?.ytdRevenue || 0)} FCFA`}
+  />
+  <PDFMetricCard
+    title="Dépenses totales cumulées"
+    value={`${formatNumber(stats?.ytdExpense || 0)} FCFA`}
+  />
+  <PDFMetricCard
+    title="Bénéfice net cumulé"
+    value={`${formatNumber(stats?.ytdProfit || 0)} FCFA`}
+  />
+  <PDFMetricCard
+    title="Marge cumulative"
+    value={`${stats?.ytdMargin || 0}%`}
+  />
+</View>
+
       {/* Graphique d'évolution financière */}
       <Text style={styles.sectionTitle}>Évolution Financière Mensuelle</Text>
       <View style={styles.chartContainer}>
@@ -160,7 +191,8 @@ const PDFSummarySection = ({ data }) => {
           lines={[
             { dataKey: 'totalRevenue', name: 'Revenus', color: '#2563EB' },
             { dataKey: 'totalExpense', name: 'Dépenses', color: '#DC2626' },
-            { dataKey: 'profit', name: 'Bénéfice', color: '#10B981' }
+            { dataKey: 'profit', name: 'Bénéfice', color: '#10B981' },
+            { dataKey: 'cumulativeProfit', name: 'Bénéfice cumulatif', color: '#8B5CF6' }
           ]}
           xKey="month"
         />
@@ -301,6 +333,35 @@ const PDFSummarySection = ({ data }) => {
           <Text style={styles.col2}>{formatNumber(stats?.netCashFlow || 0)}</Text>
           <Text style={styles.col3}></Text>
         </View>
+
+        <View style={[styles.row, styles.tableRow, styles.cumulativeHeader]}>
+  <Text style={styles.col1}>BILAN CUMULATIF (DEPUIS LE DÉBUT DE L'ANNÉE)</Text>
+  <Text style={styles.col2}></Text>
+  <Text style={styles.col3}></Text>
+</View>
+
+<View style={[styles.row, styles.tableRow]}>
+  <Text style={styles.col1}>Revenus totaux cumulés</Text>
+  <Text style={styles.col2}>{formatNumber(stats?.ytdRevenue || 0)}</Text>
+  <Text style={styles.col3}></Text>
+</View>
+
+<View style={[styles.row, styles.tableRow]}>
+  <Text style={styles.col1}>Dépenses totales cumulées</Text>
+  <Text style={styles.col2}>{formatNumber(stats?.ytdExpense || 0)}</Text>
+  <Text style={styles.col3}></Text>
+</View>
+
+<View style={[styles.row, styles.tableRow, styles.cumulativeTotal]}>
+  <Text style={styles.col1}>Bénéfice net cumulé</Text>
+  <Text style={styles.col2}>{formatNumber(stats?.ytdProfit || 0)}</Text>
+  <Text style={styles.col3}>
+    {stats.ytdRevenue ? 
+      `${((stats.ytdProfit / stats.ytdRevenue) * 100).toFixed(1)}%` : 
+      '0%'
+    }
+  </Text>
+</View>
       </View>
     </View>
   );

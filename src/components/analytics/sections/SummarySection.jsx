@@ -113,6 +113,43 @@ const SummarySection = ({ data, period }) => {
 
       </div>
 
+      {/* Bilan cumulatif depuis le début de l'année */}
+<Card>
+  <CardHeader>
+    <CardTitle>Bilan cumulatif depuis le début de l'année</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="p-4 bg-blue-50 rounded-lg">
+        <h3 className="text-lg font-medium text-blue-800">Revenus totaux</h3>
+        <p className="mt-2 text-2xl font-bold">{formatNumber(stats?.ytdRevenue || 0)} FCFA</p>
+      </div>
+      
+      <div className="p-4 bg-red-50 rounded-lg">
+        <h3 className="text-lg font-medium text-red-800">Dépenses totales</h3>
+        <p className="mt-2 text-2xl font-bold">{formatNumber(stats?.ytdExpense || 0)} FCFA</p>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${parseFloat(stats?.ytdProfit || 0) >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+        <h3 className={`text-lg font-medium ${parseFloat(stats?.ytdProfit || 0) >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+          Bénéfice net cumulé
+        </h3>
+        <p className="mt-2 text-2xl font-bold">{formatNumber(stats?.ytdProfit || 0)} FCFA</p>
+        <p className="text-sm mt-1">
+          Marge: {parseFloat(stats?.ytdMargin || 0).toFixed(1)}%
+        </p>
+      </div>
+      
+      <div className={`p-4 rounded-lg ${parseFloat(stats?.ytdNetCashFlow || 0) >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+        <h3 className={`text-lg font-medium ${parseFloat(stats?.ytdNetCashFlow || 0) >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+          Trésorerie nette cumulée
+        </h3>
+        <p className="mt-2 text-2xl font-bold">{formatNumber(stats?.ytdNetCashFlow || 0)} FCFA</p>
+      </div>
+    </div>
+  </CardContent>
+</Card>
+
       {/* Graphique d'évolution financière */}
       <Card>
         <CardHeader>
@@ -368,6 +405,35 @@ const SummarySection = ({ data, period }) => {
   <TableCell className="font-bold">Variation de trésorerie</TableCell>
   <TableCell className="text-right font-bold">{formatNumber(stats?.netCashFlow || 0)}</TableCell>
   <TableCell className="text-right"></TableCell>
+</TableRow>
+
+<TableRow className="border-t-2 border-gray-300">
+  <TableCell className="font-bold pt-4">BILAN CUMULATIF (DEPUIS LE DÉBUT DE L'ANNÉE)</TableCell>
+  <TableCell></TableCell>
+  <TableCell></TableCell>
+</TableRow>
+
+<TableRow>
+  <TableCell className="font-medium">Revenus totaux cumulés</TableCell>
+  <TableCell className="text-right">{formatNumber(stats?.ytdRevenue || 0)}</TableCell>
+  <TableCell className="text-right"></TableCell>
+</TableRow>
+
+<TableRow>
+  <TableCell className="font-medium">Dépenses totales cumulées</TableCell>
+  <TableCell className="text-right">{formatNumber(stats?.ytdExpense || 0)}</TableCell>
+  <TableCell className="text-right"></TableCell>
+</TableRow>
+
+<TableRow className="bg-indigo-50">
+  <TableCell className="font-bold">Bénéfice net cumulé</TableCell>
+  <TableCell className="text-right font-bold">{formatNumber(stats?.ytdProfit || 0)}</TableCell>
+  <TableCell className="text-right">
+    {stats.ytdRevenue ? 
+      `${((stats.ytdProfit / stats.ytdRevenue) * 100).toFixed(1)}%` : 
+      '0%'
+    }
+  </TableCell>
 </TableRow>
 
 

@@ -395,6 +395,16 @@ const OverviewContent = ({ data, period }) => {
                dot={{ r: 4 }}
                activeDot={{ r: 8 }}
              />
+             <Line
+  type="monotone"
+  dataKey="cumulativeProfit"
+  name="Bénéfice Cumulatif"
+  stroke="#8884d8"  // Couleur différente
+  strokeWidth={2}
+  dot={{ r: 4 }}
+  activeDot={{ r: 8 }}
+/>
+
            </LineChart>
          </ResponsiveContainer>
        </CardContent>
