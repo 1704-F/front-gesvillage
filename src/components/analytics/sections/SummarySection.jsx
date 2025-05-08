@@ -1,19 +1,24 @@
 // src/components/analytics/sections/SummarySection.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "../../ui/card";
 import { Badge } from "../../ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../../ui/table";
-import { ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign, TrendingDown, Activity, Target, BarChart3, Wallet } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign, TrendingDown, Activity, Target, BarChart3, Wallet, Save } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Tooltip, Legend, CartesianGrid, XAxis, YAxis, Cell, ResponsiveContainer, ComposedChart, Area } from 'recharts';
+import { Button } from "../../ui/button";
+import { useToast } from "../../ui/toast/use-toast";
+import { axiosPrivate as api } from '../../../utils/axios';
 
 // Fonction pour formater les nombres avec séparateur de milliers
 const formatNumber = (num) => {
-    if (isNaN(num)) return '0';
-    return new Intl.NumberFormat('fr-FR').format(num); 
-  };
+  if (isNaN(num)) return '0';
+  return new Intl.NumberFormat('fr-FR').format(num); 
+};
 
 const SummarySection = ({ data, period }) => {
-  const { stats = {}, monthlyFinance = [] } = data || {};
+  const { stats = {}, monthlyFinance = [], lastBalanceSheet = null, currentBalanceSheet = null } = data || {};
+  const { toast } = useToast();
+  const [showSaveModal, setShowSaveModal] = useState(false);
   
   // Couleurs pour les graphiques
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
@@ -22,8 +27,8 @@ const SummarySection = ({ data, period }) => {
     <Card>
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <div className={`p-2 rounded-lg ${trend === 'up' ? 'bg-green-100' : 'bg-red-100'}`}>
-            <Icon className={`h-5 w-5 ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`} />
+          <div className={`p-2 rounded-lg ${trend === 'up' ? 'bg-green-100' : trend === 'down' ? 'bg-red-100' : 'bg-blue-100'}`}>
+            <Icon className={`h-5 w-5 ${trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-blue-600'}`} />
           </div>
           {trendValue !== undefined && (
             <Badge variant={trend === 'up' ? 'success' : 'destructive'} className="ml-2">
@@ -41,114 +46,377 @@ const SummarySection = ({ data, period }) => {
     </Card>
   );
 
+  // Fonction pour sauvegarder le bilan actuel comme bilan historique
+  const saveAsHistoricalBalanceSheet = async () => {
+    try {
+      if (!currentBalanceSheet) {
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: "Aucune donnée de bilan disponible pour la sauvegarde"
+        });
+        return;
+      }
+      
+      // Vérifier l'équilibre du bilan
+      const totalAssets = parseFloat(currentBalanceSheet.accounts_receivable) +
+                         parseFloat(currentBalanceSheet.cash_and_bank) +
+                         parseFloat(currentBalanceSheet.other_assets);
+      
+      const totalLiabilities = parseFloat(currentBalanceSheet.accounts_payable) +
+                              parseFloat(currentBalanceSheet.loans) +
+                              parseFloat(currentBalanceSheet.other_liabilities);
+      
+      if (Math.abs(totalAssets - totalLiabilities) > 0.01) {
+        // Ajuster les fonds propres pour équilibrer le bilan
+        const equity = totalAssets - totalLiabilities;
+        currentBalanceSheet.other_liabilities = (parseFloat(currentBalanceSheet.other_liabilities) + equity).toFixed(2);
+      }
+      
+      const response = await api.post('/historical-balance-sheets', currentBalanceSheet);
+      
+      toast({
+        variant: "success",
+        title: "Succès",
+        description: "Le bilan a été sauvegardé avec succès"
+      });
+      
+      setShowSaveModal(false);
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du bilan:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error.response?.data?.message || "Impossible de sauvegarder le bilan"
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Bilan Financier</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Bilan Financier</h2>
+        {currentBalanceSheet && (
+          <Button 
+            onClick={() => setShowSaveModal(true)}
+            className="flex items-center gap-2"
+          >
+            <Save className="h-4 w-4" />
+            Sauvegarder comme bilan historique
+          </Button>
+        )}
+      </div>
       
       {/* Métriques principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <MetricCard
+          title="Revenus Totaux"
+          value={`${formatNumber(stats?.totalRevenue || 0)} FCFA`}
+          trend="up"
+          icon={TrendingUp}
+        />
 
-     
+        <MetricCard
+          title="Dépenses Totales"
+          value={`${formatNumber(stats?.totalExpense || 0)} FCFA`}
+          trend="down"
+          icon={TrendingDown}
+        />
 
+        <MetricCard
+          title="Résultat d'Exploitation"
+          value={`${formatNumber(stats?.profit || 0)} FCFA`}
+          trend={parseFloat(stats?.profit || 0) > 0 ? 'up' : 'down'}
+          icon={DollarSign}
+        />
 
-<MetricCard
-  title="Revenus Totaux"
-  value={`${formatNumber(stats?.totalRevenue || 0)} FCFA`}
-  trend="up"
-  icon={TrendingUp}
-/>
+        <MetricCard
+          title="Marge Opérationnelle"
+          value={`${stats?.margin || 0}%`}
+          trend={parseFloat(stats?.margin || 0) > 20 ? 'up' : 'down'}
+          trendValue={parseFloat(stats?.margin || 0)}
+          icon={Target}
+        />
 
-<MetricCard
-  title="Dépenses Totales"
-  value={`${formatNumber(stats?.totalExpense || 0)} FCFA`}
-  trend="down"
-  icon={TrendingDown}
-/>
+        <MetricCard
+          title="Ratio Dépenses/Revenus"
+          value={`${stats?.expenseRatio || 0}%`}
+          trend={parseFloat(stats?.expenseRatio || 0) < 80 ? 'up' : 'down'}
+          trendValue={100 - parseFloat(stats?.expenseRatio || 0)}
+          icon={Activity}
+        />
 
-<MetricCard
-  title="Bénéfice Net"
-  value={`${formatNumber(stats?.profit || 0)} FCFA`}
-  trend={parseFloat(stats?.profit || 0) > 0 ? 'up' : 'down'}
-  icon={DollarSign}
-/>
-
-<MetricCard
-  title="Marge Opérationnelle"
-  value={`${stats?.margin || 0}%`}
-  trend={parseFloat(stats?.margin || 0) > 20 ? 'up' : 'down'}
-  trendValue={parseFloat(stats?.margin || 0)}
-  icon={Target}
-/>
-
-<MetricCard
-  title="Ratio Dépenses/Revenus"
-  value={`${stats?.expenseRatio || 0}%`}
-  trend={parseFloat(stats?.expenseRatio || 0) < 80 ? 'up' : 'down'}
-  trendValue={100 - parseFloat(stats?.expenseRatio || 0)}
-  icon={Activity}
-/>
-
-<MetricCard
-  title="Revenus Factures d'eau"
-  value={`${formatNumber(stats?.invoiceRevenue || 0)} FCFA`}
-  subtitle={`(${((stats?.invoiceRevenue || 0) / (stats?.totalRevenue || 1) * 100).toFixed(1) || 0}%)`}
-  trend="up"
-  icon={BarChart3}
-/>
-<MetricCard
-  title="Emprunts en cours"
-  value={`${formatNumber(stats?.loanRemaining || 0)} FCFA`}
-  subtitle={`Total: ${formatNumber(stats?.loanTotal || 0)} FCFA`}
-  trend="neutral"
-  icon={Wallet}
-/>
-
-<MetricCard
-  title="Variation de trésorerie"
-  value={`${formatNumber(stats?.netCashFlow || 0)} FCFA`}
-  trend={parseFloat(stats?.netCashFlow || 0) > 0 ? 'up' : 'down'}
-  icon={Wallet}
-/>
-
-
+        <MetricCard
+          title="Trésorerie Finale"
+          value={`${formatNumber(stats?.finalCashBalance || 0)} FCFA`}
+          subtitle={`(${formatNumber(stats?.initialCashBalance || 0)} FCFA initiale)`}
+          trend={parseFloat(stats?.netCashFlow || 0) > 0 ? 'up' : 'down'}
+          icon={Wallet}
+        />
       </div>
 
-      {/* Bilan cumulatif depuis le début de l'année */}
-<Card>
-  <CardHeader>
-    <CardTitle>Bilan cumulatif depuis le début de l'année</CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="p-4 bg-blue-50 rounded-lg">
-        <h3 className="text-lg font-medium text-blue-800">Revenus totaux</h3>
-        <p className="mt-2 text-2xl font-bold">{formatNumber(stats?.ytdRevenue || 0)} FCFA</p>
-      </div>
-      
-      <div className="p-4 bg-red-50 rounded-lg">
-        <h3 className="text-lg font-medium text-red-800">Dépenses totales</h3>
-        <p className="mt-2 text-2xl font-bold">{formatNumber(stats?.ytdExpense || 0)} FCFA</p>
-      </div>
-      
-      <div className={`p-4 rounded-lg ${parseFloat(stats?.ytdProfit || 0) >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-        <h3 className={`text-lg font-medium ${parseFloat(stats?.ytdProfit || 0) >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-          Bénéfice net cumulé
-        </h3>
-        <p className="mt-2 text-2xl font-bold">{formatNumber(stats?.ytdProfit || 0)} FCFA</p>
-        <p className="text-sm mt-1">
-          Marge: {parseFloat(stats?.ytdMargin || 0).toFixed(1)}%
-        </p>
-      </div>
-      
-      <div className={`p-4 rounded-lg ${parseFloat(stats?.ytdNetCashFlow || 0) >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-        <h3 className={`text-lg font-medium ${parseFloat(stats?.ytdNetCashFlow || 0) >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-          Trésorerie nette cumulée
-        </h3>
-        <p className="mt-2 text-2xl font-bold">{formatNumber(stats?.ytdNetCashFlow || 0)} FCFA</p>
-      </div>
-    </div>
-  </CardContent>
-</Card>
+      {/* 1. COMPTE DE RÉSULTAT */}
+      <Card>
+        <CardHeader>
+          <CardTitle>1. Compte de Résultat (par année)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-gray-500">Affiche uniquement les performances de l'exercice en cours :</p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Catégorie</TableHead>
+                <TableHead className="text-right">Montant (FCFA)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="font-medium">Revenus d'exploitation</TableCell>
+                <TableCell className="text-right">{formatNumber(stats.invoiceRevenue || 0)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">Autres revenus (dons, etc.)</TableCell>
+                <TableCell className="text-right">{formatNumber(stats.donationRevenue || 0)}</TableCell>
+              </TableRow>
+              <TableRow className="bg-blue-50">
+                <TableCell className="font-bold">Total Revenus</TableCell>
+                <TableCell className="text-right font-bold">{formatNumber(stats.totalRevenue || 0)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">Dépenses opérationnelles</TableCell>
+                <TableCell className="text-right">{formatNumber(stats.operationalExpense || 0)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">Salaires</TableCell>
+                <TableCell className="text-right">{formatNumber(stats.salaryExpense || 0)}</TableCell>
+              </TableRow>
+              <TableRow className="bg-red-50">
+                <TableCell className="font-bold">Total Dépenses</TableCell>
+                <TableCell className="text-right font-bold">{formatNumber(stats.totalExpense || 0)}</TableCell>
+              </TableRow>
+              <TableRow className="bg-green-50">
+                <TableCell className="font-bold">Résultat d'exploitation</TableCell>
+                <TableCell className="text-right font-bold">{formatNumber(stats.profit || 0)}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* 2. TABLEAU DE FLUX DE TRÉSORERIE */}
+      <Card>
+        <CardHeader>
+          <CardTitle>2. Bilan de Trésorerie</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-gray-500">Montre les flux financiers hors exploitation (emprunts, remboursements, investissements) :</p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Catégorie</TableHead>
+                <TableHead className="text-right">Montant (FCFA)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="font-medium">Trésorerie initiale (année précédente)</TableCell>
+                <TableCell className="text-right">{formatNumber(stats.initialCashBalance || 0)}</TableCell>
+              </TableRow>
+              <TableRow className="bg-green-50">
+                <TableCell className="font-medium">Résultat d'exploitation</TableCell>
+                <TableCell className="text-right">{formatNumber(stats.profit || 0)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">Emprunts reçus</TableCell>
+                <TableCell className="text-right">{formatNumber(stats.loanTotal || 0)}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-medium">Remboursements effectués</TableCell>
+                <TableCell className="text-right">{formatNumber(stats.loanRepayment || 0)}</TableCell>
+              </TableRow>
+              <TableRow className="bg-purple-50">
+                <TableCell className="font-bold">Variation de trésorerie</TableCell>
+                <TableCell className="text-right font-bold">{formatNumber(stats.netCashFlow || 0)}</TableCell>
+              </TableRow>
+              <TableRow className="bg-blue-50">
+                <TableCell className="font-bold">Trésorerie finale</TableCell>
+                <TableCell className="text-right font-bold">{formatNumber(stats.finalCashBalance || 0)}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* 3. BILAN COMPTABLE */}
+      <Card>
+        <CardHeader>
+          <CardTitle>3. Bilan Comptable</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-gray-500">Photographie de la situation financière à la fin de la période :</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* ACTIF */}
+            <div>
+              <h3 className="text-lg font-bold mb-4">ACTIF</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Catégorie</TableHead>
+                    <TableHead className="text-right">Montant (FCFA)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">Trésorerie</TableCell>
+                    <TableCell className="text-right">{formatNumber(stats.cash_and_bank || 0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Créances clients</TableCell>
+                    <TableCell className="text-right">{formatNumber(stats.accounts_receivable || 0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Autres actifs</TableCell>
+                    <TableCell className="text-right">{formatNumber(stats.other_assets || 0)}</TableCell>
+                  </TableRow>
+                  <TableRow className="bg-blue-50">
+                    <TableCell className="font-bold">TOTAL ACTIF</TableCell>
+                    <TableCell className="text-right font-bold">{formatNumber(stats.total_assets || 0)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+            
+            {/* PASSIF */}
+            <div>
+              <h3 className="text-lg font-bold mb-4">PASSIF</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Catégorie</TableHead>
+                    <TableHead className="text-right">Montant (FCFA)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell className="font-medium">Dettes fournisseurs</TableCell>
+                    <TableCell className="text-right">{formatNumber(stats.accounts_payable || 0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Emprunts</TableCell>
+                    <TableCell className="text-right">{formatNumber(stats.loans || 0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Autres passifs</TableCell>
+                    <TableCell className="text-right">{formatNumber(stats.other_liabilities || 0)}</TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Fonds propres</TableCell>
+                    <TableCell className="text-right">{formatNumber(stats.equity || 0)}</TableCell>
+                  </TableRow>
+                  <TableRow className="bg-blue-50">
+                    <TableCell className="font-bold">TOTAL PASSIF</TableCell>
+                    <TableCell className="text-right font-bold">{formatNumber(stats.total_liabilities || 0)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          
+          {/* Indicateur d'équilibre du bilan */}
+          {stats.total_assets && stats.total_liabilities && (
+            <div className={`mt-6 p-4 rounded-lg ${Math.abs(parseFloat(stats.total_assets) - parseFloat(stats.total_liabilities)) < 0.01 ? 'bg-green-50' : 'bg-red-50'}`}>
+              <h3 className={`text-lg font-medium ${Math.abs(parseFloat(stats.total_assets) - parseFloat(stats.total_liabilities)) < 0.01 ? 'text-green-800' : 'text-red-800'}`}>
+                Équilibre du bilan
+              </h3>
+              <p className="mt-2">
+                {Math.abs(parseFloat(stats.total_assets) - parseFloat(stats.total_liabilities)) < 0.01 
+                  ? "Le bilan est équilibré (Actif = Passif)" 
+                  : `Le bilan présente un écart de ${formatNumber(Math.abs(parseFloat(stats.total_assets) - parseFloat(stats.total_liabilities)))} FCFA`}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 4. HISTORIQUE CUMULATIF */}
+      <Card>
+        <CardHeader>
+          <CardTitle>4. Cumulatif Historique (multi-années)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-4 text-sm text-gray-500">Intègre les résultats nets des années précédentes :</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h3 className="text-lg font-medium text-blue-800">Revenus cumulés</h3>
+              <p className="mt-2 text-2xl font-bold">{formatNumber(stats.ytdRevenue || 0)} FCFA</p>
+            </div>
+            
+            <div className="p-4 bg-red-50 rounded-lg">
+              <h3 className="text-lg font-medium text-red-800">Dépenses cumulées</h3>
+              <p className="mt-2 text-2xl font-bold">{formatNumber(stats.ytdExpense || 0)} FCFA</p>
+            </div>
+            
+            <div className={`p-4 rounded-lg ${parseFloat(stats.ytdProfit || 0) >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+              <h3 className={`text-lg font-medium ${parseFloat(stats.ytdProfit || 0) >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                Résultat net cumulé
+              </h3>
+              <p className="mt-2 text-2xl font-bold">{formatNumber(stats.ytdProfit || 0)} FCFA</p>
+              <p className="text-sm mt-1">
+                Marge: {parseFloat(stats.ytdMargin || 0).toFixed(1)}%
+              </p>
+            </div>
+            
+            <div className={`p-4 rounded-lg ${parseFloat(stats.ytdNetCashFlow || 0) >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+              <h3 className={`text-lg font-medium ${parseFloat(stats.ytdNetCashFlow || 0) >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                Flux de trésorerie cumulé
+              </h3>
+              <p className="mt-2 text-2xl font-bold">{formatNumber(stats.ytdNetCashFlow || 0)} FCFA</p>
+            </div>
+          </div>
+          
+          {/* Tableau avec référence au dernier bilan historique */}
+          {lastBalanceSheet && (
+            <div className="mt-6">
+              <h3 className="text-lg font-medium mb-3">Dernier bilan historique de référence</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Période</TableHead>
+                    <TableHead>Actif Total</TableHead>
+                    <TableHead>Passif Total</TableHead>
+                    <TableHead>Trésorerie</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>
+                      {new Date(lastBalanceSheet.period_start).toLocaleDateString()} - {new Date(lastBalanceSheet.period_end).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {formatNumber(
+                        parseFloat(lastBalanceSheet.accounts_receivable) +
+                        parseFloat(lastBalanceSheet.cash_and_bank) +
+                        parseFloat(lastBalanceSheet.other_assets)
+                      )} FCFA
+                    </TableCell>
+                    <TableCell>
+                      {formatNumber(
+                        parseFloat(lastBalanceSheet.accounts_payable) +
+                        parseFloat(lastBalanceSheet.loans) +
+                        parseFloat(lastBalanceSheet.other_liabilities)
+                      )} FCFA
+                    </TableCell>
+                    <TableCell>
+                      {formatNumber(lastBalanceSheet.cash_and_bank)} FCFA
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Graphique d'évolution financière */}
       <Card>
@@ -182,7 +450,7 @@ const SummarySection = ({ data, period }) => {
               <Area
                 type="monotone"
                 dataKey="profit"
-                name="Bénéfice"
+                name="Résultat"
                 fill="#10B981"
                 stroke="#10B981"
                 fillOpacity={0.3}
@@ -203,9 +471,9 @@ const SummarySection = ({ data, period }) => {
               />
               <Line
                 type="monotone"
-                dataKey="profit"
-                name="Bénéfice"
-                stroke="#10B981"
+                dataKey="netCashFlow"
+                name="Flux de trésorerie"
+                stroke="#8884d8"
                 strokeWidth={2}
                 dot={{ r: 4 }}
               />
@@ -226,7 +494,6 @@ const SummarySection = ({ data, period }) => {
               <PieChart>
                 <Pie
                   data={[
-                   
                     { name: "Facture d'eau", value: parseFloat(stats?.invoiceRevenue || 0) },
                     { name: 'Dons', value: parseFloat(stats?.donationRevenue || 0) }
                   ]}
@@ -295,158 +562,46 @@ const SummarySection = ({ data, period }) => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Tableau récapitulatif */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Synthèse Financière</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Catégorie</TableHead>
-                <TableHead className="text-right">Montant (FCFA)</TableHead>
-                <TableHead className="text-right">% du Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell className="font-medium">Facture d'eau</TableCell>
-                <TableCell className="text-right">{formatNumber(stats.invoiceRevenue || 0)}</TableCell>
-
-                <TableCell className="text-right">
-  {stats?.totalRevenue ? 
-    `${((stats?.invoiceRevenue / stats?.totalRevenue) * 100).toFixed(1)}%` : 
-    '0%'
-  }
-</TableCell>
-
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Dons</TableCell>
-                <TableCell className="text-right">{formatNumber(stats.donationRevenue || 0)}</TableCell>
-                <TableCell className="text-right">
-                  {stats.totalRevenue ? 
-                    `${((stats.donationRevenue / stats.totalRevenue) * 100).toFixed(1)}%` : 
-                    '0%'
-                  }
-                </TableCell>
-              </TableRow>
-              <TableRow className="bg-blue-50">
-                <TableCell className="font-bold">Total Revenus</TableCell>
-                <TableCell className="text-right font-bold">{formatNumber(stats.totalRevenue || 0)}</TableCell>
-                <TableCell className="text-right">100%</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Dépenses Opérationnelles</TableCell>
-                <TableCell className="text-right">{formatNumber(stats.operationalExpense || 0)}</TableCell>
-                <TableCell className="text-right">
-                  {stats.totalExpense ? 
-                    `${((stats.operationalExpense / stats.totalExpense) * 100).toFixed(1)}%` : 
-                    '0%'
-                  }
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-medium">Salaires</TableCell>
-                <TableCell className="text-right">{formatNumber(stats.salaryExpense || 0)}</TableCell>
-               <TableCell className="text-right">
-                 {stats.totalExpense ? 
-                   `${((stats.salaryExpense / stats.totalExpense) * 100).toFixed(1)}%` : 
-                   '0%'
-                 }
-               </TableCell>
-             </TableRow>
-
-             <TableRow className="bg-red-50">
-  <TableCell className="font-bold">Total Dépenses</TableCell>
-  <TableCell className="text-right font-bold">{formatNumber(stats.totalExpense || 0)}</TableCell>
-  <TableCell className="text-right">100%</TableCell>
-</TableRow>
-
-<TableRow className="bg-green-50">
-  <TableCell className="font-bold">Résultat d'exploitation</TableCell>
-  <TableCell className="text-right font-bold">{formatNumber(stats.profit || 0)}</TableCell>
-  <TableCell className="text-right">
-    {stats.totalRevenue ? 
-      `${((stats.profit / stats.totalRevenue) * 100).toFixed(1)}%` : 
-      '0%'
-    }
-  </TableCell>
-</TableRow>
-
-{/* Section séparée pour les mouvements de trésorerie */}
-<TableRow className="border-t-2 border-gray-300">
-  <TableCell className="font-bold pt-4">MOUVEMENTS DE TRÉSORERIE</TableCell>
-  <TableCell></TableCell>
-  <TableCell></TableCell>
-</TableRow>
-
-<TableRow>
-  <TableCell className="font-medium">Emprunts reçus</TableCell>
-  <TableCell className="text-right">{formatNumber(stats?.loanTotal || 0)}</TableCell>
-  <TableCell className="text-right">+</TableCell>
-</TableRow>
-
-<TableRow>
-  <TableCell className="font-medium">Remboursements d'emprunts</TableCell>
-  <TableCell className="text-right">{formatNumber(stats?.loanRepayment || 0)}</TableCell>
-  <TableCell className="text-right">-</TableCell>
-</TableRow>
-
-<TableRow>
-  <TableCell className="font-medium">Emprunts en défaut</TableCell>
-  <TableCell className="text-right">{formatNumber(stats?.defaultedLoan || 0)}</TableCell>
-  <TableCell className="text-right">!</TableCell>
-</TableRow>
-
-<TableRow className="bg-purple-50">
-  <TableCell className="font-bold">Variation de trésorerie</TableCell>
-  <TableCell className="text-right font-bold">{formatNumber(stats?.netCashFlow || 0)}</TableCell>
-  <TableCell className="text-right"></TableCell>
-</TableRow>
-
-<TableRow className="border-t-2 border-gray-300">
-  <TableCell className="font-bold pt-4">BILAN CUMULATIF (DEPUIS LE DÉBUT DE L'ANNÉE)</TableCell>
-  <TableCell></TableCell>
-  <TableCell></TableCell>
-</TableRow>
-
-<TableRow>
-  <TableCell className="font-medium">Revenus totaux cumulés</TableCell>
-  <TableCell className="text-right">{formatNumber(stats?.ytdRevenue || 0)}</TableCell>
-  <TableCell className="text-right"></TableCell>
-</TableRow>
-
-<TableRow>
-  <TableCell className="font-medium">Dépenses totales cumulées</TableCell>
-  <TableCell className="text-right">{formatNumber(stats?.ytdExpense || 0)}</TableCell>
-  <TableCell className="text-right"></TableCell>
-</TableRow>
-
-<TableRow className="bg-indigo-50">
-  <TableCell className="font-bold">Bénéfice net cumulé</TableCell>
-  <TableCell className="text-right font-bold">{formatNumber(stats?.ytdProfit || 0)}</TableCell>
-  <TableCell className="text-right">
-    {stats.ytdRevenue ? 
-      `${((stats.ytdProfit / stats.ytdRevenue) * 100).toFixed(1)}%` : 
-      '0%'
-    }
-  </TableCell>
-</TableRow>
-
-
-
-  
-
-           </TableBody>
-         </Table>
-       </CardContent>
-     </Card>
-   </div>
- );
+      {/* Modal de confirmation pour sauvegarder le bilan */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-xl font-semibold mb-4">Sauvegarder comme bilan historique</h3>
+            
+            <p className="mb-4">
+              Vous êtes sur le point de sauvegarder ce bilan comme un bilan historique. 
+              Cette action enregistrera l'état financier actuel pour référence future.
+            </p>
+            
+            <div className="p-4 bg-blue-50 rounded-lg mb-4">
+              <p className="font-medium">Période: {new Date(currentBalanceSheet.period_start).toLocaleDateString()} - {new Date(currentBalanceSheet.period_end).toLocaleDateString()}</p>
+              <p className="mt-2">Total Actif: {formatNumber(
+                parseFloat(currentBalanceSheet.accounts_receivable) +
+                parseFloat(currentBalanceSheet.cash_and_bank) +
+                parseFloat(currentBalanceSheet.other_assets)
+              )} FCFA</p>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowSaveModal(false)}
+              >
+                Annuler
+              </Button>
+              <Button 
+                onClick={saveAsHistoricalBalanceSheet}
+              >
+                Confirmer la sauvegarde
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default SummarySection;
-                
+
+      

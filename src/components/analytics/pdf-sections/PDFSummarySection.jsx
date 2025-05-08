@@ -6,11 +6,11 @@ import { PDFBarChart, PDFPieChart, PDFLineChart } from '../pdf-components/PDFCha
 
 // Fonction pour formater les nombres
 const formatNumber = (num) => {
-    if (isNaN(num)) return '0';
-    
-    // Utiliser la méthode standard pour formater les nombres avec espaces
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-  };
+  if (isNaN(num)) return '0';
+  
+  // Utiliser la méthode standard pour formater les nombres avec espaces
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -27,6 +27,12 @@ const styles = StyleSheet.create({
     marginTop: 15,
     marginBottom: 5,
     color: '#2081E2',
+  },
+  sectionSubtitle: {
+    fontSize: 8,
+    marginBottom: 5,
+    color: '#6B7280',
+    fontStyle: 'italic',
   },
   chartContainer: {
     height: 170,
@@ -54,13 +60,20 @@ const styles = StyleSheet.create({
     paddingBottom: 5,
   },
   col1: {
-    width: '40%',
+    width: '50%',
   },
   col2: {
+    width: '50%',
+    textAlign: 'right',
+  },
+  colWithPct: {
+    width: '40%',
+  },
+  colWithPctRight: {
     width: '30%',
     textAlign: 'right',
   },
-  col3: {
+  colWithPctPct: {
     width: '30%',
     textAlign: 'right',
   },
@@ -68,47 +81,65 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F9FF',  // Légère teinte bleue
     fontWeight: 'bold',
   },
-  totalRow: {
-    backgroundColor: '#ECFDF5',  // Légère teinte verte
+  expenseRow: {
+    backgroundColor: '#FEF2F2',  // Légère teinte rouge pour les dépenses
     fontWeight: 'bold',
   },
   resultatRow: {
-    backgroundColor: '#FEF3C7',  // Légère teinte jaune pour le résultat d'exploitation
+    backgroundColor: '#ECFDF5',  // Légère teinte verte pour le résultat
     fontWeight: 'bold',
   },
-  tresorerieHeader: {
-    borderTopWidth: 2,
-    borderTopColor: '#6B7280',
+  cashflowHeader: {
     marginTop: 10,
     backgroundColor: '#F3F4F6',
     fontWeight: 'bold',
   },
-  tresorerieTotal: {
-    backgroundColor: '#EDE9FE',  // Légère teinte violette pour la variation de trésorerie
+  cashflowSubtotal: {
+    backgroundColor: '#E0E7FF',  // Teinte indigo pour la variation de trésorerie
+    fontWeight: 'bold',
+  },
+  cashflowTotal: {
+    backgroundColor: '#C7D2FE',  // Teinte indigo plus foncée pour le total
+    fontWeight: 'bold',
+  },
+  balanceSheetHeader: {
+    marginTop: 10,
+    backgroundColor: '#F5F3FF',  // Teinte violet clair
+    fontWeight: 'bold',
+  },
+  balanceSheetTotal: {
+    backgroundColor: '#EDE9FE',  // Teinte violette pour le total
     fontWeight: 'bold',
   },
   cumulativeHeader: {
-    borderTopWidth: 2,
-    borderTopColor: '#6B7280',
     marginTop: 10,
-    backgroundColor: '#F5F3FF', // Teinte violet clair pour la section cumulative
+    backgroundColor: '#FEF3C7',  // Teinte jaune clair
     fontWeight: 'bold',
   },
   cumulativeTotal: {
-    backgroundColor: '#EDE9FE', // Teinte violette pour le bilan cumulatif
+    backgroundColor: '#FDE68A',  // Teinte jaune pour le total
     fontWeight: 'bold',
+  },
+  balanceSheetGrid: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  balanceSheetColumn: {
+    width: '50%',
+    paddingRight: 5,
   }
 });
 
 const PDFSummarySection = ({ data }) => {
-  const { stats = {}, monthlyFinance = [] } = data || {};
+  const { stats = {}, monthlyFinance = [], lastBalanceSheet = null } = data || {};
 
   // Préparer les données pour le graphique d'évolution financière
   const financeData = monthlyFinance?.map(item => ({
     ...item,
     totalRevenue: parseFloat(item.totalRevenue || 0),
     totalExpense: parseFloat(item.totalExpense || 0),
-    profit: parseFloat(item.profit || 0)
+    profit: parseFloat(item.profit || 0),
+    netCashFlow: parseFloat(item.netCashFlow || 0)
   }));
 
   // Préparer les données pour le graphique de répartition des revenus
@@ -144,44 +175,282 @@ const PDFSummarySection = ({ data }) => {
           value={`${stats?.margin || 0}%`}
         />
         <PDFMetricCard
-          title="Ratio Dépenses/Revenus"
-          value={`${stats?.expenseRatio || 0}%`}
+          title="Trésorerie initiale"
+          value={`${formatNumber(stats?.initialCashBalance || 0)} FCFA`}
         />
         <PDFMetricCard
-          title="Revenus par Factures"
-          value={`${formatNumber(stats?.invoiceRevenue || 0)} FCFA`}
-          subtitle={`(${((stats?.invoiceRevenue || 0) / (stats?.totalRevenue || 1) * 100).toFixed(1) || 0}%)`}
+          title="Trésorerie finale"
+          value={`${formatNumber(stats?.finalCashBalance || 0)} FCFA`}
         />
         <PDFMetricCard
-          title="Emprunts en cours"
-          value={`${formatNumber(stats?.loanRemaining || 0)} FCFA`}
-          subtitle={`Total: ${formatNumber(stats?.loanTotal || 0)} FCFA`}
+          title="Total Actif"
+          value={`${formatNumber(stats?.total_assets || 0)} FCFA`}
         />
         <PDFMetricCard
-          title="Variation de trésorerie"
-          value={`${formatNumber(stats?.netCashFlow || 0)} FCFA`}
+          title="Total Passif"
+          value={`${formatNumber(stats?.total_liabilities || 0)} FCFA`}
         />
       </View>
 
-      <Text style={styles.sectionTitle}>Bilan cumulatif depuis le début de l'année</Text>
+      {/* 1. COMPTE DE RÉSULTAT */}
+      <Text style={styles.sectionTitle}>1. Compte de Résultat (par année)</Text>
+      <Text style={styles.sectionSubtitle}>Affiche uniquement les performances de l'exercice en cours :</Text>
+      <View>
+        <View style={[styles.row, styles.tableHeader]}>
+          <Text style={styles.col1}>Catégorie</Text>
+          <Text style={styles.col2}>Montant (FCFA)</Text>
+        </View>
+        
+        {/* Revenus */}
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Revenus d'exploitation</Text>
+          <Text style={styles.col2}>{formatNumber(stats.invoiceRevenue || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Autres revenus (dons, etc.)</Text>
+          <Text style={styles.col2}>{formatNumber(stats.donationRevenue || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow, styles.subtotalRow]}>
+          <Text style={styles.col1}>Total Revenus</Text>
+          <Text style={styles.col2}>{formatNumber(stats.totalRevenue || 0)}</Text>
+        </View>
+        
+        {/* Dépenses */}
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Dépenses opérationnelles</Text>
+          <Text style={styles.col2}>{formatNumber(stats.operationalExpense || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Salaires</Text>
+          <Text style={styles.col2}>{formatNumber(stats.salaryExpense || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow, styles.expenseRow]}>
+          <Text style={styles.col1}>Total Dépenses</Text>
+          <Text style={styles.col2}>{formatNumber(stats.totalExpense || 0)}</Text>
+        </View>
+        
+        {/* Résultat */}
+        <View style={[styles.row, styles.tableRow, styles.resultatRow]}>
+          <Text style={styles.col1}>Résultat d'exploitation</Text>
+          <Text style={styles.col2}>{formatNumber(stats.profit || 0)}</Text>
+        </View>
+      </View>
+
+      {/* 2. TABLEAU DE FLUX DE TRÉSORERIE */}
+      <Text style={styles.sectionTitle}>2. Bilan de Trésorerie</Text>
+      <Text style={styles.sectionSubtitle}>Montre les flux financiers hors exploitation (emprunts, remboursements, investissements) :</Text>
+      <View>
+        <View style={[styles.row, styles.tableHeader]}>
+          <Text style={styles.col1}>Catégorie</Text>
+          <Text style={styles.col2}>Montant (FCFA)</Text>
+        </View>
+        
+        {/* Trésorerie */}
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Trésorerie initiale (année précédente)</Text>
+          <Text style={styles.col2}>{formatNumber(stats.initialCashBalance || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow, styles.subtotalRow]}>
+          <Text style={styles.col1}>Résultat d'exploitation</Text>
+          <Text style={styles.col2}>{formatNumber(stats.profit || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Emprunts reçus</Text>
+          <Text style={styles.col2}>{formatNumber(stats.loanTotal || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Remboursements effectués</Text>
+          <Text style={styles.col2}>{formatNumber(stats.loanRepayment || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow, styles.cashflowSubtotal]}>
+          <Text style={styles.col1}>Variation de trésorerie</Text>
+          <Text style={styles.col2}>{formatNumber(stats.netCashFlow || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow, styles.cashflowTotal]}>
+          <Text style={styles.col1}>Trésorerie finale</Text>
+          <Text style={styles.col2}>{formatNumber(stats.finalCashBalance || 0)}</Text>
+        </View>
+      </View>
+
+      {/* 3. BILAN COMPTABLE */}
+      <Text style={styles.sectionTitle}>3. Bilan Comptable</Text>
+      <Text style={styles.sectionSubtitle}>Photographie de la situation financière à la fin de la période :</Text>
+      <View style={styles.balanceSheetGrid}>
+        {/* ACTIF */}
+        <View style={styles.balanceSheetColumn}>
+          <View style={[styles.row, styles.tableHeader]}>
+            <Text style={styles.col1}>ACTIF</Text>
+            <Text style={styles.col2}>Montant (FCFA)</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow]}>
+            <Text style={styles.col1}>Trésorerie</Text>
+            <Text style={styles.col2}>{formatNumber(stats.cash_and_bank || 0)}</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow]}>
+            <Text style={styles.col1}>Créances clients</Text>
+            <Text style={styles.col2}>{formatNumber(stats.accounts_receivable || 0)}</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow]}>
+            <Text style={styles.col1}>Autres actifs</Text>
+            <Text style={styles.col2}>{formatNumber(stats.other_assets || 0)}</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow, styles.balanceSheetTotal]}>
+            <Text style={styles.col1}>TOTAL ACTIF</Text>
+            <Text style={styles.col2}>{formatNumber(stats.total_assets || 0)}</Text>
+          </View>
+        </View>
+        
+        {/* PASSIF */}
+        <View style={styles.balanceSheetColumn}>
+          <View style={[styles.row, styles.tableHeader]}>
+            <Text style={styles.col1}>PASSIF</Text>
+            <Text style={styles.col2}>Montant (FCFA)</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow]}>
+            <Text style={styles.col1}>Dettes fournisseurs</Text>
+            <Text style={styles.col2}>{formatNumber(stats.accounts_payable || 0)}</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow]}>
+            <Text style={styles.col1}>Emprunts</Text>
+            <Text style={styles.col2}>{formatNumber(stats.loans || 0)}</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow]}>
+            <Text style={styles.col1}>Autres passifs</Text>
+            <Text style={styles.col2}>{formatNumber(stats.other_liabilities || 0)}</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow]}>
+            <Text style={styles.col1}>Fonds propres</Text>
+            <Text style={styles.col2}>{formatNumber(stats.equity || 0)}</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow, styles.balanceSheetTotal]}>
+            <Text style={styles.col1}>TOTAL PASSIF</Text>
+            <Text style={styles.col2}>{formatNumber(stats.total_liabilities || 0)}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* 4. HISTORIQUE CUMULATIF */}
+<Text style={styles.sectionTitle}>4. Cumulatif Historique (multi-années)</Text>
+<Text style={styles.sectionSubtitle}>Intègre les résultats nets des années précédentes :</Text>
+
+{/* Tableau historique par année */}
+<View>
+  <View style={[styles.row, styles.tableHeader]}>
+    <Text style={{ width: '20%' }}>Année</Text>
+    <Text style={{ width: '20%', textAlign: 'right' }}>Revenus</Text>
+    <Text style={{ width: '20%', textAlign: 'right' }}>Dépenses</Text>
+    <Text style={{ width: '20%', textAlign: 'right' }}>Résultat net</Text>
+    <Text style={{ width: '20%', textAlign: 'right' }}>Trésorerie clôture</Text>
+  </View>
+  
+  {/* Utiliser lastBalanceSheet et données historiques */}
+  {lastBalanceSheet && (
+    <View style={[styles.row, styles.tableRow]}>
+      <Text style={{ width: '20%' }}>
+        {new Date(lastBalanceSheet.period_end).getFullYear()}
+      </Text>
+      <Text style={{ width: '20%', textAlign: 'right' }}>
+        {formatNumber(parseFloat(lastBalanceSheet.previous_revenue || 0))}
+      </Text>
+      <Text style={{ width: '20%', textAlign: 'right' }}>
+        {formatNumber(parseFloat(lastBalanceSheet.previous_expense || 0))}
+      </Text>
+      <Text style={{ width: '20%', textAlign: 'right' }}>
+        {formatNumber(parseFloat(lastBalanceSheet.previous_profit || 0))}
+      </Text>
+      <Text style={{ width: '20%', textAlign: 'right' }}>
+        {formatNumber(parseFloat(lastBalanceSheet.cash_and_bank || 0))}
+      </Text>
+    </View>
+  )}
+  
+  {/* Année courante */}
+  <View style={[styles.row, styles.tableRow]}>
+    <Text style={{ width: '20%' }}>{new Date().getFullYear()}</Text>
+    <Text style={{ width: '20%', textAlign: 'right' }}>
+      {formatNumber(stats.totalRevenue || 0)}
+    </Text>
+    <Text style={{ width: '20%', textAlign: 'right' }}>
+      {formatNumber(stats.totalExpense || 0)}
+    </Text>
+    <Text style={{ width: '20%', textAlign: 'right' }}>
+      {formatNumber(stats.profit || 0)}
+    </Text>
+    <Text style={{ width: '20%', textAlign: 'right' }}>
+      {formatNumber(stats.finalCashBalance || 0)}
+    </Text>
+  </View>
+  
+  {/* Ligne de total */}
+  <View style={[styles.row, styles.tableRow, styles.cumulativeTotal]}>
+    <Text style={{ width: '20%', fontWeight: 'bold' }}>Total cumul</Text>
+    <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
+      {formatNumber((parseFloat(lastBalanceSheet?.previous_revenue || 0) + parseFloat(stats.totalRevenue || 0)))}
+    </Text>
+    <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
+      {formatNumber((parseFloat(lastBalanceSheet?.previous_expense || 0) + parseFloat(stats.totalExpense || 0)))}
+    </Text>
+    <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
+      {formatNumber((parseFloat(lastBalanceSheet?.previous_profit || 0) + parseFloat(stats.profit || 0)))}
+    </Text>
+    <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
+      {formatNumber(stats.finalCashBalance || 0)}
+    </Text>
+  </View>
+</View>
+
+{/* Statistiques cumulatives sous forme de cartes métriques */}
 <View style={styles.metricsGrid}>
   <PDFMetricCard
-    title="Revenus totaux cumulés"
-    value={`${formatNumber(stats?.ytdRevenue || 0)} FCFA`}
+    title="Revenus cumulés historiques"
+    value={`${formatNumber((parseFloat(lastBalanceSheet?.previous_revenue || 0) + parseFloat(stats.totalRevenue || 0)))} FCFA`}
   />
   <PDFMetricCard
-    title="Dépenses totales cumulées"
-    value={`${formatNumber(stats?.ytdExpense || 0)} FCFA`}
+    title="Dépenses cumulées historiques"
+    value={`${formatNumber((parseFloat(lastBalanceSheet?.previous_expense || 0) + parseFloat(stats.totalExpense || 0)))} FCFA`}
   />
   <PDFMetricCard
-    title="Bénéfice net cumulé"
-    value={`${formatNumber(stats?.ytdProfit || 0)} FCFA`}
+    title="Résultat net cumulé historique"
+    value={`${formatNumber((parseFloat(lastBalanceSheet?.previous_profit || 0) + parseFloat(stats.profit || 0)))} FCFA`}
   />
   <PDFMetricCard
-    title="Marge cumulative"
-    value={`${stats?.ytdMargin || 0}%`}
+    title="Trésorerie actuelle"
+    value={`${formatNumber(stats.finalCashBalance || 0)} FCFA`}
   />
 </View>
+
+     
+
+      {/* Si un bilan historique est disponible */}
+      {lastBalanceSheet && (
+        <View>
+          <Text style={styles.sectionTitle}>Dernier bilan historique de référence</Text>
+          <View style={[styles.row, styles.tableHeader]}>
+            <Text style={styles.col1}>Période</Text>
+            <Text style={styles.col2}>Montant (FCFA)</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow]}>
+            <Text style={styles.col1}>Actif Total</Text>
+            <Text style={styles.col2}>{formatNumber(
+              parseFloat(lastBalanceSheet.accounts_receivable) +
+              parseFloat(lastBalanceSheet.cash_and_bank) +
+              parseFloat(lastBalanceSheet.other_assets)
+            )}</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow]}>
+            <Text style={styles.col1}>Passif Total</Text>
+            <Text style={styles.col2}>{formatNumber(
+              parseFloat(lastBalanceSheet.accounts_payable) +
+              parseFloat(lastBalanceSheet.loans) +
+              parseFloat(lastBalanceSheet.other_liabilities)
+            )}</Text>
+          </View>
+          <View style={[styles.row, styles.tableRow]}>
+            <Text style={styles.col1}>Trésorerie</Text>
+            <Text style={styles.col2}>{formatNumber(lastBalanceSheet.cash_and_bank)}</Text>
+          </View>
+        </View>
+      )}
 
       {/* Graphique d'évolution financière */}
       <Text style={styles.sectionTitle}>Évolution Financière Mensuelle</Text>
@@ -191,8 +460,8 @@ const PDFSummarySection = ({ data }) => {
           lines={[
             { dataKey: 'totalRevenue', name: 'Revenus', color: '#2563EB' },
             { dataKey: 'totalExpense', name: 'Dépenses', color: '#DC2626' },
-            { dataKey: 'profit', name: 'Bénéfice', color: '#10B981' },
-            { dataKey: 'cumulativeProfit', name: 'Bénéfice cumulatif', color: '#8B5CF6' }
+            { dataKey: 'profit', name: 'Résultat', color: '#10B981' },
+            { dataKey: 'netCashFlow', name: 'Flux de trésorerie', color: '#8B5CF6' }
           ]}
           xKey="month"
         />
@@ -225,143 +494,6 @@ const PDFSummarySection = ({ data }) => {
             />
           </View>
         </View>
-      </View>
-
-      {/* Tableau récapitulatif */}
-      <Text style={styles.sectionTitle}>Synthèse Financière</Text>
-      <View>
-        {/* Entêtes du tableau */}
-        <View style={[styles.row, styles.tableHeader]}>
-          <Text style={styles.col1}>Catégorie</Text>
-          <Text style={styles.col2}>Montant (FCFA)</Text>
-          <Text style={styles.col3}>% du Total</Text>
-        </View>
-        
-        {/* Section revenus */}
-        <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Facture d'eau</Text>
-          <Text style={styles.col2}>{formatNumber(stats.invoiceRevenue || 0)}</Text>
-          <Text style={styles.col3}>
-            {stats?.totalRevenue ? 
-              `${((stats?.invoiceRevenue / stats?.totalRevenue) * 100).toFixed(1)}%` : 
-              '0%'
-            }
-          </Text>
-        </View>
-        <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Dons</Text>
-          <Text style={styles.col2}>{formatNumber(stats.donationRevenue || 0)}</Text>
-          <Text style={styles.col3}>
-            {stats.totalRevenue ? 
-              `${((stats.donationRevenue / stats.totalRevenue) * 100).toFixed(1)}%` : 
-              '0%'
-            }
-          </Text>
-        </View>
-        <View style={[styles.row, styles.tableRow, styles.subtotalRow]}>
-          <Text style={styles.col1}>Total Revenus</Text>
-          <Text style={styles.col2}>{formatNumber(stats.totalRevenue || 0)}</Text>
-          <Text style={styles.col3}>100%</Text>
-        </View>
-        
-        {/* Section dépenses */}
-        <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Dépenses Opérationnelles</Text>
-          <Text style={styles.col2}>{formatNumber(stats.operationalExpense || 0)}</Text>
-          <Text style={styles.col3}>
-            {stats.totalExpense ? 
-              `${((stats.operationalExpense / stats.totalExpense) * 100).toFixed(1)}%` : 
-              '0%'
-            }
-          </Text>
-        </View>
-        <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Salaires</Text>
-          <Text style={styles.col2}>{formatNumber(stats.salaryExpense || 0)}</Text>
-          <Text style={styles.col3}>
-            {stats.totalExpense ? 
-              `${((stats.salaryExpense / stats.totalExpense) * 100).toFixed(1)}%` : 
-              '0%'
-            }
-          </Text>
-        </View>
-        <View style={[styles.row, styles.tableRow, styles.subtotalRow]}>
-          <Text style={styles.col1}>Total Dépenses</Text>
-          <Text style={styles.col2}>{formatNumber(stats.totalExpense || 0)}</Text>
-          <Text style={styles.col3}>100%</Text>
-        </View>
-        
-        {/* Résultat d'exploitation */}
-        <View style={[styles.row, styles.tableRow, styles.resultatRow]}>
-          <Text style={styles.col1}>Résultat d'exploitation</Text>
-          <Text style={styles.col2}>{formatNumber(stats.profit || 0)}</Text>
-          <Text style={styles.col3}>
-            {stats.totalRevenue ? 
-              `${((stats.profit / stats.totalRevenue) * 100).toFixed(1)}%` : 
-              '0%'
-            }
-          </Text>
-        </View>
-        
-        {/* Section trésorerie */}
-        <View style={[styles.row, styles.tableRow, styles.tresorerieHeader]}>
-          <Text style={styles.col1}>MOUVEMENTS DE TRÉSORERIE</Text>
-          <Text style={styles.col2}></Text>
-          <Text style={styles.col3}></Text>
-        </View>
-        
-        <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Emprunts reçus</Text>
-          <Text style={styles.col2}>{formatNumber(stats?.loanTotal || 0)}</Text>
-          <Text style={styles.col3}>+</Text>
-        </View>
-        
-        <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Remboursements d'emprunts</Text>
-          <Text style={styles.col2}>{formatNumber(stats?.loanRepayment || 0)}</Text>
-          <Text style={styles.col3}>-</Text>
-        </View>
-        
-        <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Emprunts en défaut</Text>
-          <Text style={styles.col2}>{formatNumber(stats?.defaultedLoan || 0)}</Text>
-          <Text style={styles.col3}>!</Text>
-        </View>
-        
-        <View style={[styles.row, styles.tableRow, styles.tresorerieTotal]}>
-          <Text style={styles.col1}>Variation de trésorerie</Text>
-          <Text style={styles.col2}>{formatNumber(stats?.netCashFlow || 0)}</Text>
-          <Text style={styles.col3}></Text>
-        </View>
-
-        <View style={[styles.row, styles.tableRow, styles.cumulativeHeader]}>
-  <Text style={styles.col1}>BILAN CUMULATIF (DEPUIS LE DÉBUT DE L'ANNÉE)</Text>
-  <Text style={styles.col2}></Text>
-  <Text style={styles.col3}></Text>
-</View>
-
-<View style={[styles.row, styles.tableRow]}>
-  <Text style={styles.col1}>Revenus totaux cumulés</Text>
-  <Text style={styles.col2}>{formatNumber(stats?.ytdRevenue || 0)}</Text>
-  <Text style={styles.col3}></Text>
-</View>
-
-<View style={[styles.row, styles.tableRow]}>
-  <Text style={styles.col1}>Dépenses totales cumulées</Text>
-  <Text style={styles.col2}>{formatNumber(stats?.ytdExpense || 0)}</Text>
-  <Text style={styles.col3}></Text>
-</View>
-
-<View style={[styles.row, styles.tableRow, styles.cumulativeTotal]}>
-  <Text style={styles.col1}>Bénéfice net cumulé</Text>
-  <Text style={styles.col2}>{formatNumber(stats?.ytdProfit || 0)}</Text>
-  <Text style={styles.col3}>
-    {stats.ytdRevenue ? 
-      `${((stats.ytdProfit / stats.ytdRevenue) * 100).toFixed(1)}%` : 
-      '0%'
-    }
-  </Text>
-</View>
       </View>
     </View>
   );
