@@ -16,7 +16,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
+  AlertDialogDescription, 
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -346,11 +346,30 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     }
   }, [formData.last_reading_value, formData.reading_value]);
 
+  useEffect(() => {
+    if (formData.meter_id && !editingReading) {
+      fetchLatestReading(formData.meter_id);
+    }
+  }, [formData.meter_id]);
+
   const handleChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
+    // Créez une nouvelle référence de l'objet formData pour garantir que React détecte le changement
+    const newFormData = {
+      ...formData,
       [field]: value
-    }));
+    };
+    
+    setFormData(newFormData);
+    
+    // Forcer le calcul immédiatement si les deux valeurs sont disponibles
+    if (field === 'last_reading_value' && newFormData.reading_value) {
+      const newConsumption = parseFloat(newFormData.reading_value) - parseFloat(value);
+      setConsumption(newConsumption > 0 ? newConsumption : null);
+    } else if (field === 'reading_value' && newFormData.last_reading_value) {
+      const newConsumption = parseFloat(value) - parseFloat(newFormData.last_reading_value);
+      setConsumption(newConsumption > 0 ? newConsumption : null);
+    }
+    
     setError(null);
   };
 
@@ -406,8 +425,38 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     }
   };
 
-  
-
+  const fetchLatestReading = async (meterId) => {
+    if (!meterId) return;
+    
+    try {
+      // Appel à l'API pour récupérer le dernier relevé
+      const response = await api.get(`/readings/meter/${meterId}/latest`);
+      
+      if (response.data && response.data.data) {
+        const latestReading = response.data.data;
+        
+        // Important: Utiliser le reading_value du dernier relevé comme last_reading_value pour le nouveau relevé
+        handleChange('last_reading_value', latestReading.reading_value);
+      } else {
+        // Si pas de relevé, essayer de récupérer la valeur initiale du compteur
+        try {
+          const meterResponse = await api.get(`/api/meters/${meterId}`);
+          if (meterResponse.data && meterResponse.data.initial_reading_value) {
+            handleChange('last_reading_value', meterResponse.data.initial_reading_value);
+          } else {
+            // Valeur par défaut si ni relevé ni valeur initiale
+            handleChange('last_reading_value', '0');
+          }
+        } catch (err) {
+          console.error('Erreur lors de la récupération des détails du compteur:', err);
+          handleChange('last_reading_value', '0');
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors de la récupération du dernier relevé:', error);
+      handleChange('last_reading_value', '0');
+    }
+  };
 
 
   return (
