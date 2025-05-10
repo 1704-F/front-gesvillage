@@ -6,6 +6,7 @@ import PumpingRecordPDFDownloadButton from './PumpingRecordPDFDownloadButton';
 import SinglePumpingRecordPDFButton from './SinglePumpingRecordPDFButton';
 import DistributionRecordsTab from './Distribution/DistributionRecordsTab';
 import DistributionRecordForm from './Distribution/DistributionRecordForm';
+import SynthesisSection from './Distribution//SynthesisSection';
 import { Card } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { Button } from "../ui/button";
@@ -40,7 +41,8 @@ import {
   Check,
   Gauge,
   XCircle,
-   SprayCan
+  SprayCan,
+  TrendingUp
 } from 'lucide-react';
 import { axiosPrivate as api } from '../../utils/axios';
 
@@ -875,6 +877,8 @@ const PumpingRecordsTab = ({
 
 
 
+
+
 // Composant principal
 const WaterQualityPage = () => {
   // États
@@ -901,6 +905,18 @@ const WaterQualityPage = () => {
 
   const [distributionModal, setDistributionModal] = useState({ isOpen: false, editing: null });
   const [refreshDistribution, setRefreshDistribution] = useState(false);
+
+
+  const [synthesisRangeDates, setSynthesisRangeDates] = useState([
+  (() => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 1); // 1 mois en arrière
+    date.setDate(1); // Premier jour du mois
+    date.setHours(0, 0, 0, 0);
+    return date;
+  })(),
+  new Date()
+]);
 
   // Chargement initial des données
   useEffect(() => {
@@ -1287,6 +1303,29 @@ const translateSourceType = (type) => {
   </Button>
 )}
 
+{activeTab === 'synthesis' && (
+  <div className="flex gap-2">
+    <input
+      type="date"
+      className="px-3 py-2 border rounded-lg"
+      value={format(synthesisRangeDates[0], 'yyyy-MM-dd')}
+      onChange={(e) => setSynthesisRangeDates([
+        new Date(e.target.value),
+        synthesisRangeDates[1]
+      ])}
+    />
+    <input
+      type="date"
+      className="px-3 py-2 border rounded-lg"
+      value={format(synthesisRangeDates[1], 'yyyy-MM-dd')}
+      onChange={(e) => setSynthesisRangeDates([
+        synthesisRangeDates[0],
+        new Date(e.target.value)
+      ])}
+    />
+  </div>
+)}
+
 
 
       </div>
@@ -1313,6 +1352,11 @@ const translateSourceType = (type) => {
   < SprayCan className="w-4 h-4 mr-2" />
   Suivi Distribution
 </TabsTrigger>
+<TabsTrigger value="synthesis">
+  <TrendingUp className="w-4 h-4 mr-2" />
+  Synthèse
+</TabsTrigger>
+
 
 
         </TabsList>
@@ -1518,6 +1562,13 @@ const translateSourceType = (type) => {
     onEdit={(record) => setDistributionModal({ isOpen: true, editing: record })}
     shouldRefresh={refreshDistribution}
     onRefreshComplete={() => setRefreshDistribution(false)}
+  />
+</TabsContent>
+
+<TabsContent value="synthesis">
+  <SynthesisSection 
+    sources={sources}
+    period={synthesisRangeDates}
   />
 </TabsContent>
 
