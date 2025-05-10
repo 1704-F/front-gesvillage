@@ -4,6 +4,8 @@ import PumpingRecordForm from './PumpingRecordForm'; // Le composant de formulai
 import ViewPumpingRecordModal from './ViewPumpingRecordModal'; // Le composant de vue détaillée
 import PumpingRecordPDFDownloadButton from './PumpingRecordPDFDownloadButton';
 import SinglePumpingRecordPDFButton from './SinglePumpingRecordPDFButton';
+import DistributionRecordsTab from './Distribution/DistributionRecordsTab';
+import DistributionRecordForm from './Distribution/DistributionRecordForm';
 import { Card } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { Button } from "../ui/button";
@@ -37,8 +39,8 @@ import {
   Beaker, 
   Check,
   Gauge,
-  DropletHalf, 
-  XCircle 
+  XCircle,
+   SprayCan
 } from 'lucide-react';
 import { axiosPrivate as api } from '../../utils/axios';
 
@@ -897,6 +899,9 @@ const WaterQualityPage = () => {
 
   const [pumpingModal, setPumpingModal] = useState({ isOpen: false, editing: null });
 
+  const [distributionModal, setDistributionModal] = useState({ isOpen: false, editing: null });
+  const [refreshDistribution, setRefreshDistribution] = useState(false);
+
   // Chargement initial des données
   useEffect(() => {
     Promise.all([
@@ -1276,6 +1281,12 @@ const translateSourceType = (type) => {
   </Button>
 )}
 
+{activeTab === 'distribution' && (
+  <Button onClick={() => setDistributionModal({ isOpen: true, editing: null })}>
+    <Plus className="w-4 h-4 mr-2" /> Ajouter une distribution
+  </Button>
+)}
+
 
 
       </div>
@@ -1298,6 +1309,11 @@ const translateSourceType = (type) => {
   <Gauge className="w-4 h-4 mr-2" />
   Suivi Pompage
 </TabsTrigger>
+<TabsTrigger value="distribution">
+  < SprayCan className="w-4 h-4 mr-2" />
+  Suivi Distribution
+</TabsTrigger>
+
 
         </TabsList>
 
@@ -1496,6 +1512,14 @@ const translateSourceType = (type) => {
   onRefreshComplete={() => setRefreshPumping(false)}
 />
 </TabsContent>
+<TabsContent value="distribution">
+  <DistributionRecordsTab 
+    sources={sources} 
+    onEdit={(record) => setDistributionModal({ isOpen: true, editing: record })}
+    shouldRefresh={refreshDistribution}
+    onRefreshComplete={() => setRefreshDistribution(false)}
+  />
+</TabsContent>
 
       </Tabs>
     
@@ -1565,6 +1589,50 @@ const translateSourceType = (type) => {
       setRefreshPumping(true);
       // Rafraîchir les données de pompage
       // Vous pourriez avoir besoin d'ajouter un moyen de dire à PumpingRecordsTab de rafraîchir ses données
+    } catch (error) {
+      console.error("Erreur lors de la soumission:", error);
+      toast({
+        title: "Erreur",
+        description: error.response?.data?.message || "Une erreur est survenue",
+        variant: "destructive",
+      });
+    }
+  }}
+/>
+
+<DistributionRecordForm
+  isOpen={distributionModal.isOpen}
+  onClose={() => setDistributionModal({ isOpen: false, editing: null })}
+  editingRecord={distributionModal.editing}
+  sources={sources}
+  employees={employees}
+  onSubmit={async (data) => {
+    try {
+      if (distributionModal.editing) {
+        await api.put(`/water-quality/distribution/${distributionModal.editing.id}`, data);
+        toast({
+          title: "Succès",
+          description: "Enregistrement de distribution modifié avec succès"
+        });
+      } else {
+        // S'assurer que les valeurs numériques sont correctement formatées pour l'API
+        const formattedData = {
+          ...data,
+          start_meter_reading: parseFloat(data.start_meter_reading),
+          end_meter_reading: parseFloat(data.end_meter_reading),
+          volume_distributed: parseFloat(data.volume_distributed),
+          distribution_duration: parseInt(data.distribution_duration),
+          beneficiaries: parseInt(data.beneficiaries) || 0
+        };
+        
+        await api.post('/water-quality/distribution', formattedData);
+        toast({
+          title: "Succès",
+          description: "Enregistrement de distribution ajouté avec succès"
+        });
+      }
+      setDistributionModal({ isOpen: false, editing: null });
+      setRefreshDistribution(true);
     } catch (error) {
       console.error("Erreur lors de la soumission:", error);
       toast({
