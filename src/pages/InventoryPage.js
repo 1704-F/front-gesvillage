@@ -9,7 +9,11 @@ import {
   Folder, 
   ArrowLeftRight, 
   Plus,
-  BarChart
+  BarChart,
+  FileText,
+  ChevronDown, 
+  Eye, 
+  Download, 
 } from 'lucide-react';
 import {
   Select,
@@ -18,6 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "../components/ui/dropdown-menu";
+
+import { format } from 'date-fns';
 
 import { axiosPrivate as api } from '../utils/axios';
 
@@ -28,6 +40,8 @@ import StatsTab from '../components/inventory/StatsTab';
 import CategoryForm from '../components/inventory/CategoryForm';
 import ItemForm from '../components/inventory/ItemForm';
 import MovementForm from '../components/inventory/MovementForm';
+import InventoryPreviewPDF from '../components/inventory/InventoryPreviewPDF';
+import { generateInventoryPDF } from '../components/inventory/InventoryPDF';
 
 const InventoryPage = () => {
   const { toast } = useToast();
@@ -38,6 +52,10 @@ const InventoryPage = () => {
   const [movements, setMovements] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [stats, setStats] = useState(null);
+
+  const [service, setService] = useState(null);
+
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
 
   // États pour les modaux
   const [categoryModal, setCategoryModal] = useState({ isOpen: false, editing: null });
@@ -67,29 +85,30 @@ const currentMovements = movements.slice(startIndexMovements, endIndexMovements)
 
   // Chargement initial des données
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const response = await api.get('/inventory/dashboard');
-        const { categories, items, movements, stats, employees } = response.data;
-        
-        setCategories(categories);
-        setItems(items);
-        setMovements(movements);
-        setStats(stats);
-        setEmployees(employees);
-      } catch (error) {
-        toast({
-          title: "Erreur",
-          description: "Impossible de récupérer les données du dashboard",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchDashboardData();
-  }, []);
+  const fetchDashboardData = async () => {
+    try {
+      const response = await api.get('/inventory/dashboard');
+      const { categories, items, movements, stats, employees, service } = response.data;
+      
+      setCategories(categories);
+      setItems(items);
+      setMovements(movements);
+      setStats(stats);
+      setEmployees(employees);
+      setService(service);  // Nouvelle ligne
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer les données du dashboard",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchDashboardData();
+}, []);
 
   // Récupération des catégories
   const fetchCategories = async () => {
@@ -275,6 +294,37 @@ const currentMovements = movements.slice(startIndexMovements, endIndexMovements)
     }
   };
 
+const handleExportPDF = async () => {
+  try {
+    // Toujours utiliser la génération côté client
+    const pdfBlob = await generateInventoryPDF(
+      { items, categories, movements, stats },
+      service,
+      'all' // Utiliser 'all' pour inclure toutes les sections
+    );
+    
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `inventaire_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Succès",
+      description: "PDF d'inventaire généré avec succès"
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'export PDF:', error);
+    toast({
+      title: "Erreur",
+      description: "Impossible de générer le PDF d'inventaire",
+      variant: "destructive"
+    });
+  }
+};
+
   if (loading) {
     return <div className="p-6">Chargement...</div>;
   }
@@ -282,31 +332,48 @@ const currentMovements = movements.slice(startIndexMovements, endIndexMovements)
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Gestion de Stock</h1>
-        
-        {activeTab === 'items' && (
-          <Button onClick={() => setItemModal({ isOpen: true, editing: null })}>
-            <Plus className="w-4 h-4 mr-2" /> Ajouter un article
-          </Button>
-        )}
-        
-        {activeTab === 'categories' && (
-          <Button onClick={() => setCategoryModal({ isOpen: true, editing: null })}>
-            <Plus className="w-4 h-4 mr-2" /> Ajouter une catégorie
-          </Button>
-        )}
-        
-        {activeTab === 'movements' && (
-          <div className="flex space-x-2">
-            <Button onClick={() => setMovementModal({ isOpen: true, type: 'in', itemId: null })} variant="default">
-              <Plus className="w-4 h-4 mr-2" /> Nouvelle entrée
-            </Button>
-            <Button onClick={() => setMovementModal({ isOpen: true, type: 'out', itemId: null })} variant="outline">
-              <ArrowLeftRight className="w-4 h-4 mr-2" /> Nouvelle sortie
-            </Button>
-          </div>
-        )}
-      </div> 
+  <h1 className="text-2xl font-bold">Gestion de Stock</h1>
+  
+  <div className="flex space-x-2">
+    {/* Bouton d'export PDF */}
+    <Button
+    onClick={handleExportPDF}
+    variant="outline"
+    className="flex items-center"
+  >
+    <FileText className="w-4 h-4 mr-2" />
+    Exporter PDF
+  </Button>
+    
+   
+   
+    
+    {/* Boutons existants pour ajouter des éléments */}
+    {activeTab === 'items' && (
+      <Button onClick={() => setItemModal({ isOpen: true, editing: null })}>
+        <Plus className="w-4 h-4 mr-2" /> Ajouter un article
+      </Button>
+    )}
+    
+    {activeTab === 'categories' && (
+      <Button onClick={() => setCategoryModal({ isOpen: true, editing: null })}>
+        <Plus className="w-4 h-4 mr-2" /> Ajouter une catégorie
+      </Button>
+    )}
+    
+    {activeTab === 'movements' && (
+      <div className="flex space-x-2">
+        <Button onClick={() => setMovementModal({ isOpen: true, type: 'in', itemId: null })} variant="default">
+          <Plus className="w-4 h-4 mr-2" /> Nouvelle entrée
+        </Button>
+        <Button onClick={() => setMovementModal({ isOpen: true, type: 'out', itemId: null })} variant="outline">
+          <ArrowLeftRight className="w-4 h-4 mr-2" /> Nouvelle sortie
+        </Button>
+      </div>
+    )}
+  </div>
+</div>
+      
 
       <Tabs value={activeTab} onValueChange={(value) => {
   setActiveTab(value);
@@ -372,7 +439,7 @@ const currentMovements = movements.slice(startIndexMovements, endIndexMovements)
     <Select
       value={String(itemsPerPage)}
       onValueChange={(value) => {
-        setItemsPerPage(Number(value));
+        setItemsPerPage(Number(value)); 
         setCurrentPage(1);
       }}
     >
@@ -473,6 +540,15 @@ const currentMovements = movements.slice(startIndexMovements, endIndexMovements)
           onSubmit={handleMovementSubmit}
         />
       )}
+
+      {/* Modal de prévisualisation PDF */}
+<InventoryPreviewPDF
+  isOpen={pdfPreviewOpen}
+  onClose={() => setPdfPreviewOpen(false)}
+  data={{ items, categories, movements, stats }}
+  serviceInfo={service}
+  activeTab={activeTab}
+/>
     </div>
   );
 };
