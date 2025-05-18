@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { lazy, Suspense } from 'react';
 import { Card } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
@@ -31,7 +31,8 @@ import {
 import SalaryStatistics from '../../components/salaries/SalaryStatistics';
 
 import { axiosPrivate as api } from '../../utils/axios';
-
+import PlanningCalendarView from '../../components/schedule/PlanningCalendarView';
+import { ScheduleForm } from '../../components/schedule/ScheduleForm';
 
 const LoansPage = lazy(() => import('../../pages/LoansPage'));
 
@@ -469,6 +470,8 @@ const Pagination = ({ pagination, onPageChange }) => {
   );
 };
 
+/*
+
   const ScheduleForm = ({ isOpen, onClose, editingSchedule, employees, onSubmit }) => {
     const [formData, setFormData] = useState({
       title: '',
@@ -588,6 +591,8 @@ const Pagination = ({ pagination, onPageChange }) => {
       </Dialog>
     );
   };
+*/
+
 
   const DonationForm = ({ isOpen, onClose, editingDonation, onSubmit }) => {
     const [formData, setFormData] = useState({
@@ -1096,7 +1101,9 @@ const Pagination = ({ pagination, onPageChange }) => {
 
     const [donations, setDonations] = useState([]);
     const [donationModal, setDonationModal] = useState({ isOpen: false, editing: null });
-
+    
+    const [serviceInfo, setServiceInfo] = useState(null);
+    const planningViewRef = useRef(null);
 
     
     // États des modaux
@@ -1143,7 +1150,7 @@ const [pagination, setPagination] = useState({
     total: 0
   },
   salaries: {
-    currentPage: 1,
+    currentPage: 1, 
     totalPages: 1,
     perPage: 10,
     total: 0
@@ -1222,6 +1229,32 @@ const handleProcessPayment = async () => {
   }
 };
 
+const fetchServiceInfo = async () => {
+  try {
+    // Essayer de récupérer les informations du service
+    const response = await api.get('/services/current');
+    if (response.data && response.data.success) {
+      setServiceInfo(response.data.data);
+    } else {
+      // Si le service n'existe pas, afficher une notification
+      toast({
+        title: "Attention",
+        description: "Impossible de récupérer les informations du service",
+        variant: "warning"
+      });
+      setServiceInfo(null); // Définir à null au lieu de valeurs par défaut
+    }
+  } catch (error) {
+    console.error('Erreur lors de la récupération des informations du service:', error);
+    toast({
+      title: "Erreur",
+      description: "Impossible de récupérer les informations du service",
+      variant: "destructive"
+    });
+    setServiceInfo(null); // Définir à null au lieu de valeurs par défaut
+  }
+};
+
   
     // Chargement initial des données
     useEffect(() => {
@@ -1229,7 +1262,8 @@ const handleProcessPayment = async () => {
           fetchEmployees(),
           fetchMaintenances(),
           fetchSchedules(),
-          fetchDonations()
+          fetchDonations(),
+          fetchServiceInfo()
         ]).finally(() => setLoading(false));
       }, [dateRange[0], dateRange[1]]); // Ajout des dépendances
   
@@ -2239,88 +2273,73 @@ const handleDownloadMaintenance = async (maintenanceId) => {
     />
   </Card>
 </TabsContent>
+
+<TabsContent value="schedule">
+  <Card>
+   
+    {/* Vue calendrier améliorée - intégration du nouveau composant */}
+    <div className="p-4">
+      <PlanningCalendarView
+    ref={planningViewRef}
+    schedules={schedules}
+    employees={employees.filter(e => e.status === 'active')}
+    onExportPDF={async () => {
+      try {
+        // Maintenant vous pouvez accéder aux filtres via la référence
+        const currentFilters = planningViewRef.current?.filters || { employeeId: 'all', type: 'all', status: 'all' };
+        
+        const response = await api.get('/schedules/export-pdf', {
+          params: {
+            start_date: format(dateRange[0], 'yyyy-MM-dd'),
+            end_date: format(dateRange[1], 'yyyy-MM-dd'),
+            employee_id: currentFilters.employeeId !== 'all' ? currentFilters.employeeId : '',
+            type: currentFilters.type !== 'all' ? currentFilters.type : '',
+            status: currentFilters.status !== 'all' ? currentFilters.status : ''
+          },
+          responseType: 'blob'
+        });
+        
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `planning_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        
+        toast({
+          title: "Succès",
+          description: "PDF généré avec succès"
+        });
+      } catch (error) {
+        console.error('Erreur lors de l\'export PDF:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de générer le PDF",
+          variant: "destructive"
+        });
+      }
+    }}
+    onEditSchedule={(schedule) => setScheduleModal({ isOpen: true, editing: schedule })}
+    onToggleStatus={handleToggleScheduleStatus}
+  />
+      
+      
+    </div>
+  </Card>
+
+  {/* Conservez votre modal de formulaire existant */}
+  <ScheduleForm
+    isOpen={scheduleModal.isOpen}
+    onClose={() => setScheduleModal({ isOpen: false, editing: null })}
+    editingSchedule={scheduleModal.editing}
+    employees={employees.filter(e => e.status === 'active')}
+    onSubmit={handleScheduleSubmit}
+  />
+</TabsContent>
        
 
-        <TabsContent value="schedule">
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Titre</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Employé</TableHead>
-                <TableHead>Début</TableHead>
-                <TableHead>Fin</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-  {Array.isArray(schedules) && schedules.length > 0 ? (
-    schedules.map((schedule) => (
-      <TableRow key={schedule.id}>
-        <TableCell>{schedule.title}</TableCell>
-        <TableCell>
-          <Badge variant={schedule.type === 'maintenance' ? 'default' : 'success'}>
-            {schedule.type === 'maintenance' ? 'Maintenance' : 'Relevé'}
-          </Badge>
-        </TableCell>
-        <TableCell>
-          {schedule.employee?.first_name} {schedule.employee?.last_name}
-        </TableCell>
-        <TableCell>
-          {format(new Date(schedule.start_date), 'dd/MM/yyyy')}
-        </TableCell>
-        <TableCell>
-          {format(new Date(schedule.end_date), 'dd/MM/yyyy')}
-        </TableCell>
-        <TableCell>
-          <Badge variant={schedule.status === 'completed' ? 'success' : 'default'}>
-            {schedule.status === 'completed' ? 'Terminé' : 'Planifié'}
-          </Badge>
-        </TableCell>
-        <TableCell>
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setScheduleModal({ isOpen: true, editing: schedule })}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button 
-  variant="outline" 
-  size="sm"
-  onClick={() => handleToggleScheduleStatus(schedule.id)}
->
-  {schedule.status === 'completed' ? <Check className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
-</Button>
-
-          </div>
-        </TableCell>
-      </TableRow>
-    ))
-  ) : (
-    <TableRow>
-      <TableCell colSpan={7} className="text-center">
-        Aucun événement trouvé dans le planning.
-      </TableCell>
-    </TableRow>
-  )}
-</TableBody>
-
-
-          
-
-          </Table>
-          <Pagination 
-      pagination={pagination.schedules}
-      onPageChange={(page) => handlePageChange('schedules', page)}
-    />
-
-        </Card>
-        </TabsContent>
+      
 
         <TabsContent value="salaries">
         <SalaryStatistics statistics={salaryStats} />
