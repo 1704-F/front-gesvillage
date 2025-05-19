@@ -48,31 +48,36 @@ const AdminDashboard = () => {
   const [error, setError] = useState(null);
 
   // Utilisez useEffect avec dateRange comme dépendance
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        
-        // Formater les dates pour l'API
-        const start_date = format(dateRange[0], 'yyyy-MM-dd');
-        const end_date = format(dateRange[1], 'yyyy-MM-dd');
-        
-        const response = await api.get('/dashboards/admin/enriched', {
-          params: { startDate: start_date, endDate: end_date }
-        });
-        
-        setData(response.data.data);
-        setError(null);
-      } catch (err) {
-        console.error('Erreur lors du chargement des données:', err);
-        setError('Impossible de charger les données du tableau de bord');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchDashboardData();
-  }, [dateRange]);
+useEffect(() => {
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Formater les dates pour l'API
+      const start_date = format(dateRange[0], 'yyyy-MM-dd');
+      const end_date = format(dateRange[1], 'yyyy-MM-dd');
+      
+      const response = await api.get('/dashboards/admin/enriched', {
+        params: { startDate: start_date, endDate: end_date }
+      });
+      
+      // Afficher les données de déconnexion pour débogage
+      console.log('Données de déconnexion:', response.data.data.disconnection);
+      
+      setData(response.data.data);
+      setError(null);
+    } catch (err) {
+      console.error('Erreur lors du chargement des données:', err);
+      setError('Impossible de charger les données du tableau de bord');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchDashboardData();
+}, [dateRange]);
+
+
 
   if (loading) {
     return (
@@ -170,28 +175,29 @@ const AdminDashboard = () => {
       {/* Section 2: Bons de coupure */}
       <SectionCard title="Bons de coupure">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <StatCard 
-            icon={Scissors}
-            title="Avis générés"
-            value={data.disconnection.stats.generated}
-            subValue={`${data.disconnection.stats.unpaidCustomers} clients concernés`}
-            color="yellow"
-          />
-          <StatCard 
-            icon={CheckSquare}
-            title="Avis exécutés"
-            value={data.disconnection.stats.executed}
-            subValue={`${((data.disconnection.stats.executed / (data.disconnection.stats.generated || 1)) * 100).toFixed(1)}% d'exécution`}
-            color="orange"
-          />
-          <StatCard 
-            icon={DollarSign}
-            title="Montant total impayé"
-            value={`${data.disconnection.stats.unpaidAmount.toLocaleString()} FCFA`}
-            subValue={`dont ${data.disconnection.stats.totalPenalties.toLocaleString()} FCFA de pénalités`}
-           color="red"
-         />
-       </div>
+  <StatCard 
+    icon={Scissors}
+    title="Avis générés"
+    value={data.disconnection.stats.generated || 0}
+    subValue={`${data.disconnection.stats.unpaidCustomers || 0} clients concernés`}
+    color="yellow"
+  />
+  <StatCard 
+    icon={CheckSquare}
+    title="Avis exécutés"
+    value={data.disconnection.stats.executed || 0}
+    subValue={`${(((data.disconnection.stats.executed || 0) / ((data.disconnection.stats.generated || 0) || 1)) * 100).toFixed(1)}% d'exécution`}
+    color="orange"
+  />
+  <StatCard 
+    icon={DollarSign}
+    title="Montant total impayé"
+    value={`${(data.disconnection.stats.unpaidAmount || 0).toLocaleString()} FCFA`}
+    subValue={`dont ${(data.disconnection.stats.totalPenalties || 0).toLocaleString()} FCFA de pénalités`}
+    color="red"
+  />
+</div>
+        
        
        <div className="bg-gray-50 p-4 rounded-lg mb-4">
          <div className="flex items-start">

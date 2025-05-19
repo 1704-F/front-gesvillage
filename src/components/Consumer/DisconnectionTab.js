@@ -503,38 +503,52 @@ const handleDownloadIndividualPDF = async (noticeId) => {
 
   // Fonction pour télécharger le PDF récapitulatif
   const handleDownloadSummaryPDF = async () => {
-    try {
-      const response = await api.get('/disconnection-notices/summary-pdf', {
-        params: {
-          start_date: format(dateRange[0], 'yyyy-MM-dd'),
-          end_date: format(dateRange[1], 'yyyy-MM-dd'),
-          status: statusFilter !== 'all' ? statusFilter : undefined,
-          consumer_id: consumerFilter?.id
-        },
-        responseType: 'blob'
-      });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      const today = new Date().toISOString().split('T')[0];
-      link.setAttribute('download', `rapport-avis-coupure-${today}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      
-      toast({
-        title: "Succès",
-        description: "Téléchargement du rapport PDF en cours"
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de générer le rapport PDF"
-      });
+  try {
+    // Construction des paramètres basés sur les filtres actuels
+    const params = {
+      // Toujours inclure les dates
+      start_date: format(dateRange[0], 'yyyy-MM-dd'),
+      end_date: format(dateRange[1], 'yyyy-MM-dd')
+    };
+    
+    // Ajouter le filtre de statut s'il est défini et différent de 'all'
+    if (statusFilter !== 'all') {
+      params.status = statusFilter;
     }
-  };
+    
+    // Ajouter le filtre de consommateur s'il est défini
+    if (consumerFilter?.id) {
+      params.consumer_id = consumerFilter.id;
+    }
+    
+    // Si d'autres filtres existent, les ajouter ici
+    
+    const response = await api.get('/disconnection-notices/summary-pdf', {
+      params,
+      responseType: 'blob'
+    });
+    
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `rapport-avis-coupure-${today}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    
+    toast({
+      title: "Succès",
+      description: "Téléchargement du rapport PDF en cours"
+    });
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      title: "Erreur",
+      description: "Impossible de générer le rapport PDF"
+    });
+  }
+};
 
   // Fonction pour afficher les détails des factures impayées
   const handleViewDetails = async (consumer) => {
