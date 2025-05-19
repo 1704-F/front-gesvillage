@@ -260,23 +260,47 @@ const DisconnectionTab = () => {
   
   // Fonction pour rechercher des consommateurs
   const searchConsumers = async (query) => {
-    if (!query || query.length < 2) {
-      setConsumerSearchResults([]);
-      return;
-    }
+  if (!query || query.length < 2) {
+    setConsumerSearchResults([]);
+    return;
+  }
+  
+  setIsSearchingConsumers(true);
+  try {
+    console.log("Recherche de consommateurs avec la requête:", query);
     
-    setIsSearchingConsumers(true);
-    try {
-      const response = await api.get('/consumers/search', {
-        params: { query }
+    const response = await api.get('/consumers/search', {
+      params: { query }
+    });
+    
+    console.log("Résultats de recherche reçus:", response.data);
+    
+    if (response.data && response.data.success && Array.isArray(response.data.data)) {
+      setConsumerSearchResults(response.data.data);
+    } else {
+      console.error("Format de réponse incorrect:", response.data);
+      setConsumerSearchResults([]);
+      
+      toast({
+        variant: "warning",
+        title: "Attention",
+        description: "Aucun consommateur trouvé pour cette recherche."
       });
-      setConsumerSearchResults(response.data.data || []);
-    } catch (error) {
-      console.error('Erreur lors de la recherche des consommateurs:', error);
-    } finally {
-      setIsSearchingConsumers(false);
     }
-  };
+  } catch (error) {
+    console.error('Erreur lors de la recherche des consommateurs:', error);
+    
+    toast({
+      variant: "destructive",
+      title: "Erreur de recherche",
+      description: error.response?.data?.message || "Impossible de rechercher des consommateurs."
+    });
+    
+    setConsumerSearchResults([]);
+  } finally {
+    setIsSearchingConsumers(false);
+  }
+};
 
   // Fonction pour obtenir les consommateurs avec factures impayées (avec pagination)
   const fetchDisconnectionData = useCallback(async () => {
