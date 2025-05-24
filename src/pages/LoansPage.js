@@ -151,6 +151,8 @@ const LoansPage = () => {
     }));
   };
 
+
+
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({
       ...prev,
@@ -309,6 +311,71 @@ const LoansPage = () => {
     }
   };
 
+  // Télécharger le PDF récapitulatif
+const handleDownloadSummaryPDF = async () => {
+  try {
+    const response = await api.get('/loans/export/pdf', {
+      params: {
+        status: filters.status !== 'all' ? filters.status : undefined,
+        start_date: filters.dateRange[0],
+        end_date: filters.dateRange[1],
+        search: filters.search || undefined
+      },
+      responseType: 'blob'
+    });
+    
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `rapport-emprunts-${today}.pdf`);
+    
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Succès",
+      description: "PDF téléchargé avec succès"
+    });
+  } catch (error) {
+    console.error('Erreur lors du téléchargement du PDF:', error);
+    toast({
+      title: "Erreur",
+      description: "Impossible de télécharger le PDF",
+      variant: "destructive"
+    });
+  }
+};
+
+// Télécharger le PDF d'un emprunt individuel
+const handleDownloadLoanPDF = async (loanId) => {
+  try {
+    const response = await api.get(`/loans/${loanId}/pdf`, {
+      responseType: 'blob'
+    });
+    
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `emprunt-${loanId}.pdf`);
+    
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Erreur lors du téléchargement du PDF:', error);
+    toast({
+      title: "Erreur",
+      description: "Impossible de télécharger le PDF de l'emprunt",
+      variant: "destructive"
+    });
+  }
+};
+
  // Modifiez la fonction handleDownloadAttachment dans votre fichier LoansPage.jsx
  const handleDownloadAttachment = async (attachmentId) => {
   try {
@@ -383,12 +450,22 @@ const LoansPage = () => {
 
   return (
     <div className="p-6 space-y-6">
+
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Gestion des Emprunts</h1>
-        <Button onClick={() => setLoanModal({ isOpen: true, editing: null })}>
-          <Plus className="w-4 h-4 mr-2" /> Nouvel emprunt
-        </Button>
-      </div>
+  <h1 className="text-2xl font-bold">Gestion des Emprunts</h1>
+  <div className="flex gap-2">
+    <Button 
+      variant="outline"
+      onClick={handleDownloadSummaryPDF}
+      disabled={loading}
+    >
+      <Download className="w-4 h-4 mr-2" /> Télécharger PDF
+    </Button>
+    <Button onClick={() => setLoanModal({ isOpen: true, editing: null })}>
+      <Plus className="w-4 h-4 mr-2" /> Nouvel emprunt
+    </Button>
+  </div>
+</div>
 
       {/* Statistiques */}
       <LoanStatistics statistics={statistics} />
@@ -490,8 +567,19 @@ const LoansPage = () => {
                   <TableCell>{formatDate(loan.start_date)}</TableCell>
                   <TableCell>{formatDate(loan.due_date)}</TableCell>
                   <TableCell>{getStatusBadge(loan.status)}</TableCell>
+
                   <TableCell>
                     <div className="flex space-x-2">
+
+                      <Button
+      variant="outline"
+      size="sm"
+      onClick={() => handleDownloadLoanPDF(loan.id)}
+    >
+      <Download className="h-4 w-4" />
+    </Button>
+
+
                       {/* Voir les détails */}
                       <Button
                         variant="outline"
@@ -564,17 +652,19 @@ const LoansPage = () => {
       />
 
       <LoanDetails
-        isOpen={detailsModal.isOpen}
-        onClose={() => setDetailsModal({ isOpen: false, loan: null })}
-        loan={detailsModal.loan}
-        onAddRepayment={() => {
-          setRepaymentModal({ isOpen: true, loan: detailsModal.loan });
-        }}
-        onDownloadAttachment={handleDownloadAttachment}
-        onMarkAsDefaulted={() => {
-          setDefaultModal({ isOpen: true, loan: detailsModal.loan });
-        }}
-      />
+  isOpen={detailsModal.isOpen}
+  onClose={() => setDetailsModal({ isOpen: false, loan: null })}
+  loan={detailsModal.loan}
+  onAddRepayment={() => {
+    setRepaymentModal({ isOpen: true, loan: detailsModal.loan });
+  }}
+  onDownloadAttachment={handleDownloadAttachment}
+  onDownloadLoanPDF={handleDownloadLoanPDF} // Nouvelle prop
+  onMarkAsDefaulted={() => {
+    setDefaultModal({ isOpen: true, loan: detailsModal.loan });
+  }}
+/>
+
 
       <LoanDefaultForm
         isOpen={defaultModal.isOpen}
