@@ -1,5 +1,5 @@
 //Meter/MeterPage
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense  } from 'react';
 import { Card, CardContent } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { ScrollArea } from "../ui/scroll-area";
@@ -40,7 +40,9 @@ import MeterProblemBadge from './MeterProblemBadge';
 import MeterProblemDialog from './MeterProblemDialog';
 import MeterStatistics from './MeterStatistics';
 import WaterDropLoader from './WaterDropLoader';
-import MeterUserHistoryDialog from './MeterUserHistoryDialog'; 
+
+const MeterUserHistoryDialog = lazy(() => import('./MeterUserHistoryDialog'));
+
 const api = axiosPrivate; 
 
 const MeterPage = () => {
@@ -817,11 +819,16 @@ const handleProblemSuccess = (updatedMeter) => {
   onSuccess={handleProblemSuccess}
 />
 
-<MeterUserHistoryDialog 
-  isOpen={isHistoryDialogOpen}
-  onClose={() => setIsHistoryDialogOpen(false)}
-  meterId={selectedMeter?.id}
-/>
+<Suspense fallback={null}>
+  {isHistoryDialogOpen && (
+    <MeterUserHistoryDialog 
+      isOpen={isHistoryDialogOpen}
+      onClose={() => setIsHistoryDialogOpen(false)}
+      meterId={selectedMeter?.id}
+    />
+  )}
+</Suspense>
+
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>

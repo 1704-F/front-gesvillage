@@ -16,7 +16,10 @@ import {
   RefreshCw,
   Download,
   Calendar,
-  FileText
+  FileText,
+  Wallet, // Ajouter cette icône pour la caisse
+  Calculator,
+  FileCheck
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { axiosPrivate as api, BASE_URL } from '../../utils/axios';
@@ -37,6 +40,7 @@ import {
   DialogFooter
 } from "../ui/dialog";
 import { Input } from "../ui/input";
+import CashStatementManager from '../Caisse/Cash';
 
 const localCache = {
   get: (key) => {
@@ -446,6 +450,11 @@ const ServiceInfoPage = () => {
             <Receipt className="w-4 h-4 mr-2" />
             Facturation
           </TabsTrigger>
+
+          <TabsTrigger value="cash">
+    <Wallet className="w-4 h-4 mr-2" />
+    Caisse
+  </TabsTrigger>
         </TabsList>
   
         {/* Vue d'ensemble */}
@@ -726,6 +735,24 @@ const ServiceInfoPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Caisse */}
+<TabsContent value="cash">
+  <Card className="shadow-md">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        <Wallet className="w-5 h-5" />
+        Gestion de la Caisse
+      </CardTitle>
+    </CardHeader>
+    <CardContent className="p-0">
+      <CashStatementManager />
+    </CardContent>
+  </Card>
+</TabsContent>
+
+
+
       </Tabs>
   
       {/* Modal de visualisation */}
@@ -740,4 +767,3 @@ const ServiceInfoPage = () => {
   
   export default ServiceInfoPage;
 
- 
