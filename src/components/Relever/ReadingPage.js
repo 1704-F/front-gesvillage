@@ -645,68 +645,8 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     </Dialog>
   );
 };
-const ConsumptionHeatmap = ({ readings }) => {
-  // Organiser les données par mois
-  const monthlyData = readings.reduce((acc, reading) => {
-    const date = new Date(reading.reading_date);
-    const monthKey = format(date, 'MM/yyyy');
-    
-    if (!acc[monthKey]) {
-      acc[monthKey] = {
-        consumption: 0,
-        count: 0
-      };
-    }
-    
-    // Conversion explicite en nombre
-    acc[monthKey].consumption += Number(reading.consumption) || 0;
-    acc[monthKey].count += 1;
-    return acc;
-  }, {});
 
-  // Trouver la consommation max pour l'échelle de couleur
-  const maxConsumption = Math.max(...Object.values(monthlyData)
-    .map(data => data.consumption));
 
-  // Calculer l'intensité de la couleur
-  const getColor = (value) => {
-    const intensity = (value / maxConsumption);
-    return `rgb(0, ${Math.floor(100 + (intensity * 155))}, ${Math.floor(200 + (intensity * 55))})`;
-  };
-
-  return (
-    <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-4">Carte thermique des consommations</h2>
-      <div className="grid grid-cols-6 gap-2">
-        {Object.entries(monthlyData).map(([month, data]) => (
-          <div
-            key={month}
-            className="p-4 rounded-lg text-white"
-            style={{
-              backgroundColor: getColor(data.consumption),
-            }}
-          >
-            <div className="text-sm font-medium">{month}</div>
-            <div className="text-xl font-bold">
-              {Number(data.consumption).toFixed(1)}
-            </div>
-            <div className="text-xs">m³</div>
-            <div className="text-xs">{data.count} relevé(s)</div>
-          </div>
-        ))}
-      </div>
-      
-      <div className="mt-4 flex items-center gap-2">
-        <div className="text-sm">Intensité de consommation:</div>
-        <div className="flex h-2 w-32">
-          <div className="w-full bg-gradient-to-r from-[rgb(0,100,200)] to-[rgb(0,255,255)]" />
-        </div>
-        <div className="text-sm">Faible</div>
-        <div className="text-sm">Élevée</div>
-      </div>
-    </Card>
-  );
-};
 
 // Nouveau composant pour afficher les compteurs sans relevés
 const MetersWithoutReadings = ({ dateRange }) => {
@@ -1555,9 +1495,7 @@ useEffect(() => {
             </div>
           </Card>
           
-          <div className="mt-6">
-            <ConsumptionHeatmap readings={readings} />
-          </div>
+          
         </TabsContent>
 
         <TabsContent value="missing">
