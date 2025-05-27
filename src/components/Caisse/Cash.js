@@ -45,6 +45,7 @@ const CashStatementManager = () => {
     period_start: '',
     period_end: '',
     theoretical_balance: 0,
+    calculation_details: null,
     cash_counts: [],
     discrepancies: [],
     notes: ''
@@ -145,7 +146,8 @@ const calculateTheoreticalBalance = async () => {
     if (response.data && response.data.calculation) {
       setFormData(prev => ({
         ...prev,
-        theoretical_balance: response.data.calculation.theoretical_balance
+        theoretical_balance: response.data.calculation.theoretical_balance,
+        calculation_details: response.data.calculation
       }));
 
       toast({
@@ -559,7 +561,7 @@ if (response.status === 200) {
       {/* Modal de création */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">Nouveau PV de Caisse</h2>
             </div>
@@ -596,22 +598,73 @@ if (response.status === 200) {
                 </div>
               </div>
 
-              {/* Solde théorique */}
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-medium text-gray-900">Solde Théorique</h3>
-                  <button
-                    onClick={calculateTheoreticalBalance}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm flex items-center gap-2"
-                  >
-                    <Calculator className="w-4 h-4" />
-                    Calculer
-                  </button>
-                </div>
-                <div className="text-2xl font-bold text-blue-600">
-                  {formatNumber(formData.theoretical_balance)} FCFA
-                </div>
-              </div>
+              {/* Solde théorique avec détails */}
+<div className="bg-blue-50 p-4 rounded-lg">
+  <div className="flex items-center justify-between mb-3">
+    <h3 className="text-lg font-medium text-gray-900">Solde Théorique</h3>
+    <button
+      onClick={calculateTheoreticalBalance}
+      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm flex items-center gap-2"
+    >
+      <Calculator className="w-4 h-4" />
+      Calculer
+    </button>
+  </div>
+  
+  <div className="text-2xl font-bold text-blue-600 mb-4">
+    {formatNumber(formData.theoretical_balance)} FCFA
+  </div>
+
+  {/* ✅ AJOUTER cette section pour les détails */}
+  {formData.calculation_details && (
+    <div className="space-y-4 border-t border-blue-200 pt-4">
+      <h4 className="font-medium text-gray-900">Détail du calcul :</h4>
+      
+      {/* Solde initial */}
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <span className="text-gray-600">Solde initial :</span>
+          <span className="font-medium ml-2">{formatNumber(formData.calculation_details.initial_balance)} FCFA</span>
+        </div>
+      </div>
+
+      {/* Entrées */}
+      <div>
+        <h5 className="font-medium text-green-700 mb-2">➕ Entrées d'argent</h5>
+        <div className="grid grid-cols-2 gap-2 text-sm pl-4">
+          <div>Factures d'eau : <span className="font-medium">{formatNumber(formData.calculation_details.cash_inflows.invoices)} FCFA</span></div>
+          <div>Dons reçus : <span className="font-medium">{formatNumber(formData.calculation_details.cash_inflows.donations)} FCFA</span></div>
+          <div>Emprunts contractés : <span className="font-medium">{formatNumber(formData.calculation_details.cash_inflows.loans)} FCFA</span></div>
+          <div className="col-span-2 border-t pt-2 font-medium text-green-700">
+            Total entrées : {formatNumber(formData.calculation_details.cash_inflows.total)} FCFA
+          </div>
+        </div>
+      </div>
+
+      {/* Sorties */}
+      <div>
+        <h5 className="font-medium text-red-700 mb-2">➖ Sorties d'argent</h5>
+        <div className="grid grid-cols-2 gap-2 text-sm pl-4">
+          <div>Dépenses payées : <span className="font-medium">{formatNumber(formData.calculation_details.cash_outflows.expenses)} FCFA</span></div>
+          <div>Salaires payés : <span className="font-medium">{formatNumber(formData.calculation_details.cash_outflows.salaries)} FCFA</span></div>
+          <div>Remboursements : <span className="font-medium">{formatNumber(formData.calculation_details.cash_outflows.repayments)} FCFA</span></div>
+          <div className="col-span-2 border-t pt-2 font-medium text-red-700">
+            Total sorties : {formatNumber(formData.calculation_details.cash_outflows.total)} FCFA
+          </div>
+        </div>
+      </div>
+
+      {/* Mouvement net */}
+      <div className="bg-blue-100 p-3 rounded border-t border-blue-300">
+        <div className="font-medium text-blue-800">
+          Mouvement net : {formatNumber(formData.calculation_details.net_movement)} FCFA
+        </div>
+      </div>
+    </div>
+  )}
+</div>
+
+              
 
               {/* Comptage physique */}
               <div>
