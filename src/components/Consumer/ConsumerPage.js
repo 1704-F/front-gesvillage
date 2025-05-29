@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Alert, AlertDescription } from "../ui/alert";
-import { AlertCircle, X, Users, Scissors } from 'lucide-react';
+import { AlertCircle, X, Users, Scissors, Package } from 'lucide-react';
 import { Card } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { Button } from "../ui/button";
@@ -41,6 +41,7 @@ import { fr } from 'date-fns/locale';
 import { axiosPublic, axiosPrivate } from '../../utils/axios';
 // Importer le composant onglet des bons de coupure
 import DisconnectionTab from './DisconnectionTab'; 
+import ConnectionFeesTab from './ConnectionFeesTab';
 
 const api = axiosPrivate;
 
@@ -198,6 +199,11 @@ const ConsumerPage = () => {
             <Scissors className="w-4 h-4 mr-2" />
             Bons de coupure
           </TabsTrigger>
+
+          <TabsTrigger value="connection-fees">
+           <Package className="w-4 h-4 mr-2" />
+    Frais de branchement
+  </TabsTrigger>
         </TabsList>
 
         <TabsContent value="consumers">
@@ -329,6 +335,12 @@ const ConsumerPage = () => {
         <TabsContent value="disconnection">
           <DisconnectionTab />
         </TabsContent>
+
+        <TabsContent value="connection-fees">
+  <ConnectionFeesTab />
+</TabsContent>
+
+
       </Tabs>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
