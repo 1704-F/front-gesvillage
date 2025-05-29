@@ -31,6 +31,62 @@ import InvoicePDF from '../Service/InvoicePDF';
 import { Users, XCircle, Search } from 'lucide-react';
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from "../ui/command";
 
+const styles = StyleSheet.create({
+  page: {
+    padding: 30,
+    orientation: 'landscape',
+  },
+  header: {
+    marginBottom: 20,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: 'bold'
+  },
+  table: {
+    display: 'table',
+    width: '100%',
+    marginBottom: 10,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#000',
+    borderBottomStyle: 'solid',
+    alignItems: 'center',
+    minHeight: 24,
+  },
+  tableHeader: {
+    backgroundColor: '#f3f4f6',
+    fontWeight: 'bold',
+  },
+  tableCell: {
+    flex: 1,
+    padding: 4,
+    fontSize: 8,
+    textAlign: 'left',
+  },
+  dateRange: {
+    marginBottom: 10,
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center'
+  }
+});
+
+const formatNumber = (num, decimals = 0) => {
+  if (isNaN(num) || num === null || num === undefined) return '0';
+  
+  const number = typeof num === 'string' ? parseFloat(num) : num;
+  
+  return new Intl.NumberFormat('fr-FR', { 
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+    useGrouping: true
+  }).format(number)
+    .replace(/\//g, ' ')     // Remplacer toutes les barres par des espaces
+    .replace(/\s+/g, ' ');   // Normaliser les espaces multiples
+};
+
 // Composant ConsumptionDetails
 const ConsumptionDetails = ({ reading, amount }) => {
   if (!reading) return null;
@@ -266,6 +322,108 @@ const ViewInvoiceDialog = ({ open, onOpenChange, invoice }) => {
     </Dialog>
   );
 };
+
+const InvoiceListPDF = ({ invoices, dateRange, statusFilter, consumerFilter }) => {
+  // Trier les factures par numéro de compteur
+  const sortedInvoices = [...invoices].sort((a, b) => {
+    if (!a.meter || !b.meter) return 0;
+    return a.meter.meter_number.localeCompare(b.meter.meter_number);
+  });
+
+  return (
+    <Document>
+      <Page size="A4" orientation="landscape" style={styles.page}>
+        <Text style={styles.header}>Liste des Factures</Text>
+        
+        <Text style={styles.dateRange}>
+          Période du {format(dateRange[0], 'dd/MM/yyyy')} au {format(dateRange[1], 'dd/MM/yyyy')}
+        </Text>
+
+        {/* Afficher les filtres appliqués */}
+        {statusFilter !== 'all' && (
+          <Text style={styles.dateRange}>
+            Statut: {statusFilter === 'paid' ? 'Payé' : 'Non payé'}
+          </Text>
+        )}
+        
+        {consumerFilter && (
+          <Text style={styles.dateRange}>
+            Consommateur: {consumerFilter.name}
+          </Text>
+        )}
+
+        <View style={styles.table}>
+          {/* En-têtes */}
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={styles.tableCell}>N°</Text>
+            <Text style={styles.tableCell}>N° Facture</Text>
+            <Text style={styles.tableCell}>Compteur</Text>
+            <Text style={styles.tableCell}>Consommateur</Text>
+            <Text style={styles.tableCell}>Consommation (m³)</Text>
+            <Text style={styles.tableCell}>Montant (FCFA)</Text>
+            <Text style={styles.tableCell}>Période</Text>
+            <Text style={styles.tableCell}>Échéance</Text>
+            <Text style={styles.tableCell}>Statut</Text>
+          </View>
+
+          {/* Données */}
+          {sortedInvoices.map((invoice, index) => (
+            <View key={invoice.id} style={styles.tableRow}>
+              <Text style={styles.tableCell}>{index + 1}</Text>
+              <Text style={styles.tableCell}>{invoice.invoice_number}</Text>
+              <Text style={styles.tableCell}>{invoice.meter?.meter_number}</Text>
+              <Text style={styles.tableCell}>
+                {invoice.meter?.user ? 
+                  `${invoice.meter.user.first_name} ${invoice.meter.user.last_name}` : 
+                  'N/A'}
+              </Text>
+              <Text style={styles.tableCell}>
+                {invoice.reading?.consumption ? 
+                  parseFloat(invoice.reading.consumption).toFixed(2) : 
+                  'N/A'}
+              </Text>
+
+              <Text style={styles.tableCell}>
+  {invoice.amount_due ? 
+    formatNumber(Math.round(invoice.amount_due)) : 
+    'N/A'}
+</Text>
+
+              <Text style={styles.tableCell}>
+                {`${format(new Date(invoice.start_date), 'dd/MM/yy')} au ${format(new Date(invoice.end_date), 'dd/MM/yy')}`}
+              </Text>
+              <Text style={styles.tableCell}>
+                {format(new Date(invoice.due_date), 'dd/MM/yyyy')}
+              </Text>
+              <Text style={styles.tableCell}>
+                {invoice.status === 'paid' ? 'Payé' : 'Non payé'}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Résumé */}
+        <View style={{ marginTop: 20 }}>
+          <Text style={{ fontSize: 12, fontWeight: 'bold' }}>
+            Résumé: {sortedInvoices.length} facture(s)
+          </Text>
+          <Text style={{ fontSize: 10 }}>
+            Total consommation: {sortedInvoices.reduce((sum, inv) => 
+              sum + parseFloat(inv.reading?.consumption || 0), 0).toFixed(2)} m³
+          </Text>
+
+          <Text style={{ fontSize: 10 }}>
+  Total montant: {formatNumber(Math.round(sortedInvoices.reduce((sum, inv) => 
+    sum + (inv.amount_due || 0), 0)))} FCFA
+</Text>
+
+        </View>
+      </Page>
+    </Document>
+  );
+};
+
+
 
 // Composant principal
 const InvoicePage = () => {
@@ -579,91 +737,110 @@ const [dateRange, setDateRange] = useState([
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Gestion des Factures</h1>
-        
-        <div className="flex items-center space-x-4">
-        <div className="relative">
-  <input
-    type="date"
-    className="pl-10 pr-3 py-2 border rounded-lg"
-    value={dateRange[0] instanceof Date ? format(dateRange[0], 'yyyy-MM-dd') : ''}
-    onChange={(e) => setDateRange([
-      e.target.value ? new Date(e.target.value) : null, 
-      dateRange[1]
-    ])}
-  />
-  <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
-</div>
-
-<div className="relative">
-  <input
-    type="date"
-    className="pl-10 pr-3 py-2 border rounded-lg"
-    value={dateRange[1] instanceof Date ? format(dateRange[1], 'yyyy-MM-dd') : ''}
-    onChange={(e) => setDateRange([
-      dateRange[0],
-      e.target.value ? new Date(e.target.value) : null
-    ])}
-  />
-  <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
-</div>
-
-          <Select 
-            value={statusFilter} 
-            onValueChange={setStatusFilter}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Statut" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous</SelectItem>
-              <SelectItem value="paid">Payé</SelectItem>
-              <SelectItem value="pending">Non payé</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="flex space-x-2">
-            <Button
-              onClick={() => {
-                fetchDashboardData().then(() => {
-                  setIsGenerateModalOpen(true);
-                });
-                
-              }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Générer
-            </Button>
-
-            <Button 
-  variant="outline"
-  onClick={handleExportPeriodInvoices}
-  disabled={exportLoading}
->
-  {exportLoading ? (
-    <>
-      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></div>
-      Export...
-    </>
-  ) : (
-    <>
-      <Download className="h-4 w-4 mr-2" />
-      Exporter période
-    </>
-  )}
-</Button>
-
-           
-
-          </div>
-
-
-
-
-
-
-          
-        </div>
       </div>
+
+      <div className="flex items-center justify-between mt-4 mb-4">
+  {/* Filtres à gauche */}
+  <div className="flex items-center space-x-4">
+    <div className="relative">
+      <input
+        type="date"
+        className="pl-10 pr-3 py-2 border rounded-lg"
+        value={dateRange[0] instanceof Date ? format(dateRange[0], 'yyyy-MM-dd') : ''}
+        onChange={(e) => setDateRange([
+          e.target.value ? new Date(e.target.value) : null, 
+          dateRange[1]
+        ])}
+      />
+      <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+    </div>
+
+    <div className="relative">
+      <input
+        type="date"
+        className="pl-10 pr-3 py-2 border rounded-lg"
+        value={dateRange[1] instanceof Date ? format(dateRange[1], 'yyyy-MM-dd') : ''}
+        onChange={(e) => setDateRange([
+          dateRange[0],
+          e.target.value ? new Date(e.target.value) : null
+        ])}
+      />
+      <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+    </div>
+
+    <Select 
+      value={statusFilter} 
+      onValueChange={setStatusFilter}
+    >
+      <SelectTrigger className="w-40">
+        <SelectValue placeholder="Statut" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">Tous</SelectItem>
+        <SelectItem value="paid">Payé</SelectItem>
+        <SelectItem value="pending">Non payé</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+
+  {/* Boutons à droite */}
+  <div className="flex items-center space-x-2">
+    {/* NOUVEAU : Bouton PDF de la liste */}
+    <PDFDownloadLink
+      document={
+        <InvoiceListPDF 
+          invoices={invoices} 
+          dateRange={dateRange}
+          statusFilter={statusFilter}
+          consumerFilter={consumerFilter}
+        />
+      }
+      fileName={`liste-factures-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
+    >
+      {({ loading }) => (
+        <Button variant="outline" disabled={loading}>
+          <Download className="h-4 w-4 mr-2" />
+          {loading ? 'Génération...' : 'Télécharger PDF'}
+        </Button>
+      )}
+    </PDFDownloadLink>
+
+    
+
+    <Button 
+      variant="outline"
+      onClick={handleExportPeriodInvoices}
+      disabled={exportLoading}
+    >
+      {exportLoading ? (
+        <>
+          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></div>
+          Export...
+        </>
+      ) : (
+        <>
+          <Download className="h-4 w-4 mr-2" />
+          Exporter Facture
+        </>
+      )}
+    </Button>
+
+    <Button
+      onClick={() => {
+        fetchDashboardData().then(() => {
+          setIsGenerateModalOpen(true);
+        });
+      }}
+    >
+      <Plus className="h-4 w-4 mr-2" />
+      Générer
+    </Button>
+
+  </div>
+</div>
+        
+      
+      
 
       <div className="flex items-center space-x-4 mt-2 pb-4 w-full">
   <div className="flex-1 relative">
@@ -839,11 +1016,13 @@ const [dateRange, setDateRange] = useState([
                     parseFloat(invoice.reading.consumption).toFixed(2) : 
                     'N/A'}
                 </TableCell>
+
                 <TableCell>
-                  {invoice.amount_due ? 
-                    Math.round(invoice.amount_due).toLocaleString() : 
-                    'N/A'}
-                </TableCell>
+  {invoice.amount_due ? 
+    formatNumber(Math.round(invoice.amount_due)) : 
+    'N/A'}
+</TableCell>
+
                 <TableCell>
                   {`${format(new Date(invoice.start_date), 'dd/MM/yy')} au ${format(new Date(invoice.end_date), 'dd/MM/yy')}`}
                 </TableCell>
@@ -937,12 +1116,14 @@ const [dateRange, setDateRange] = useState([
             sum + parseFloat(invoice.reading?.consumption || 0), 0)
         ).toFixed(2)} m³
       </TableCell>
+
       <TableCell>
-        {Math.round(
-          invoices.reduce((sum, invoice) => 
-            sum + (invoice.amount_due || 0), 0)
-        ).toLocaleString()} FCFA
-      </TableCell>
+  {formatNumber(Math.round(
+    invoices.reduce((sum, invoice) => 
+      sum + (invoice.amount_due || 0), 0)
+  ))} FCFA
+</TableCell>
+
       <TableCell colSpan={2}></TableCell>
     </TableRow>
   )}
