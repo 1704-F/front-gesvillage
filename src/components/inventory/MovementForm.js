@@ -17,9 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { useToast } from "../ui/toast/use-toast"; // Import du toast shadcn/ui
 import { format } from 'date-fns';
 
 const MovementForm = ({ isOpen, onClose, type = 'in', itemId = null, items, employees, onSubmit }) => {
+  const { toast } = useToast(); // Hook pour les toasts
   const [formData, setFormData] = useState({
     inventory_id: '',
     quantity: '',
@@ -79,10 +81,14 @@ const MovementForm = ({ isOpen, onClose, type = 'in', itemId = null, items, empl
     e.preventDefault();
     
     if (!validateQuantity()) {
-      alert(type === 'out' 
-        ? `La quantité demandée dépasse le stock disponible (${selectedItem?.quantity} ${selectedItem?.unit})` 
-        : "La quantité doit être supérieure à zéro"
-      );
+      // Utilisation du toast shadcn/ui au lieu d'alert()
+      toast({
+        variant: "destructive",
+        title: "Erreur de validation",
+        description: type === 'out' 
+          ? `La quantité demandée dépasse le stock disponible (${selectedItem?.quantity} ${selectedItem?.unit})` 
+          : "La quantité doit être supérieure à zéro"
+      });
       return;
     }
     
@@ -120,7 +126,8 @@ const MovementForm = ({ isOpen, onClose, type = 'in', itemId = null, items, empl
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un article" />
                 </SelectTrigger>
-                <SelectContent>
+                {/* CORRECTION : Ajout des classes pour l'ascenseur */}
+                <SelectContent className="max-h-60 overflow-y-auto">
                   {items.map(item => (
                     <SelectItem key={item.id} value={String(item.id)}>
                       {item.name} ({parseFloat(item.quantity).toFixed(2)} {item.unit} disponible)
@@ -172,10 +179,14 @@ const MovementForm = ({ isOpen, onClose, type = 'in', itemId = null, items, empl
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un responsable" />
                 </SelectTrigger>
-                <SelectContent>
+                {/* CORRECTION : Ajout des classes pour l'ascenseur */}
+                <SelectContent className="max-h-60 overflow-y-auto">
                   {employees.map(employee => (
                     <SelectItem key={employee.id} value={String(employee.id)}>
                       {employee.first_name} {employee.last_name}
+                      {employee.job_title && (
+                        <span className="text-xs text-gray-500 ml-2">({employee.job_title})</span>
+                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -193,12 +204,16 @@ const MovementForm = ({ isOpen, onClose, type = 'in', itemId = null, items, empl
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un approbateur" />
                   </SelectTrigger>
-                  <SelectContent>
+                  {/* CORRECTION : Ajout des classes pour l'ascenseur */}
+                  <SelectContent className="max-h-60 overflow-y-auto">
                     {employees
                       .filter(emp => emp.id !== parseInt(formData.employee_id)) // Exclure le responsable
                       .map(employee => (
                         <SelectItem key={employee.id} value={String(employee.id)}>
                           {employee.first_name} {employee.last_name}
+                          {employee.job_title && (
+                            <span className="text-xs text-gray-500 ml-2">({employee.job_title})</span>
+                          )}
                         </SelectItem>
                       ))
                     }

@@ -309,9 +309,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
 
   const [consumption, setConsumption] = useState(null);
   const [searchMeter, setSearchMeter] = useState('');
-
-  
-
+  const [isSelectOpen, setIsSelectOpen] = useState(false); // État pour contrôler l'ouverture du Select
 
   useEffect(() => {
     if (editingReading) {
@@ -333,7 +331,6 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
         ...prev,
         meter_id: String(selectedMeterId)
       }));
-
     }
   }, [editingReading, selectedMeterId]);
 
@@ -458,6 +455,25 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     }
   };
 
+  // Filtrer les compteurs selon la recherche
+  const filteredMeters = meters
+    .sort((a, b) => {
+      // Extraire les parties numériques si possible
+      const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
+      const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
+      
+      if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
+        // Si les préfixes sont identiques (ex: MTR-), comparer les numéros
+        return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+      }
+      // Sinon comparer les chaînes entières
+      return a.meter_number.localeCompare(b.meter_number);
+    })
+    .filter(meter => 
+      `${meter.meter_number} ${meter.user?.first_name} ${meter.user?.last_name} ${meter.serial_number}`
+        .toLowerCase()
+        .includes(searchMeter.toLowerCase())
+    );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -483,51 +499,61 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                   <label className="text-sm font-medium">Compteur</label>
 
                   <Select
-  value={formData.meter_id}
-  onValueChange={(value) => handleChange('meter_id', value)}
-  disabled={!!editingReading}
->
-  <SelectTrigger>
-    <SelectValue placeholder="Sélectionner un compteur" />
-  </SelectTrigger>
+                    open={isSelectOpen}
+                    onOpenChange={setIsSelectOpen}
+                    value={formData.meter_id}
+                    onValueChange={(value) => {
+                      handleChange('meter_id', value);
+                      setIsSelectOpen(false); // Fermer le Select après sélection
+                      setSearchMeter(''); // Réinitialiser la recherche
+                    }}
+                    disabled={!!editingReading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un compteur" />
+                    </SelectTrigger>
 
-  <SelectContent>
-  <div className="sticky top-0 bg-white p-2">
-    <Input
-      placeholder="Rechercher un compteur..."
-      value={searchMeter}
-      onChange={(e) => setSearchMeter(e.target.value)}
-    />
-  </div>
-  <ScrollArea className="h-72">
-    {meters
-      .sort((a, b) => {
-        // Extraire les parties numériques si possible
-        const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
-        const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
-        
-        if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
-          // Si les préfixes sont identiques (ex: MTR-), comparer les numéros
-          return parseInt(aMatch[2]) - parseInt(bMatch[2]);
-        }
-        // Sinon comparer les chaînes entières
-        return a.meter_number.localeCompare(b.meter_number);
-      })
-      .filter(meter => 
-        `${meter.meter_number} ${meter.user?.first_name} ${meter.user?.last_name} ${meter.serial_number}`
-        .toLowerCase()
-        .includes(searchMeter.toLowerCase())
-      )
-      .map((meter) => (
-        <SelectItem key={meter.id} value={String(meter.id)}>
-          {`${meter.meter_number} - ${meter.user?.first_name} ${meter.user?.last_name} (${meter.user?.name})`}
-        </SelectItem>
-      ))}
-  </ScrollArea>
-</SelectContent>
+                    <SelectContent 
+                      className="max-h-80 overflow-y-auto"
+                      onPointerDownOutside={() => {
+                        setIsSelectOpen(false);
+                        setSearchMeter(''); // Réinitialiser la recherche quand on ferme
+                      }}
+                    >
+                      <div className="sticky top-0 bg-white p-2 border-b z-10">
+                        <Input
+                          placeholder="Rechercher un compteur..."
+                          value={searchMeter}
+                          onChange={(e) => {
+                            e.stopPropagation(); // Empêcher la fermeture du Select
+                            setSearchMeter(e.target.value);
+                          }}
+                          onKeyDown={(e) => {
+                            e.stopPropagation(); // Empêcher les interactions avec le Select
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation(); // Empêcher la fermeture du Select
+                          }}
+                        />
+                      </div>
+                      
+                      <ScrollArea className="max-h-60 overflow-y-auto">
+                        {filteredMeters.length > 0 ? (
+                          filteredMeters.map((meter) => (
+                            <SelectItem key={meter.id} value={String(meter.id)}>
+                              {`${meter.meter_number} - ${meter.user?.first_name} ${meter.user?.last_name} (${meter.user?.name})`}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-gray-500">
+                            Aucun compteur trouvé
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </SelectContent>
 
-</Select>
-
+                    
+                  </Select>
                 </div>
               </div>
 
@@ -554,47 +580,47 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
               </div>
 
               <div className="space-y-2">
- <label className="text-sm font-medium">Période de consommation</label>
- <div className="grid grid-cols-2 gap-4">
-   <div className="relative">
-     <input
-       type="date"
-       className="w-full pl-10 pr-3 py-2 border rounded-lg"
-       value={formData.period.from instanceof Date ? format(formData.period.from, 'yyyy-MM-dd') : ''}
-       onChange={(e) => handleChange('period', { 
-         ...formData.period, 
-         from: e.target.value ? new Date(e.target.value) : null 
-       })}
-     />
-     <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
-   </div>
-   <div className="relative">
-     <input
-       type="date"
-       className="w-full pl-10 pr-3 py-2 border rounded-lg" 
-       value={formData.period.to instanceof Date ? format(formData.period.to, 'yyyy-MM-dd') : ''}
-       onChange={(e) => handleChange('period', {
-         ...formData.period,
-         to: e.target.value ? new Date(e.target.value) : null
-       })}
-     />
-     <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
-   </div>
- </div>
-</div>
+                <label className="text-sm font-medium">Période de consommation</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="relative">
+                    <input
+                      type="date"
+                      className="w-full pl-10 pr-3 py-2 border rounded-lg"
+                      value={formData.period.from instanceof Date ? format(formData.period.from, 'yyyy-MM-dd') : ''}
+                      onChange={(e) => handleChange('period', { 
+                        ...formData.period, 
+                        from: e.target.value ? new Date(e.target.value) : null 
+                      })}
+                    />
+                    <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      className="w-full pl-10 pr-3 py-2 border rounded-lg" 
+                      value={formData.period.to instanceof Date ? format(formData.period.to, 'yyyy-MM-dd') : ''}
+                      onChange={(e) => handleChange('period', {
+                        ...formData.period,
+                        to: e.target.value ? new Date(e.target.value) : null
+                      })}
+                    />
+                    <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+                  </div>
+                </div>
+              </div>
               
-<div className="space-y-2">
- <label className="text-sm font-medium">Date du relevé</label>
- <div className="relative">
-   <input
-     type="date"
-     className="w-full pl-10 pr-3 py-2 border rounded-lg"
-     value={formData.reading_date instanceof Date ? format(formData.reading_date, 'yyyy-MM-dd') : ''}
-     onChange={(e) => handleChange('reading_date', e.target.value ? new Date(e.target.value) : null)}
-   />
-   <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
- </div>
-</div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date du relevé</label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    className="w-full pl-10 pr-3 py-2 border rounded-lg"
+                    value={formData.reading_date instanceof Date ? format(formData.reading_date, 'yyyy-MM-dd') : ''}
+                    onChange={(e) => handleChange('reading_date', e.target.value ? new Date(e.target.value) : null)}
+                  />
+                  <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+                </div>
+              </div>
 
               {editingReading && (
                 <div className="space-y-2">
@@ -631,6 +657,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
               variant="outline" 
               onClick={() => {
                 setError(null);
+                setSearchMeter(''); // Réinitialiser la recherche à la fermeture
                 onClose();
               }}
             >
@@ -645,6 +672,8 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     </Dialog>
   );
 };
+
+
 
 
 
