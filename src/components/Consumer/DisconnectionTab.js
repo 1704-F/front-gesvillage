@@ -762,15 +762,7 @@ const fetchNoticesHistory = useCallback(async () => {
                                   <Check className="h-4 w-4 mr-1" />
                                   Exécuter
                                 </Button>
-                                
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => handleDownloadPDF(consumer.id)}
-                                >
-                                  <Download className="h-4 w-4 mr-1" />
-                                  PDF
-                                </Button>
+                              
                                 
                                 <Button 
                                   variant="destructive" 
