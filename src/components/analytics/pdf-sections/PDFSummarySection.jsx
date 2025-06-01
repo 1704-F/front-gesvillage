@@ -81,6 +81,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F9FF',  // Légère teinte bleue
     fontWeight: 'bold',
   },
+  newRevenueRow: {
+    backgroundColor: '#ECFDF5',  // Légère teinte verte pour les nouveaux revenus
+    fontWeight: 'bold',
+  },
   expenseRow: {
     backgroundColor: '#FEF2F2',  // Légère teinte rouge pour les dépenses
     fontWeight: 'bold',
@@ -139,14 +143,18 @@ const PDFSummarySection = ({ data }) => {
     totalRevenue: parseFloat(item.totalRevenue || 0),
     totalExpense: parseFloat(item.totalExpense || 0),
     profit: parseFloat(item.profit || 0),
-    netCashFlow: parseFloat(item.netCashFlow || 0)
+    netCashFlow: parseFloat(item.netCashFlow || 0),
+    connectionLaborRevenue: parseFloat(item.connectionLaborRevenue || 0),
+    penaltyRevenue: parseFloat(item.penaltyRevenue || 0)
   }));
 
-  // Préparer les données pour le graphique de répartition des revenus
+  // Préparer les données pour le graphique de répartition des revenus (mis à jour)
   const revenueData = [
     { name: "Facture d'eau", value: parseFloat(stats?.invoiceRevenue || 0), color: '#2563EB' },
-    { name: 'Dons', value: parseFloat(stats?.donationRevenue || 0), color: '#10B981' }
-  ];
+    { name: 'Dons', value: parseFloat(stats?.donationRevenue || 0), color: '#10B981' },
+    { name: 'Frais branchement', value: parseFloat(stats?.connectionLaborRevenue || 0), color: '#059669' },
+    { name: 'Pénalités coupure', value: parseFloat(stats?.penaltyRevenue || 0), color: '#F59E0B' }
+  ].filter(item => item.value > 0); // Filtrer les valeurs nulles
 
   // Préparer les données pour le graphique de répartition des dépenses
   const expenseData = [
@@ -156,7 +164,7 @@ const PDFSummarySection = ({ data }) => {
 
   return (
     <View style={styles.container}>
-      {/* Métriques principales */}
+      {/* Métriques principales (mises à jour) */}
       <View style={styles.metricsGrid}>
         <PDFMetricCard
           title="Revenus Totaux"
@@ -173,6 +181,14 @@ const PDFSummarySection = ({ data }) => {
         <PDFMetricCard
           title="Marge Opérationnelle"
           value={`${stats?.margin || 0}%`}
+        />
+        <PDFMetricCard
+          title="Frais Branchement"
+          value={`${formatNumber(stats?.connectionLaborRevenue || 0)} FCFA`}
+        />
+        <PDFMetricCard
+          title="Pénalités Coupure"
+          value={`${formatNumber(stats?.penaltyRevenue || 0)} FCFA`}
         />
         <PDFMetricCard
           title="Trésorerie initiale"
@@ -192,9 +208,9 @@ const PDFSummarySection = ({ data }) => {
         />
       </View>
 
-      {/* 1. COMPTE DE RÉSULTAT */}
-      <Text style={styles.sectionTitle}>1. Compte de Résultat (par année)</Text>
-      <Text style={styles.sectionSubtitle}>Affiche uniquement les performances de l'exercice en cours :</Text>
+      {/* 1. COMPTE DE RÉSULTAT DÉTAILLÉ */}
+      <Text style={styles.sectionTitle}>1. Compte de Résultat Détaillé</Text>
+      <Text style={styles.sectionSubtitle}>Affiche toutes les sources de revenus et les dépenses de l'exercice :</Text>
       <View>
         <View style={[styles.row, styles.tableHeader]}>
           <Text style={styles.col1}>Catégorie</Text>
@@ -203,12 +219,20 @@ const PDFSummarySection = ({ data }) => {
         
         {/* Revenus */}
         <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Revenus d'exploitation</Text>
+          <Text style={styles.col1}>Revenus d'exploitation (factures)</Text>
           <Text style={styles.col2}>{formatNumber(stats.invoiceRevenue || 0)}</Text>
         </View>
         <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Autres revenus (dons, etc.)</Text>
+          <Text style={styles.col1}>Autres revenus (dons)</Text>
           <Text style={styles.col2}>{formatNumber(stats.donationRevenue || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow, styles.newRevenueRow]}>
+          <Text style={styles.col1}>Frais de branchement (main-d'œuvre)</Text>
+          <Text style={styles.col2}>{formatNumber(stats.connectionLaborRevenue || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow, styles.newRevenueRow]}>
+          <Text style={styles.col1}>Pénalités de coupure payées</Text>
+          <Text style={styles.col2}>{formatNumber(stats.penaltyRevenue || 0)}</Text>
         </View>
         <View style={[styles.row, styles.tableRow, styles.subtotalRow]}>
           <Text style={styles.col1}>Total Revenus</Text>
@@ -251,7 +275,7 @@ const PDFSummarySection = ({ data }) => {
           <Text style={styles.col2}>{formatNumber(stats.initialCashBalance || 0)}</Text>
         </View>
         <View style={[styles.row, styles.tableRow, styles.subtotalRow]}>
-          <Text style={styles.col1}>Résultat d'exploitation</Text>
+          <Text style={styles.col1}>Résultat d'exploitation (incluant nouveaux revenus)</Text>
           <Text style={styles.col2}>{formatNumber(stats.profit || 0)}</Text>
         </View>
         <View style={[styles.row, styles.tableRow]}>
@@ -330,96 +354,156 @@ const PDFSummarySection = ({ data }) => {
       </View>
 
       {/* 4. HISTORIQUE CUMULATIF */}
-<Text style={styles.sectionTitle}>4. Cumulatif Historique (multi-années)</Text>
-<Text style={styles.sectionSubtitle}>Intègre les résultats nets des années précédentes :</Text>
+      <Text style={styles.sectionTitle}>4. Cumulatif Historique (multi-années)</Text>
+      <Text style={styles.sectionSubtitle}>Intègre les résultats nets des années précédentes :</Text>
 
-{/* Tableau historique par année */}
-<View>
-  <View style={[styles.row, styles.tableHeader]}>
-    <Text style={{ width: '20%' }}>Année</Text>
-    <Text style={{ width: '20%', textAlign: 'right' }}>Revenus</Text>
-    <Text style={{ width: '20%', textAlign: 'right' }}>Dépenses</Text>
-    <Text style={{ width: '20%', textAlign: 'right' }}>Résultat net</Text>
-    <Text style={{ width: '20%', textAlign: 'right' }}>Trésorerie clôture</Text>
-  </View>
-  
-  {/* Utiliser lastBalanceSheet et données historiques */}
-  {lastBalanceSheet && (
-    <View style={[styles.row, styles.tableRow]}>
-      <Text style={{ width: '20%' }}>
-        {new Date(lastBalanceSheet.period_end).getFullYear()}
-      </Text>
-      <Text style={{ width: '20%', textAlign: 'right' }}>
-        {formatNumber(parseFloat(lastBalanceSheet.previous_revenue || 0))}
-      </Text>
-      <Text style={{ width: '20%', textAlign: 'right' }}>
-        {formatNumber(parseFloat(lastBalanceSheet.previous_expense || 0))}
-      </Text>
-      <Text style={{ width: '20%', textAlign: 'right' }}>
-        {formatNumber(parseFloat(lastBalanceSheet.previous_profit || 0))}
-      </Text>
-      <Text style={{ width: '20%', textAlign: 'right' }}>
-        {formatNumber(parseFloat(lastBalanceSheet.cash_and_bank || 0))}
-      </Text>
-    </View>
-  )}
-  
-  {/* Année courante */}
-  <View style={[styles.row, styles.tableRow]}>
-    <Text style={{ width: '20%' }}>{new Date().getFullYear()}</Text>
-    <Text style={{ width: '20%', textAlign: 'right' }}>
-      {formatNumber(stats.totalRevenue || 0)}
-    </Text>
-    <Text style={{ width: '20%', textAlign: 'right' }}>
-      {formatNumber(stats.totalExpense || 0)}
-    </Text>
-    <Text style={{ width: '20%', textAlign: 'right' }}>
-      {formatNumber(stats.profit || 0)}
-    </Text>
-    <Text style={{ width: '20%', textAlign: 'right' }}>
-      {formatNumber(stats.finalCashBalance || 0)}
-    </Text>
-  </View>
-  
-  {/* Ligne de total */}
-  <View style={[styles.row, styles.tableRow, styles.cumulativeTotal]}>
-    <Text style={{ width: '20%', fontWeight: 'bold' }}>Total cumul</Text>
-    <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
-      {formatNumber((parseFloat(lastBalanceSheet?.previous_revenue || 0) + parseFloat(stats.totalRevenue || 0)))}
-    </Text>
-    <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
-      {formatNumber((parseFloat(lastBalanceSheet?.previous_expense || 0) + parseFloat(stats.totalExpense || 0)))}
-    </Text>
-    <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
-      {formatNumber((parseFloat(lastBalanceSheet?.previous_profit || 0) + parseFloat(stats.profit || 0)))}
-    </Text>
-    <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
-      {formatNumber(stats.finalCashBalance || 0)}
-    </Text>
-  </View>
-</View>
+      {/* Tableau historique par année */}
+      <View>
+        <View style={[styles.row, styles.tableHeader]}>
+          <Text style={{ width: '20%' }}>Année</Text>
+          <Text style={{ width: '20%', textAlign: 'right' }}>Revenus</Text>
+          <Text style={{ width: '20%', textAlign: 'right' }}>Dépenses</Text>
+          <Text style={{ width: '20%', textAlign: 'right' }}>Résultat net</Text>
+          <Text style={{ width: '20%', textAlign: 'right' }}>Trésorerie clôture</Text>
+        </View>
+        
+        {/* Utiliser lastBalanceSheet et données historiques */}
+        {lastBalanceSheet && (
+          <View style={[styles.row, styles.tableRow]}>
+            <Text style={{ width: '20%' }}>
+              {new Date(lastBalanceSheet.period_end).getFullYear()}
+            </Text>
+            <Text style={{ width: '20%', textAlign: 'right' }}>
+              {formatNumber(parseFloat(lastBalanceSheet.previous_revenue || 0))}
+            </Text>
+            <Text style={{ width: '20%', textAlign: 'right' }}>
+              {formatNumber(parseFloat(lastBalanceSheet.previous_expense || 0))}
+            </Text>
+            <Text style={{ width: '20%', textAlign: 'right' }}>
+              {formatNumber(parseFloat(lastBalanceSheet.previous_profit || 0))}
+            </Text>
+            <Text style={{ width: '20%', textAlign: 'right' }}>
+              {formatNumber(parseFloat(lastBalanceSheet.cash_and_bank || 0))}
+            </Text>
+          </View>
+        )}
+        
+        {/* Année courante */}
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={{ width: '20%' }}>{new Date().getFullYear()}</Text>
+          <Text style={{ width: '20%', textAlign: 'right' }}>
+            {formatNumber(stats.totalRevenue || 0)}
+          </Text>
+          <Text style={{ width: '20%', textAlign: 'right' }}>
+            {formatNumber(stats.totalExpense || 0)}
+          </Text>
+          <Text style={{ width: '20%', textAlign: 'right' }}>
+            {formatNumber(stats.profit || 0)}
+          </Text>
+          <Text style={{ width: '20%', textAlign: 'right' }}>
+            {formatNumber(stats.finalCashBalance || 0)}
+          </Text>
+        </View>
+        
+        {/* Ligne de total */}
+        <View style={[styles.row, styles.tableRow, styles.cumulativeTotal]}>
+          <Text style={{ width: '20%', fontWeight: 'bold' }}>Total cumul</Text>
+          <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
+            {formatNumber((parseFloat(lastBalanceSheet?.previous_revenue || 0) + parseFloat(stats.totalRevenue || 0)))}
+          </Text>
+          <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
+            {formatNumber((parseFloat(lastBalanceSheet?.previous_expense || 0) + parseFloat(stats.totalExpense || 0)))}
+          </Text>
+          <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
+            {formatNumber((parseFloat(lastBalanceSheet?.previous_profit || 0) + parseFloat(stats.profit || 0)))}
+          </Text>
+          <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold' }}>
+            {formatNumber(stats.finalCashBalance || 0)}
+          </Text>
+        </View>
+      </View>
 
-{/* Statistiques cumulatives sous forme de cartes métriques */}
-<View style={styles.metricsGrid}>
-  <PDFMetricCard
-    title="Revenus cumulés historiques"
-    value={`${formatNumber((parseFloat(lastBalanceSheet?.previous_revenue || 0) + parseFloat(stats.totalRevenue || 0)))} FCFA`}
-  />
-  <PDFMetricCard
-    title="Dépenses cumulées historiques"
-    value={`${formatNumber((parseFloat(lastBalanceSheet?.previous_expense || 0) + parseFloat(stats.totalExpense || 0)))} FCFA`}
-  />
-  <PDFMetricCard
-    title="Résultat net cumulé historique"
-    value={`${formatNumber((parseFloat(lastBalanceSheet?.previous_profit || 0) + parseFloat(stats.profit || 0)))} FCFA`}
-  />
-  <PDFMetricCard
-    title="Trésorerie actuelle"
-    value={`${formatNumber(stats.finalCashBalance || 0)} FCFA`}
-  />
-</View>
+      {/* Statistiques cumulatives sous forme de cartes métriques */}
+      <View style={styles.metricsGrid}>
+        <PDFMetricCard
+          title="Revenus cumulés historiques"
+          value={`${formatNumber((parseFloat(lastBalanceSheet?.previous_revenue || 0) + parseFloat(stats.totalRevenue || 0)))} FCFA`}
+        />
+        <PDFMetricCard
+          title="Dépenses cumulées historiques"
+          value={`${formatNumber((parseFloat(lastBalanceSheet?.previous_expense || 0) + parseFloat(stats.totalExpense || 0)))} FCFA`}
+        />
+        <PDFMetricCard
+          title="Résultat net cumulé historique"
+          value={`${formatNumber((parseFloat(lastBalanceSheet?.previous_profit || 0) + parseFloat(stats.profit || 0)))} FCFA`}
+        />
+        <PDFMetricCard
+          title="Trésorerie actuelle"
+          value={`${formatNumber(stats.finalCashBalance || 0)} FCFA`}
+        />
+      </View>
 
-     
+      {/* 5. ANALYSE DES REVENUS COMPLÉMENTAIRES */}
+      <Text style={styles.sectionTitle}>5. Analyse des Revenus Complémentaires</Text>
+      <Text style={styles.sectionSubtitle}>Détail des nouvelles sources de revenus :</Text>
+
+      <View style={styles.metricsGrid}>
+        <PDFMetricCard
+          title="Revenus Traditionnels"
+          value={`${formatNumber((parseFloat(stats?.invoiceRevenue || 0) + parseFloat(stats?.donationRevenue || 0)))} FCFA`}
+        />
+        <PDFMetricCard
+          title="Nouveaux Revenus"
+          value={`${formatNumber((parseFloat(stats?.connectionLaborRevenue || 0) + parseFloat(stats?.penaltyRevenue || 0)))} FCFA`}
+        />
+        <PDFMetricCard
+          title="% Nouveaux Revenus"
+          value={`${(((parseFloat(stats?.connectionLaborRevenue || 0) + parseFloat(stats?.penaltyRevenue || 0)) / parseFloat(stats?.totalRevenue || 1)) * 100).toFixed(1)}%`}
+        />
+        <PDFMetricCard
+          title="Impact sur Marge"
+          value={`${stats?.margin || 0}%`}
+        />
+      </View>
+
+      {/* Tableau détaillé des nouveaux revenus */}
+      <View>
+        <View style={[styles.row, styles.tableHeader]}>
+          <Text style={styles.colWithPct}>Source de Revenus</Text>
+          <Text style={styles.colWithPctRight}>Montant (FCFA)</Text>
+          <Text style={styles.colWithPctPct}>% du Total</Text>
+        </View>
+        
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.colWithPct}>Factures d'eau</Text>
+          <Text style={styles.colWithPctRight}>{formatNumber(stats?.invoiceRevenue || 0)}</Text>
+          <Text style={styles.colWithPctPct}>{((parseFloat(stats?.invoiceRevenue || 0) / parseFloat(stats?.totalRevenue || 1)) * 100).toFixed(1)}%</Text>
+        </View>
+        
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.colWithPct}>Frais de branchement</Text>
+          <Text style={styles.colWithPctRight}>{formatNumber(stats?.connectionLaborRevenue || 0)}</Text>
+          <Text style={styles.colWithPctPct}>{((parseFloat(stats?.connectionLaborRevenue || 0) / parseFloat(stats?.totalRevenue || 1)) * 100).toFixed(1)}%</Text>
+        </View>
+        
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.colWithPct}>Pénalités de coupure</Text>
+          <Text style={styles.colWithPctRight}>{formatNumber(stats?.penaltyRevenue || 0)}</Text>
+          <Text style={styles.colWithPctPct}>{((parseFloat(stats?.penaltyRevenue || 0) / parseFloat(stats?.totalRevenue || 1)) * 100).toFixed(1)}%</Text>
+        </View>
+        
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.colWithPct}>Dons</Text>
+          <Text style={styles.colWithPctRight}>{formatNumber(stats?.donationRevenue || 0)}</Text>
+          <Text style={styles.colWithPctPct}>{((parseFloat(stats?.donationRevenue || 0) / parseFloat(stats?.totalRevenue || 1)) * 100).toFixed(1)}%</Text>
+        </View>
+        
+        <View style={[styles.row, styles.tableRow, styles.subtotalRow]}>
+          <Text style={styles.colWithPct}>Total Revenus</Text>
+          <Text style={styles.colWithPctRight}>{formatNumber(stats?.totalRevenue || 0)}</Text>
+          <Text style={styles.colWithPctPct}>100.0%</Text>
+        </View>
+      </View>
 
       {/* Si un bilan historique est disponible */}
       {lastBalanceSheet && (
@@ -452,13 +536,15 @@ const PDFSummarySection = ({ data }) => {
         </View>
       )}
 
-      {/* Graphique d'évolution financière */}
+      {/* Graphique d'évolution financière mis à jour */}
       <Text style={styles.sectionTitle}>Évolution Financière Mensuelle</Text>
       <View style={styles.chartContainer}>
         <PDFLineChart
           data={financeData}
           lines={[
-            { dataKey: 'totalRevenue', name: 'Revenus', color: '#2563EB' },
+            { dataKey: 'totalRevenue', name: 'Revenus totaux', color: '#2563EB' },
+            { dataKey: 'connectionLaborRevenue', name: 'Frais branchement', color: '#059669' },
+            { dataKey: 'penaltyRevenue', name: 'Pénalités', color: '#F59E0B' },
             { dataKey: 'totalExpense', name: 'Dépenses', color: '#DC2626' },
             { dataKey: 'profit', name: 'Résultat', color: '#10B981' },
             { dataKey: 'netCashFlow', name: 'Flux de trésorerie', color: '#8B5CF6' }
@@ -469,7 +555,7 @@ const PDFSummarySection = ({ data }) => {
 
       {/* Graphiques de répartition des revenus et dépenses */}
       <View style={{ flexDirection: 'row' }}>
-        {/* Répartition des revenus */}
+        {/* Répartition des revenus (mise à jour) */}
         <View style={{ width: '50%' }}>
           <Text style={styles.sectionTitle}>Répartition des Revenus</Text> 
           <View style={styles.chartContainer}>

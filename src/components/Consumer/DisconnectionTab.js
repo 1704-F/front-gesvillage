@@ -67,11 +67,12 @@ const DisconnectionTab = () => {
   const [reconnectEmployeeId, setReconnectEmployeeId] = useState('');
   const [penaltyPaid, setPenaltyPaid] = useState(false);
   
-  // États pour les filtres
+  // États pour les filtres (MODIFIÉ - ajout du statut)
   const [filters, setFilters] = useState({
     min_invoices: 2,
     min_amount: 0,
-    search: ''
+    search: '',
+    status: 'all' // NOUVEAU FILTRE
   });
   
   // États pour la pagination
@@ -93,21 +94,20 @@ const DisconnectionTab = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-
-const [historyData, setHistoryData] = useState([]);
-const [historyLoading, setHistoryLoading] = useState(false);
-const [historyPagination, setHistoryPagination] = useState({
-  page: 1,
-  limit: 10,
-  totalItems: 0,
-  totalPages: 0
-});
-const [historyFilters, setHistoryFilters] = useState({
-  penalty_status: 'all', // all, paid, unpaid, undefined
-  search: '',
-  date_from: '',
-  date_to: ''
-});
+  const [historyData, setHistoryData] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPagination, setHistoryPagination] = useState({
+    page: 1,
+    limit: 10,
+    totalItems: 0,
+    totalPages: 0
+  });
+  const [historyFilters, setHistoryFilters] = useState({
+    penalty_status: 'all',
+    search: '',
+    date_from: '',
+    date_to: ''
+  });
   
   // Effet pour le debounce
   useEffect(() => {
@@ -143,6 +143,7 @@ const [historyFilters, setHistoryFilters] = useState({
           min_invoices: filters.min_invoices,
           min_amount: filters.min_amount,
           search: filters.search,
+          status: filters.status, // NOUVEAU PARAMÈTRE
           page: pagination.page,
           limit: pagination.limit
         }
@@ -198,40 +199,39 @@ const [historyFilters, setHistoryFilters] = useState({
     }
   }, [disconnectedPagination.page, disconnectedPagination.limit, filters.search, toast]);
 
-const fetchNoticesHistory = useCallback(async () => {
-  setHistoryLoading(true);
-  try {
-    const response = await api.get('/disconnection-notices/history', {
-      params: {
-        page: historyPagination.page,
-        limit: historyPagination.limit,
-        search: historyFilters.search,
-        penalty_status: historyFilters.penalty_status,
-        date_from: historyFilters.date_from,
-        date_to: historyFilters.date_to
+  const fetchNoticesHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const response = await api.get('/disconnection-notices/history', {
+        params: {
+          page: historyPagination.page,
+          limit: historyPagination.limit,
+          search: historyFilters.search,
+          penalty_status: historyFilters.penalty_status,
+          date_from: historyFilters.date_from,
+          date_to: historyFilters.date_to
+        }
+      });
+      
+      setHistoryData(response.data.data || []);
+      
+      if (response.data.pagination) {
+        setHistoryPagination(prev => ({
+          ...prev,
+          totalItems: response.data.pagination.totalItems,
+          totalPages: response.data.pagination.totalPages
+        }));
       }
-    });
-    
-    setHistoryData(response.data.data || []);
-    
-    if (response.data.pagination) {
-      setHistoryPagination(prev => ({
-        ...prev,
-        totalItems: response.data.pagination.totalItems,
-        totalPages: response.data.pagination.totalPages
-      }));
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de récupérer l'historique des bons"
+      });
+    } finally {
+      setHistoryLoading(false);
     }
-  } catch (error) {
-    toast({
-      variant: "destructive",
-      title: "Erreur",
-      description: "Impossible de récupérer l'historique des bons"
-    });
-  } finally {
-    setHistoryLoading(false);
-  }
-}, [historyPagination.page, historyPagination.limit, historyFilters, toast]);
-
+  }, [historyPagination.page, historyPagination.limit, historyFilters, toast]);
 
   // Fonction pour obtenir les détails d'un consommateur spécifique
   const fetchConsumerDetails = async (consumerId) => {
@@ -342,127 +342,123 @@ const fetchNoticesHistory = useCallback(async () => {
   };
 
   // NOUVELLE FONCTION : Remettre en service un consommateur
- const handleReconnectConsumer = async () => {
-  try {
-    if (!selectedConsumer) return;
-    
-    await api.patch(`/consumers/${selectedConsumer.id}/reconnect`, {
-      employee_id: reconnectEmployeeId === 'none' ? null : reconnectEmployeeId,
-      penalty_paid: penaltyPaid
-    });
-    
-    toast({
-      title: "Succès",
-      description: "Consommateur remis en service avec succès"
-    });
-    
-    setReconnectModal(false);
-    setReconnectEmployeeId('');
-    setPenaltyPaid(false);
-    fetchDisconnectedConsumers();
-    fetchConsumersWithUnpaidInvoices();
-  } catch (error) {
-    // NOUVELLE GESTION D'ERREUR DÉTAILLÉE
-    const errorResponse = error.response?.data;
-    
-    if (errorResponse?.details?.unpaid_count) {
-      // Cas spécifique : factures non payées
+  const handleReconnectConsumer = async () => {
+    try {
+      if (!selectedConsumer) return;
+      
+      await api.patch(`/consumers/${selectedConsumer.id}/reconnect`, {
+        employee_id: reconnectEmployeeId === 'none' ? null : reconnectEmployeeId,
+        penalty_paid: penaltyPaid
+      });
+      
       toast({
-        variant: "destructive",
-        title: "Remise en service impossible",
-        description: (
-          <div className="space-y-2">
-            <p className="font-medium">{errorResponse.message}</p>
-            <div className="text-sm">
-              <p><strong>Bon concerné :</strong> {errorResponse.details.notice_number}</p>
-              <p><strong>Factures impayées :</strong></p>
-              <p className="text-xs bg-red-50 text-black  p-2 rounded mt-1">
-                {errorResponse.details.unpaid_invoices}
+        title: "Succès",
+        description: "Consommateur remis en service avec succès"
+      });
+      
+      setReconnectModal(false);
+      setReconnectEmployeeId('');
+      setPenaltyPaid(false);
+      fetchDisconnectedConsumers();
+      fetchConsumersWithUnpaidInvoices();
+    } catch (error) {
+      // NOUVELLE GESTION D'ERREUR DÉTAILLÉE
+      const errorResponse = error.response?.data;
+      
+      if (errorResponse?.details?.unpaid_count) {
+        // Cas spécifique : factures non payées
+        toast({
+          variant: "destructive",
+          title: "Remise en service impossible",
+          description: (
+            <div className="space-y-2">
+              <p className="font-medium">{errorResponse.message}</p>
+              <div className="text-sm">
+                <p><strong>Bon concerné :</strong> {errorResponse.details.notice_number}</p>
+                <p><strong>Factures impayées :</strong></p>
+                <p className="text-xs bg-red-50 text-black  p-2 rounded mt-1">
+                  {errorResponse.details.unpaid_invoices}
+                </p>
+              </div>
+              <p className="text-sm font-medium text-white mt-2">
+                ⚠ Veuillez d'abord marquer ces factures comme payées dans le module de facturation.
               </p>
             </div>
-            <p className="text-sm font-medium text-white mt-2">
-              ⚠ Veuillez d'abord marquer ces factures comme payées dans le module de facturation.
-            </p>
-          </div>
-        ),
-        duration: 8000 // Toast plus long pour laisser le temps de lire
+          ),
+          duration: 8000 // Toast plus long pour laisser le temps de lire
+        });
+      } else {
+        // Autres erreurs
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: errorResponse?.message || "Impossible de remettre en service"
+        });
+      }
+    }
+  };
+
+  const handleUpdatePenaltyStatus = async (noticeId, penaltyPaid) => {
+    try {
+      await api.patch(`/disconnection-notices/${noticeId}/penalty-status`, {
+        penalty_paid: penaltyPaid
       });
-    } else {
-      // Autres erreurs
+      
+      toast({
+        title: "Succès",
+        description: "Statut de la pénalité mis à jour"
+      });
+      
+      fetchNoticesHistory();
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: errorResponse?.message || "Impossible de remettre en service"
+        description: "Impossible de mettre à jour le statut de la pénalité"
       });
     }
-  }
-};
-
-
-
-  const handleUpdatePenaltyStatus = async (noticeId, penaltyPaid) => {
-  try {
-    await api.patch(`/disconnection-notices/${noticeId}/penalty-status`, {
-      penalty_paid: penaltyPaid
-    });
-    
-    toast({
-      title: "Succès",
-      description: "Statut de la pénalité mis à jour"
-    });
-    
-    fetchNoticesHistory();
-  } catch (error) {
-    toast({
-      variant: "destructive",
-      title: "Erreur",
-      description: "Impossible de mettre à jour le statut de la pénalité"
-    });
-  }
-};
-
-
+  };
 
   // Fonction pour télécharger un PDF de bon de coupure individuel
- const handleDownloadPDF = async (consumerId, noticeId = null) => {
-  try {
-    let url;
-    if (noticeId) {
-      // Utiliser la nouvelle route avec l'ID du bon spécifique
-      url = `/disconnection-notices/${noticeId}/pdf`;
-    } else {
-      // Fallback vers l'ancienne route
-      url = `/consumers/${consumerId}/disconnection-notice/pdf`;
+  const handleDownloadPDF = async (consumerId, noticeId = null) => {
+    try {
+      let url;
+      if (noticeId) {
+        // Utiliser la nouvelle route avec l'ID du bon spécifique
+        url = `/disconnection-notices/${noticeId}/pdf`;
+      } else {
+        // Fallback vers l'ancienne route
+        url = `/consumers/${consumerId}/disconnection-notice/pdf`;
+      }
+      
+      const response = await api.get(url, {
+        responseType: 'blob'
+      });
+      
+      const urlBlob = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = urlBlob;
+      link.setAttribute('download', `bon-coupure-${consumerId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de télécharger le PDF"
+      });
     }
-    
-    const response = await api.get(url, {
-      responseType: 'blob'
-    });
-    
-    const urlBlob = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = urlBlob;
-    link.setAttribute('download', `bon-coupure-${consumerId}.pdf`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  } catch (error) {
-    toast({
-      variant: "destructive",
-      title: "Erreur",
-      description: "Impossible de télécharger le PDF"
-    });
-  }
-};
+  };
 
-
-  // Fonction pour télécharger le PDF récapitulatif
-  const handleDownloadSummaryPDF = async () => {
+  // FONCTION AMÉLIORÉE : Télécharger le PDF récapitulatif pour l'onglet Factures impayées
+  const handleDownloadUnpaidSummaryPDF = async () => {
     try {
       const response = await api.get('/disconnection-notices/summary-pdf', {
         params: {
           min_invoices: filters.min_invoices,
-          min_amount: filters.min_amount
+          min_amount: filters.min_amount,
+          status: filters.status // NOUVEAU PARAMÈTRE
         },
         responseType: 'blob'
       });
@@ -471,7 +467,75 @@ const fetchNoticesHistory = useCallback(async () => {
       const link = document.createElement('a');
       link.href = url;
       const today = new Date().toISOString().split('T')[0];
-      link.setAttribute('download', `rapport-avis-coupure-${today}.pdf`);
+      const statusSuffix = filters.status !== 'all' ? `-${filters.status}` : '';
+      link.setAttribute('download', `rapport-factures-impayees${statusSuffix}-${today}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast({
+        title: "Succès",
+        description: "Téléchargement du rapport PDF en cours"
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de générer le rapport PDF"
+      });
+    }
+  };
+
+  // NOUVELLE FONCTION : Télécharger le PDF pour l'onglet Consommateurs coupés
+  const handleDownloadDisconnectedSummaryPDF = async () => {
+    try {
+      const response = await api.get('/disconnection-notices/disconnected-summary-pdf', {
+        params: {
+          search: filters.search
+        },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const today = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `rapport-consommateurs-coupes-${today}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast({
+        title: "Succès",
+        description: "Téléchargement du rapport PDF en cours"
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de générer le rapport PDF"
+      });
+    }
+  };
+
+  // NOUVELLE FONCTION : Télécharger le PDF pour l'onglet Historique
+  const handleDownloadHistorySummaryPDF = async () => {
+    try {
+      const response = await api.get('/disconnection-notices/history-summary-pdf', {
+        params: {
+          search: historyFilters.search,
+          penalty_status: historyFilters.penalty_status,
+          date_from: historyFilters.date_from,
+          date_to: historyFilters.date_to
+        },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const today = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `rapport-historique-bons-${today}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -549,11 +613,11 @@ const fetchNoticesHistory = useCallback(async () => {
   };
 
   const handleHistoryPageChange = (newPage) => {
-  setHistoryPagination(prev => ({
-    ...prev,
-    page: newPage
-  }));
-};
+    setHistoryPagination(prev => ({
+      ...prev,
+      page: newPage
+    }));
+  };
 
   // Statut du bon de coupure
   const getDisconnectionStatus = (consumer) => {
@@ -589,23 +653,23 @@ const fetchNoticesHistory = useCallback(async () => {
       <Tabs defaultValue="unpaid" className="w-full">
 
         <TabsList className="grid w-full grid-cols-3">
-  <TabsTrigger value="unpaid" className="flex items-center gap-2">
-    <FileText className="h-4 w-4" />
-    Factures impayées
-  </TabsTrigger>
-  <TabsTrigger value="disconnected" className="flex items-center gap-2">
-    <ZapOff className="h-4 w-4" />
-    Consommateurs coupés
-  </TabsTrigger>
-  <TabsTrigger value="history" className="flex items-center gap-2">
-    <FileText className="h-4 w-4" />
-    Historique des bons
-  </TabsTrigger>
-</TabsList>
+          <TabsTrigger value="unpaid" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Factures impayées
+          </TabsTrigger>
+          <TabsTrigger value="disconnected" className="flex items-center gap-2">
+            <ZapOff className="h-4 w-4" />
+            Consommateurs coupés
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Historique des bons
+          </TabsTrigger>
+        </TabsList>
 
-        {/* ONGLET 1: FACTURES IMPAYÉES (Code existant modifié) */}
+        {/* ONGLET 1: FACTURES IMPAYÉES (MODIFIÉ - ajout du filtre statut) */}
         <TabsContent value="unpaid" className="space-y-6">
-          {/* Section filtres */}
+          {/* Section filtres AMÉLIORÉE */}
           <Card className="p-4">
             <div className="flex flex-wrap items-end gap-4">
               <div className="space-y-2">
@@ -618,7 +682,7 @@ const fetchNoticesHistory = useCallback(async () => {
                   min="1"
                 />
               </div>
-              
+              {/*
               <div className="space-y-2">
                 <label className="text-sm font-medium">Montant min. (FCFA)</label>
                 <Input
@@ -628,6 +692,25 @@ const fetchNoticesHistory = useCallback(async () => {
                   className="w-[150px]"
                   min="0"
                 />
+              </div>
+
+               NOUVEAU FILTRE STATUT */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Statut bon de coupure</label>
+                <Select 
+                  value={filters.status} 
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Tous les statuts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="to_generate">À générer</SelectItem>
+                    <SelectItem value="generated">Généré</SelectItem>
+                    <SelectItem value="executed">Exécuté</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="relative">
@@ -645,18 +728,25 @@ const fetchNoticesHistory = useCallback(async () => {
                 Appliquer
               </Button>
               
+              {/* BOUTON AMÉLIORÉ avec info du statut */}
               <Button 
                 variant="outline" 
-                onClick={handleDownloadSummaryPDF}
+                onClick={handleDownloadUnpaidSummaryPDF}
                 disabled={consumers.length === 0}
               >
                 <FileDown className="h-4 w-4 mr-2" />
                 Télécharger rapport
+                {filters.status !== 'all' && (
+                  <span className="ml-1 text-xs bg-blue-100 text-blue-800 px-1 rounded">
+                    {filters.status === 'to_generate' ? 'À générer' : 
+                     filters.status === 'generated' ? 'Généré' : 'Exécuté'}
+                  </span>
+                )}
               </Button>
             </div>
           </Card>
 
-          {/* Tableau des consommateurs avec factures impayées */}
+          {/* Tableau des consommateurs avec factures impayées (reste identique) */}
           <Card>
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-10">
@@ -776,16 +866,16 @@ const fetchNoticesHistory = useCallback(async () => {
                             )}
                             
                             <Button 
-  variant="outline" 
-  size="sm"
-  onClick={() => handleDownloadPDF(
-    consumer.id, 
-    consumer.disconnection_notice?.id  // Passer l'ID du bon
-  )}
->
-  <Download className="h-4 w-4 mr-1" />
-  PDF
-</Button>
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDownloadPDF(
+                                consumer.id, 
+                                consumer.disconnection_notice?.id  // Passer l'ID du bon
+                              )}
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              PDF
+                            </Button>
 
                             
                             <Button 
@@ -859,18 +949,30 @@ const fetchNoticesHistory = useCallback(async () => {
           </Card>
         </TabsContent>
 
-        {/* ONGLET 2: CONSOMMATEURS COUPÉS (NOUVEAU) */}
+        {/* ONGLET 2: CONSOMMATEURS COUPÉS (MODIFIÉ - ajout du bouton rapport) */}
         <TabsContent value="disconnected" className="space-y-6">
           <Card className="p-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Consommateurs actuellement coupés</h3>
-              <Button 
-                onClick={fetchDisconnectedConsumers}
-                variant="outline"
-                size="sm"
-              >
-                Actualiser
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={fetchDisconnectedConsumers}
+                  variant="outline"
+                  size="sm"
+                >
+                  Actualiser
+                </Button>
+                {/* NOUVEAU BOUTON RAPPORT */}
+                <Button 
+                  variant="outline" 
+                  onClick={handleDownloadDisconnectedSummaryPDF}
+                  disabled={disconnectedConsumers.length === 0}
+                  size="sm"
+                >
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Télécharger rapport
+                </Button>
+              </div>
             </div>
           </Card>
 
@@ -939,18 +1041,16 @@ const fetchNoticesHistory = useCallback(async () => {
                           </Button>
                           
                           <Button 
-  variant="outline" 
-  size="sm"
-  onClick={() => handleDownloadPDF(
-    consumer.id, 
-    consumer.last_disconnection?.id  // Passer l'ID du bon
-  )}
->
-  <Download className="h-4 w-4 mr-1" />
-  PDF
-</Button>
-
-
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDownloadPDF(
+                              consumer.id, 
+                              consumer.last_disconnection?.id  // Passer l'ID du bon
+                            )}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            PDF
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -994,252 +1094,256 @@ const fetchNoticesHistory = useCallback(async () => {
           </Card>
         </TabsContent>
 
+        {/* ONGLET 3: HISTORIQUE (MODIFIÉ - ajout du bouton rapport) */}
         <TabsContent value="history" className="space-y-6">
-  {/* Section filtres historique */}
-  <Card className="p-4">
-    <div className="flex flex-wrap items-end gap-4">
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Statut pénalité</label>
-        <Select 
-          value={historyFilters.penalty_status} 
-          onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, penalty_status: value }))}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Tous" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous</SelectItem>
-            <SelectItem value="paid">Payées</SelectItem>
-            <SelectItem value="unpaid">Impayées</SelectItem>
-            <SelectItem value="undefined">Non définies</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Date de début</label>
-        <Input
-          type="date"
-          value={historyFilters.date_from}
-          onChange={(e) => setHistoryFilters(prev => ({ ...prev, date_from: e.target.value }))}
-          className="w-[150px]"
-        />
-      </div>
-      
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Date de fin</label>
-        <Input
-          type="date"
-          value={historyFilters.date_to}
-          onChange={(e) => setHistoryFilters(prev => ({ ...prev, date_to: e.target.value }))}
-          className="w-[150px]"
-        />
-      </div>
-      
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-        <Input
-          placeholder="Rechercher consommateur..."
-          value={historyFilters.search}
-          onChange={(e) => setHistoryFilters(prev => ({ ...prev, search: e.target.value }))}
-          className="pl-10 w-[220px]"
-        />
-      </div>
-      
-      <Button onClick={fetchNoticesHistory}>
-        <Filter className="h-4 w-4 mr-2" />
-        Appliquer
-      </Button>
-    </div>
-  </Card>
+          {/* Section filtres historique AMÉLIORÉE */}
+          <Card className="p-4">
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Statut pénalité</label>
+                <Select 
+                  value={historyFilters.penalty_status} 
+                  onValueChange={(value) => setHistoryFilters(prev => ({ ...prev, penalty_status: value }))}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Tous" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous</SelectItem>
+                    <SelectItem value="paid">Payées</SelectItem>
+                    <SelectItem value="unpaid">Impayées</SelectItem>
+                    <SelectItem value="undefined">Non définies</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date de début</label>
+                <Input
+                  type="date"
+                  value={historyFilters.date_from}
+                  onChange={(e) => setHistoryFilters(prev => ({ ...prev, date_from: e.target.value }))}
+                  className="w-[150px]"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date de fin</label>
+                <Input
+                  type="date"
+                  value={historyFilters.date_to}
+                  onChange={(e) => setHistoryFilters(prev => ({ ...prev, date_to: e.target.value }))}
+                  className="w-[150px]"
+                />
+              </div>
+              
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Rechercher consommateur..."
+                  value={historyFilters.search}
+                  onChange={(e) => setHistoryFilters(prev => ({ ...prev, search: e.target.value }))}
+                  className="pl-10 w-[220px]"
+                />
+              </div>
+              
+              <Button onClick={fetchNoticesHistory}>
+                <Filter className="h-4 w-4 mr-2" />
+                Appliquer
+              </Button>
 
-  {/* Tableau historique */}
-  <Card>
-    {historyLoading && (
-      <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-10">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-      </div>
-    )}
-    
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>N° Bon</TableHead>
-          <TableHead>Consommateur</TableHead>
-          <TableHead>Date d'exécution</TableHead>
-          <TableHead>Montant dû</TableHead>
-          <TableHead>Pénalité</TableHead>
-          <TableHead>Statut pénalité</TableHead>
-          <TableHead>Remise en service</TableHead>
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {historyData.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={8} className="text-center py-8">
-              {historyLoading ? "Chargement de l'historique..." : "Aucun bon de coupure dans l'historique"}
-            </TableCell>
-          </TableRow>
-        ) : (
-          historyData.map((notice) => (
-            <TableRow key={notice.id}>
-              <TableCell>
-                <div className="font-medium">{notice.notice_number}</div>
-              </TableCell>
-              <TableCell>
-                <div className="font-medium">{notice.consumer_name}</div>
-                <div className="text-sm text-gray-500">{notice.consumer_nickname}</div>
-              </TableCell>
-              <TableCell>
-                {format(new Date(notice.execution_date), 'dd/MM/yyyy')}
-                <div className="text-xs text-gray-500">
-                  par {notice.executor_name || 'Non spécifié'}
-                </div>
-              </TableCell>
-              <TableCell>
-                {Number(notice.total_amount_due).toLocaleString()} FCFA
-              </TableCell>
-              <TableCell>
-                {notice.penalty_amount > 0 ? 
-                  `${Number(notice.penalty_amount).toLocaleString()} FCFA` : 
-                  'Aucune'}
-              </TableCell>
-              <TableCell>
-                {notice.penalty_amount > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      variant={
-                        notice.penalty_paid === true ? "success" : 
-                        notice.penalty_paid === false ? "destructive" : "secondary"
-                      }
-                    >
-                      {notice.penalty_paid === true ? "Payée" : 
-                       notice.penalty_paid === false ? "Impayée" : "Non définie"}
-                    </Badge>
-                    
-                    {/* Boutons pour modifier le statut */}
-                    {notice.penalty_paid !== true && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleUpdatePenaltyStatus(notice.id, true)}
-                        className="h-6 px-2 text-xs"
-                      >
-                        Marquer payée
-                      </Button>
-                    )}
-                    {notice.penalty_paid !== false && notice.penalty_amount > 0 && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleUpdatePenaltyStatus(notice.id, false)}
-                        className="h-6 px-2 text-xs"
-                      >
-                        Marquer impayée
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </TableCell>
-              <TableCell>
-                {notice.reconnection_date ? (
-                  <div>
-                    <div className="text-sm">{format(new Date(notice.reconnection_date), 'dd/MM/yyyy')}</div>
-                    <div className="text-xs text-gray-500">
-                      par {notice.reconnector_name || 'Non spécifié'}
-                    </div>
-                    <Badge variant="success" className="mt-1">Remis en service</Badge>
-                  </div>
+              {/* NOUVEAU BOUTON RAPPORT HISTORIQUE */}
+              <Button 
+                variant="outline" 
+                onClick={handleDownloadHistorySummaryPDF}
+                disabled={historyData.length === 0}
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                Télécharger rapport
+              </Button>
+            </div>
+          </Card>
+
+          {/* Tableau historique */}
+          <Card>
+            {historyLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-10">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+              </div>
+            )}
+            
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>N° Bon</TableHead>
+                  <TableHead>Consommateur</TableHead>
+                  <TableHead>Date d'exécution</TableHead>
+                  <TableHead>Montant dû</TableHead>
+                  <TableHead>Pénalité</TableHead>
+                  <TableHead>Statut pénalité</TableHead>
+                  <TableHead>Remise en service</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {historyData.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      {historyLoading ? "Chargement de l'historique..." : "Aucun bon de coupure dans l'historique"}
+                    </TableCell>
+                  </TableRow>
                 ) : (
-                  <Badge variant="destructive">Toujours coupé</Badge>
+                  historyData.map((notice) => (
+                    <TableRow key={notice.id}>
+                      <TableCell>
+                        <div className="font-medium">{notice.notice_number}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{notice.consumer_name}</div>
+                        <div className="text-sm text-gray-500">{notice.consumer_nickname}</div>
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(notice.execution_date), 'dd/MM/yyyy')}
+                        <div className="text-xs text-gray-500">
+                          par {notice.executor_name || 'Non spécifié'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {Number(notice.total_amount_due).toLocaleString()} FCFA
+                      </TableCell>
+                      <TableCell>
+                        {notice.penalty_amount > 0 ? 
+                          `${Number(notice.penalty_amount).toLocaleString()} FCFA` : 
+                          'Aucune'}
+                      </TableCell>
+                      <TableCell>
+                        {notice.penalty_amount > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant={
+                                notice.penalty_paid === true ? "success" : 
+                                notice.penalty_paid === false ? "destructive" : "secondary"
+                              }
+                            >
+                              {notice.penalty_paid === true ? "Payée" : 
+                               notice.penalty_paid === false ? "Impayée" : "Non définie"}
+                            </Badge>
+                            
+                            {/* Boutons pour modifier le statut */}
+                            {notice.penalty_paid !== true && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUpdatePenaltyStatus(notice.id, true)}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Marquer payée
+                              </Button>
+                            )}
+                            {notice.penalty_paid !== false && notice.penalty_amount > 0 && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUpdatePenaltyStatus(notice.id, false)}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Marquer impayée
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {notice.reconnection_date ? (
+                          <div>
+                            <div className="text-sm">{format(new Date(notice.reconnection_date), 'dd/MM/yyyy')}</div>
+                            <div className="text-xs text-gray-500">
+                              par {notice.reconnector_name || 'Non spécifié'}
+                            </div>
+                            <Badge variant="success" className="mt-1">Remis en service</Badge>
+                          </div>
+                        ) : (
+                          <Badge variant="destructive">Toujours coupé</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDownloadPDF(
+                              notice.consumer_id, 
+                              notice.id  // Passer l'ID du bon
+                            )}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            PDF
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 )}
-              </TableCell>
-              <TableCell>
-                <div className="flex space-x-2">
-
-                      {/* fait*/}
-
-                  <Button 
-  variant="outline" 
-  size="sm"
-  onClick={() => handleDownloadPDF(
-    notice.consumer_id, 
-    notice.id  // Passer l'ID du bon
-  )}
->
-  <Download className="h-4 w-4 mr-1" />
-  PDF
-</Button>
-
-
+              </TableBody>
+            </Table>
+            
+            {/* Pagination historique */}
+            {historyData.length > 0 && (
+              <div className="flex items-center justify-between p-4 border-t">
+                <div className="text-sm text-gray-500">
+                  Affichage de {historyPagination.totalItems ? (historyPagination.page - 1) * historyPagination.limit + 1 : 0} à {Math.min(historyPagination.page * historyPagination.limit, historyPagination.totalItems)} sur {historyPagination.totalItems} bons
                 </div>
-              </TableCell>
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
-    
-    {/* Pagination historique */}
-    {historyData.length > 0 && (
-      <div className="flex items-center justify-between p-4 border-t">
-        <div className="text-sm text-gray-500">
-          Affichage de {historyPagination.totalItems ? (historyPagination.page - 1) * historyPagination.limit + 1 : 0} à {Math.min(historyPagination.page * historyPagination.limit, historyPagination.totalItems)} sur {historyPagination.totalItems} bons
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleHistoryPageChange(historyPagination.page - 1)}
-            disabled={historyPagination.page === 1 || historyLoading}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          
-          <span className="text-sm">
-            Page {historyPagination.page} sur {historyPagination.totalPages || 1}
-          </span>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleHistoryPageChange(historyPagination.page + 1)}
-            disabled={historyPagination.page >= historyPagination.totalPages || historyLoading}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          
-          <Select 
-            value={historyPagination.limit.toString()} 
-            onValueChange={(value) => {
-              setHistoryPagination(prev => ({
-                ...prev,
-                page: 1,
-                limit: parseInt(value)
-              }));
-            }}
-          >
-            <SelectTrigger className="w-[100px]">
-              <SelectValue placeholder="Lignes" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10 lignes</SelectItem>
-              <SelectItem value="25">25 lignes</SelectItem>
-              <SelectItem value="50">50 lignes</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    )}
-  </Card>
-</TabsContent>
+                
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleHistoryPageChange(historyPagination.page - 1)}
+                    disabled={historyPagination.page === 1 || historyLoading}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  <span className="text-sm">
+                    Page {historyPagination.page} sur {historyPagination.totalPages || 1}
+                  </span>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleHistoryPageChange(historyPagination.page + 1)}
+                    disabled={historyPagination.page >= historyPagination.totalPages || historyLoading}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  
+                  <Select 
+                    value={historyPagination.limit.toString()} 
+                    onValueChange={(value) => {
+                      setHistoryPagination(prev => ({
+                        ...prev,
+                        page: 1,
+                        limit: parseInt(value)
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue placeholder="Lignes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10 lignes</SelectItem>
+                      <SelectItem value="25">25 lignes</SelectItem>
+                      <SelectItem value="50">50 lignes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
       </Tabs>
 
-
-
-      {/* MODALS EXISTANTS (légèrement modifiés) */}
+      {/* MODALS EXISTANTS (identiques) */}
 
       {/* Modal détails des factures impayées */}
       <Dialog open={viewDetailModal} onOpenChange={setViewDetailModal}>

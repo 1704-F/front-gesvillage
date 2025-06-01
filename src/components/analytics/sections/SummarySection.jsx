@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "../../ui/card";
 import { Badge } from "../../ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../../ui/table";
-import { ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign, TrendingDown, Activity, Target, BarChart3, Wallet, Save } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign, TrendingDown, Activity, Target, BarChart3, Wallet, Save, Wrench, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Tooltip, Legend, CartesianGrid, XAxis, YAxis, Cell, ResponsiveContainer, ComposedChart, Area } from 'recharts';
 import { Button } from "../../ui/button";
 import { useToast } from "../../ui/toast/use-toast";
@@ -107,13 +107,30 @@ const SummarySection = ({ data, period }) => {
         )}
       </div>
       
-      {/* Métriques principales */}
+      {/* Métriques principales avec nouveaux revenus */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <MetricCard
           title="Revenus Totaux"
           value={`${formatNumber(stats?.totalRevenue || 0)} FCFA`}
+          subtitle={`Factures: ${formatNumber(stats?.invoiceRevenue || 0)} | Dons: ${formatNumber(stats?.donationRevenue || 0)}`}
           trend="up"
           icon={TrendingUp}
+        />
+
+        <MetricCard
+          title="Frais de Branchement"
+          value={`${formatNumber(stats?.connectionLaborRevenue || 0)} FCFA`}
+          subtitle="Main-d'œuvre payée"
+          trend="up"
+          icon={Wrench}
+        />
+
+        <MetricCard
+          title="Pénalités de Coupure"
+          value={`${formatNumber(stats?.penaltyRevenue || 0)} FCFA`}
+          subtitle="Pénalités payées"
+          trend="up"
+          icon={AlertTriangle}
         />
 
         <MetricCard
@@ -155,13 +172,13 @@ const SummarySection = ({ data, period }) => {
         />
       </div>
 
-      {/* 1. COMPTE DE RÉSULTAT */}
+      {/* 1. COMPTE DE RÉSULTAT DÉTAILLÉ */}
       <Card>
         <CardHeader>
-          <CardTitle>1. Compte de Résultat (par année)</CardTitle>
+          <CardTitle>1. Compte de Résultat Détaillé</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4 text-sm text-gray-500">Affiche uniquement les performances de l'exercice en cours :</p>
+          <p className="mb-4 text-sm text-gray-500">Affiche toutes les sources de revenus et les dépenses de l'exercice :</p>
           <Table>
             <TableHeader>
               <TableRow>
@@ -171,12 +188,20 @@ const SummarySection = ({ data, period }) => {
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell className="font-medium">Revenus d'exploitation</TableCell>
+                <TableCell className="font-medium">Revenus d'exploitation (factures)</TableCell>
                 <TableCell className="text-right">{formatNumber(stats.invoiceRevenue || 0)}</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="font-medium">Autres revenus (dons, etc.)</TableCell>
+                <TableCell className="font-medium">Autres revenus (dons)</TableCell>
                 <TableCell className="text-right">{formatNumber(stats.donationRevenue || 0)}</TableCell>
+              </TableRow>
+              <TableRow className="bg-green-50">
+                <TableCell className="font-medium">Frais de branchement (main-d'œuvre)</TableCell>
+                <TableCell className="text-right">{formatNumber(stats.connectionLaborRevenue || 0)}</TableCell>
+              </TableRow>
+              <TableRow className="bg-green-50">
+                <TableCell className="font-medium">Pénalités de coupure payées</TableCell>
+                <TableCell className="text-right">{formatNumber(stats.penaltyRevenue || 0)}</TableCell>
               </TableRow>
               <TableRow className="bg-blue-50">
                 <TableCell className="font-bold">Total Revenus</TableCell>
@@ -223,7 +248,7 @@ const SummarySection = ({ data, period }) => {
                 <TableCell className="text-right">{formatNumber(stats.initialCashBalance || 0)}</TableCell>
               </TableRow>
               <TableRow className="bg-green-50">
-                <TableCell className="font-medium">Résultat d'exploitation</TableCell>
+                <TableCell className="font-medium">Résultat d'exploitation (incluant nouveaux revenus)</TableCell>
                 <TableCell className="text-right">{formatNumber(stats.profit || 0)}</TableCell>
               </TableRow>
               <TableRow>
@@ -350,6 +375,10 @@ const SummarySection = ({ data, period }) => {
             <div className="p-4 bg-blue-50 rounded-lg">
               <h3 className="text-lg font-medium text-blue-800">Revenus cumulés</h3>
               <p className="mt-2 text-2xl font-bold">{formatNumber(stats.ytdRevenue || 0)} FCFA</p>
+              <div className="mt-2 text-sm text-blue-600">
+                <p>Branchements: {formatNumber(stats.ytdConnectionLaborRevenue || 0)} FCFA</p>
+                <p>Pénalités: {formatNumber(stats.ytdPenaltyRevenue || 0)} FCFA</p>
+              </div>
             </div>
             
             <div className="p-4 bg-red-50 rounded-lg">
@@ -418,7 +447,7 @@ const SummarySection = ({ data, period }) => {
         </CardContent>
       </Card>
 
-      {/* Graphique d'évolution financière */}
+      {/* Graphique d'évolution financière mis à jour */}
       <Card>
         <CardHeader>
           <CardTitle>Évolution Financière Mensuelle</CardTitle>
@@ -456,10 +485,24 @@ const SummarySection = ({ data, period }) => {
                 fillOpacity={0.3}
               />
               <Bar 
-                dataKey="totalRevenue" 
-                name="Revenus" 
+                dataKey="revenue" 
+                name="Revenus factures" 
                 fill="#2563EB"
-                stackId="a"
+                stackId="revenue"
+                barSize={20}
+              />
+              <Bar 
+                dataKey="connectionLaborRevenue" 
+                name="Frais branchement" 
+                fill="#059669"
+                stackId="revenue"
+                barSize={20}
+              />
+              <Bar 
+                dataKey="penaltyRevenue" 
+                name="Pénalités coupure" 
+                fill="#F59E0B"
+                stackId="revenue"
                 barSize={20}
               />
               <Bar 
@@ -482,9 +525,9 @@ const SummarySection = ({ data, period }) => {
         </CardContent>
       </Card>
 
-      {/* Répartition des revenus et dépenses */}
+      {/* Répartition des revenus et dépenses mise à jour */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Répartition des revenus */}
+        {/* Répartition des revenus avec nouvelles sources */}
         <Card>
           <CardHeader>
             <CardTitle>Répartition des Revenus</CardTitle>
@@ -494,9 +537,11 @@ const SummarySection = ({ data, period }) => {
               <PieChart>
                 <Pie
                   data={[
-                    { name: "Facture d'eau", value: parseFloat(stats?.invoiceRevenue || 0) },
-                    { name: 'Dons', value: parseFloat(stats?.donationRevenue || 0) }
-                  ]}
+                    { name: "Factures d'eau", value: parseFloat(stats?.invoiceRevenue || 0) },
+                    { name: 'Dons', value: parseFloat(stats?.donationRevenue || 0) },
+                    { name: 'Frais branchement', value: parseFloat(stats?.connectionLaborRevenue || 0) },
+                    { name: 'Pénalités coupure', value: parseFloat(stats?.penaltyRevenue || 0) }
+                  ].filter(item => item.value > 0)} // Filtrer les valeurs nulles
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -508,6 +553,8 @@ const SummarySection = ({ data, period }) => {
                 >
                   <Cell fill="#2563EB" />
                   <Cell fill="#10B981" />
+                  <Cell fill="#059669" />
+                  <Cell fill="#F59E0B" />
                 </Pie>
                 <Tooltip 
                   formatter={(value) => [`${formatNumber(value)} FCFA`]}
@@ -562,6 +609,69 @@ const SummarySection = ({ data, period }) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Indicateurs de performance avec nouveaux revenus */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Analyse de Performance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h3 className="text-lg font-medium text-blue-800">Sources de Revenus</h3>
+              <div className="mt-2 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm">Factures d'eau:</span>
+                  <span className="font-medium">{((parseFloat(stats?.invoiceRevenue || 0) / parseFloat(stats?.totalRevenue || 1)) * 100).toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">Frais branchement:</span>
+                  <span className="font-medium">{((parseFloat(stats?.connectionLaborRevenue || 0) / parseFloat(stats?.totalRevenue || 1)) * 100).toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">Pénalités:</span>
+                  <span className="font-medium">{((parseFloat(stats?.penaltyRevenue || 0) / parseFloat(stats?.totalRevenue || 1)) * 100).toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">Dons:</span>
+                  <span className="font-medium">{((parseFloat(stats?.donationRevenue || 0) / parseFloat(stats?.totalRevenue || 1)) * 100).toFixed(1)}%</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-green-50 rounded-lg">
+              <h3 className="text-lg font-medium text-green-800">Revenus Complémentaires</h3>
+              <div className="mt-2 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm">Total branchements + pénalités:</span>
+                  <span className="font-medium">{formatNumber((parseFloat(stats?.connectionLaborRevenue || 0) + parseFloat(stats?.penaltyRevenue || 0)))} FCFA</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">% du total:</span>
+                  <span className="font-medium">{(((parseFloat(stats?.connectionLaborRevenue || 0) + parseFloat(stats?.penaltyRevenue || 0)) / parseFloat(stats?.totalRevenue || 1)) * 100).toFixed(1)}%</span>
+                </div>
+              </div>
+            </div>
+
+            <div className={`p-4 rounded-lg ${parseFloat(stats?.margin || 0) > 20 ? 'bg-green-50' : 'bg-red-50'}`}>
+              <h3 className={`text-lg font-medium ${parseFloat(stats?.margin || 0) > 20 ? 'text-green-800' : 'text-red-800'}`}>
+                Performance Globale
+              </h3>
+              <div className="mt-2 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm">Marge opérationnelle:</span>
+                  <span className="font-medium">{stats?.margin || 0}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">Ratio efficacité:</span>
+                  <span className="font-medium">{(100 - parseFloat(stats?.expenseRatio || 0)).toFixed(1)}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Modal de confirmation pour sauvegarder le bilan */}
       {showSaveModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -580,6 +690,9 @@ const SummarySection = ({ data, period }) => {
                 parseFloat(currentBalanceSheet.cash_and_bank) +
                 parseFloat(currentBalanceSheet.other_assets)
               )} FCFA</p>
+              <div className="mt-2 text-sm text-blue-600">
+                <p>Inclut: Frais branchement ({formatNumber(stats?.connectionLaborRevenue || 0)} FCFA) + Pénalités ({formatNumber(stats?.penaltyRevenue || 0)} FCFA)</p>
+              </div>
             </div>
             
             <div className="flex justify-end space-x-3">
@@ -603,5 +716,3 @@ const SummarySection = ({ data, period }) => {
 };
 
 export default SummarySection;
-
-      

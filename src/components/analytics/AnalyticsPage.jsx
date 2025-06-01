@@ -5,7 +5,7 @@ import { LineChart, Line, BarChart, Bar, Tooltip, Legend, CartesianGrid, XAxis, 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
-import { Calendar, Download, PieChart as PieChartIcon, Gauge, Droplets, Users, TrendingUp, FileText, CreditCard } from 'lucide-react';
+import { Calendar, Download, PieChart as PieChartIcon, Gauge, Droplets, Users, TrendingUp, FileText, CreditCard,AlertTriangle, Wrench } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from "../ui/toast/use-toast";
 import { PDFDownloadLink } from '@react-pdf/renderer';
@@ -262,193 +262,290 @@ const AnalyticsPage = () => {
 
 // Vue d'ensemble - Affiche les indicateurs clés de toutes les sections
 const OverviewContent = ({ data, period }) => {
- // Extraire les métriques principales de chaque section
- const { consumers = {}, meters = {}, consumption = {}, invoices = {}, expenses = {}, summary = {} } = data || {};
- 
- // Composant pour les cartes d'indicateurs
- const MetricCard = ({ title, value, subtitle, icon: Icon, trend }) => (
-   <Card>
-     <CardContent className="p-6">
-       <div className="flex justify-between items-center mb-4">
-         <div className={`p-2 rounded-lg ${trend === 'up' ? 'bg-green-100' : trend === 'down' ? 'bg-red-100' : 'bg-blue-100'}`}>
-           <Icon className={`h-5 w-5 ${trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-blue-600'}`} />
-         </div>
-       </div>
-       <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-       <div className="mt-2 flex items-baseline">
-         <p className="text-2xl font-semibold">{value}</p>
-         {subtitle && <p className="ml-2 text-sm text-gray-500">{subtitle}</p>}
-       </div>
-     </CardContent>
-   </Card>
- );
- 
- return (
-   <div className="space-y-6">
-     <h2 className="text-xl font-semibold">Indicateurs clés de performance</h2>
-     
-     {/* Grille des indicateurs principaux */}
-     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-       {/* Métriques de consommateurs */}
-
-       <MetricCard
-  title="Consommateurs actifs"
-  value={consumers?.stats?.activeConsumers || 0}
-  subtitle={`sur ${consumers?.stats?.totalConsumers || 0} total`}
-  icon={Users}
-  trend="up"
-/>
-
-<MetricCard
-  title="Compteurs actifs"
-  value={meters?.stats?.activeMeters || 0}
-  subtitle={`sur ${meters?.stats?.totalMeters || 0} total`}
-  icon={Gauge}
-  trend="up"
-/>
-
-<MetricCard
-  title="Consommation totale"
-  value={`${consumption?.stats?.totalConsumption || 0} m³`}
-  icon={Droplets}
-  trend="neutral"
-/>
-
-<MetricCard
-  title="Factures impayées"
-  value={invoices?.stats?.pendingCount || 0}
-  subtitle={`(${invoices?.stats?.pendingAmount || 0} FCFA)`}
-  icon={FileText}
-  trend="down"
-/>
-
-<MetricCard
-  title="Dépenses totales"
-  value={`${expenses?.stats?.totalAmount || 0} FCFA`}
-  icon={CreditCard}
-  trend="neutral"
-/>
-
-<MetricCard
-  title="Marge opérationnelle"
-  value={`${summary?.stats?.margin || 0}%`}
-  icon={TrendingUp}
-  trend={parseFloat(summary?.stats?.margin || 0) > 20 ? 'up' : 'down'}
-/>
-
+  // Extraire les métriques principales de chaque section
+  const { consumers = {}, meters = {}, consumption = {}, invoices = {}, expenses = {}, summary = {} } = data || {};
+  
+  // Composant pour les cartes d'indicateurs
+  const MetricCard = ({ title, value, subtitle, icon: Icon, trend }) => (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex justify-between items-center mb-4">
+          <div className={`p-2 rounded-lg ${trend === 'up' ? 'bg-green-100' : trend === 'down' ? 'bg-red-100' : 'bg-blue-100'}`}>
+            <Icon className={`h-5 w-5 ${trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-blue-600'}`} />
+          </div>
+        </div>
+        <h3 className="text-sm font-medium text-gray-500">{title}</h3>
+        <div className="mt-2 flex items-baseline">
+          <p className="text-2xl font-semibold">{value}</p>
+          {subtitle && <p className="ml-2 text-sm text-gray-500">{subtitle}</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+  
+  return (
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold">Indicateurs clés de performance</h2>
       
-     </div>
-     
-     {/* Graphique d'évolution financière */}
-     <Card>
-       <CardHeader>
-         <CardTitle>Évolution financière</CardTitle>
-       </CardHeader>
-       <CardContent className="h-80">
-         <ResponsiveContainer width="100%" height="100%">
-           <LineChart
-             data={summary?.monthlyFinance || []}
-             margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-           >
-             <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
-             <XAxis
-               dataKey="month"
-               tick={{ fill: '#6B7280' }}
-             />
-             <YAxis
-               tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
-               tick={{ fill: '#6B7280' }}
-             />
-             <Tooltip
-               formatter={(value) => [`${formatNumber(value)} FCFA`]}
-               contentStyle={{
-                 backgroundColor: '#ffffff',
-                 borderRadius: '8px',
-                 border: '1px solid #e5e7eb'
-               }}
-             />
-             <Legend />
-             <Line
-               type="monotone"
-               dataKey="totalRevenue"
-               name="Revenus"
-               stroke="#2563EB"
-               strokeWidth={2}
-               dot={{ r: 4 }}
-               activeDot={{ r: 8 }}
-             />
-             <Line
-               type="monotone"
-               dataKey="totalExpense"
-               name="Dépenses"
-               stroke="#DC2626"
-               strokeWidth={2}
-               dot={{ r: 4 }}
-               activeDot={{ r: 8 }}
-             />
-             <Line
-               type="monotone"
-               dataKey="profit"
-               name="Bénéfice"
-               stroke="#16A34A"
-               strokeWidth={2}
-               dot={{ r: 4 }}
-               activeDot={{ r: 8 }}
-             />
-             <Line
-  type="monotone"
-  dataKey="cumulativeProfit"
-  name="Bénéfice Cumulatif"
-  stroke="#8884d8"  // Couleur différente
-  strokeWidth={2}
-  dot={{ r: 4 }}
-  activeDot={{ r: 8 }}
-/>
+      {/* Grille des indicateurs principaux */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Métriques de consommateurs */}
+        <MetricCard
+          title="Consommateurs actifs"
+          value={consumers?.stats?.activeConsumers || 0}
+          subtitle={`sur ${consumers?.stats?.totalConsumers || 0} total`}
+          icon={Users}
+          trend="up"
+        />
 
-           </LineChart>
-         </ResponsiveContainer>
-       </CardContent>
-     </Card>
-     
-     {/* Graphique de consommation */}
-     <Card>
-       <CardHeader>
-         <CardTitle>Évolution de la consommation</CardTitle>
-       </CardHeader>
-       <CardContent className="h-80">
-         <ResponsiveContainer width="100%" height="100%">
-           <BarChart
-             data={consumption?.trend || []}
-             margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-           >
-             <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
-             <XAxis
-               dataKey="month"
-               tick={{ fill: '#6B7280' }}
-             />
-             <YAxis
-               tickFormatter={(value) => `${(value/1000).toFixed(1)}k`}
-               tick={{ fill: '#6B7280' }}
-             />
-             <Tooltip
-               formatter={(value) => [`${formatNumber(value)} m³`]}
-               contentStyle={{
-                 backgroundColor: '#ffffff',
-                 borderRadius: '8px',
-                 border: '1px solid #e5e7eb'
-               }}
-             />
-             <Bar
-               dataKey="consumption"
-               name="Consommation (m³)"
-               fill="#3B82F6"
-             />
-           </BarChart>
-         </ResponsiveContainer>
-       </CardContent>
-     </Card>
-   </div>
- );
+        <MetricCard
+          title="Compteurs actifs"
+          value={meters?.stats?.activeMeters || 0}
+          subtitle={`sur ${meters?.stats?.totalMeters || 0} total`}
+          icon={Gauge}
+          trend="up"
+        />
+
+        <MetricCard
+          title="Consommation totale"
+          value={`${consumption?.stats?.totalConsumption || 0} m³`}
+          icon={Droplets}
+          trend="neutral"
+        />
+
+        <MetricCard
+          title="Factures impayées"
+          value={invoices?.stats?.pendingCount || 0}
+          subtitle={`(${formatNumber(invoices?.stats?.pendingAmount || 0)} FCFA)`}
+          icon={FileText}
+          trend="down"
+        />
+
+        <MetricCard
+          title="Dépenses totales"
+          value={`${formatNumber(expenses?.stats?.totalAmount || 0)} FCFA`}
+          icon={CreditCard}
+          trend="neutral"
+        />
+
+        <MetricCard
+          title="Marge opérationnelle"
+          value={`${summary?.stats?.margin || 0}%`}
+          icon={TrendingUp}
+          trend={parseFloat(summary?.stats?.margin || 0) > 20 ? 'up' : 'down'}
+        />
+      </div>
+
+      {/* Nouvelle section pour les revenus complémentaires */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <MetricCard
+          title="Frais de Branchement"
+          value={`${formatNumber(summary?.stats?.connectionLaborRevenue || 0)} FCFA`}
+          subtitle="Main-d'œuvre payée"
+          icon={Wrench}
+          trend="up"
+        />
+
+        <MetricCard
+          title="Pénalités de Coupure"
+          value={`${formatNumber(summary?.stats?.penaltyRevenue || 0)} FCFA`}
+          subtitle="Pénalités payées"
+          icon={AlertTriangle}
+          trend="up"
+        />
+      </div>
+      
+      {/* Graphique d'évolution financière mis à jour */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Évolution financière avec nouveaux revenus</CardTitle>
+        </CardHeader>
+        <CardContent className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={summary?.monthlyFinance || []}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: '#6B7280' }}
+              />
+              <YAxis
+                tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
+                tick={{ fill: '#6B7280' }}
+              />
+              <Tooltip
+                formatter={(value) => [`${formatNumber(value)} FCFA`]}
+                contentStyle={{
+                  backgroundColor: '#ffffff',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="totalRevenue"
+                name="Revenus totaux"
+                stroke="#2563EB"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 8 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                name="Revenus factures"
+                stroke="#059669"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 8 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="connectionLaborRevenue"
+                name="Frais branchement"
+                stroke="#F59E0B"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 8 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="penaltyRevenue"
+                name="Pénalités coupure"
+                stroke="#8B5CF6"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 8 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="totalExpense"
+                name="Dépenses"
+                stroke="#DC2626"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 8 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="profit"
+                name="Bénéfice"
+                stroke="#16A34A"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 8 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+      
+      {/* Graphique de consommation */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Évolution de la consommation</CardTitle>
+        </CardHeader>
+        <CardContent className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={consumption?.trend || []}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: '#6B7280' }}
+              />
+              <YAxis
+                tickFormatter={(value) => `${(value/1000).toFixed(1)}k`}
+                tick={{ fill: '#6B7280' }}
+              />
+              <Tooltip
+                formatter={(value) => [`${formatNumber(value)} m³`]}
+                contentStyle={{
+                  backgroundColor: '#ffffff',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}
+              />
+              <Bar
+                dataKey="consumption"
+                name="Consommation (m³)"
+                fill="#3B82F6"
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Résumé des nouveaux revenus */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Analyse des Revenus Complémentaires</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h3 className="text-lg font-medium text-blue-800">Revenus Traditionnels</h3>
+              <div className="mt-2 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm">Factures d'eau:</span>
+                  <span className="font-medium">{formatNumber(summary?.stats?.invoiceRevenue || 0)} FCFA</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">Dons:</span>
+                  <span className="font-medium">{formatNumber(summary?.stats?.donationRevenue || 0)} FCFA</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-sm font-medium">Sous-total:</span>
+                  <span className="font-bold">{formatNumber((parseFloat(summary?.stats?.invoiceRevenue || 0) + parseFloat(summary?.stats?.donationRevenue || 0)))} FCFA</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-green-50 rounded-lg">
+              <h3 className="text-lg font-medium text-green-800">Nouveaux Revenus</h3>
+              <div className="mt-2 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm">Frais branchement:</span>
+                  <span className="font-medium">{formatNumber(summary?.stats?.connectionLaborRevenue || 0)} FCFA</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">Pénalités coupure:</span>
+                  <span className="font-medium">{formatNumber(summary?.stats?.penaltyRevenue || 0)} FCFA</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-sm font-medium">Sous-total:</span>
+                  <span className="font-bold">{formatNumber((parseFloat(summary?.stats?.connectionLaborRevenue || 0) + parseFloat(summary?.stats?.penaltyRevenue || 0)))} FCFA</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-purple-50 rounded-lg">
+              <h3 className="text-lg font-medium text-purple-800">Impact Global</h3>
+              <div className="mt-2 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm">Revenus totaux:</span>
+                  <span className="font-medium">{formatNumber(summary?.stats?.totalRevenue || 0)} FCFA</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm">% nouveaux revenus:</span>
+                  <span className="font-medium">{(((parseFloat(summary?.stats?.connectionLaborRevenue || 0) + parseFloat(summary?.stats?.penaltyRevenue || 0)) / parseFloat(summary?.stats?.totalRevenue || 1)) * 100).toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-sm font-medium">Marge finale:</span>
+                  <span className="font-bold">{summary?.stats?.margin || 0}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
 
 export default AnalyticsPage;
