@@ -75,6 +75,7 @@ const ConnectionFeesTab = () => {
 
   const [selectedMaterialId, setSelectedMaterialId] = useState('');
   const [materialQuantity, setMaterialQuantity] = useState('');
+  const [noStockOutput, setNoStockOutput] = useState(false);
 
   // États des filtres
   const [filters, setFilters] = useState({
@@ -213,6 +214,7 @@ const ConnectionFeesTab = () => {
     setSelectedItems([]);
     setSelectedMaterialId('');
     setMaterialQuantity('');
+    setNoStockOutput(false);
   };
 
   // Gérer la suppression
@@ -712,6 +714,24 @@ const ConnectionFeesTab = () => {
                 />
               </div>
 
+              <div className="flex items-center space-x-2">
+  <input
+    type="checkbox"
+    id="noStockOutput"
+    checked={noStockOutput}
+    onChange={(e) => {
+      setNoStockOutput(e.target.checked);
+      if (e.target.checked) {
+        setSelectedItems([]);
+      }
+    }}
+    className="rounded"
+  />
+  <label htmlFor="noStockOutput" className="text-sm font-medium">
+    Pas de sortie stock (main d'œuvre uniquement)
+  </label>
+</div>
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Date d'échéance</label>
                 <Input
@@ -735,6 +755,7 @@ const ConnectionFeesTab = () => {
 
             {/* Colonne droite - Sélection des matériaux */}
             <div className="space-y-4">
+{!noStockOutput && (
               <div>
                 <h3 className="font-medium mb-3">Matériaux utilisés</h3>
 
@@ -840,7 +861,10 @@ const ConnectionFeesTab = () => {
                   </div>
                 </div>
               </div>
+)}
+
             </div>
+
           </div>
 
           <DialogFooter>
@@ -849,7 +873,7 @@ const ConnectionFeesTab = () => {
             </Button>
             <Button 
               onClick={handleCreate}
-              disabled={!formData.consumer_id || !formData.meter_id || selectedItems.length === 0}
+              disabled={!formData.consumer_id || !formData.meter_id}
             >
               Créer
             </Button>
