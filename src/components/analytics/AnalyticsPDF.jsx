@@ -22,7 +22,7 @@ import PDFExpensesSection from './pdf-sections/PDFExpensesSection';
 import PDFSummarySection from './pdf-sections/PDFSummarySection';
 import { BASE_URL } from '../../utils/axios';
 
-// Styles pour le PDF
+// Styles pour le PDF (adaptés pour le paysage)
 const styles = StyleSheet.create({
   page: {
     padding: 30,
@@ -94,30 +94,30 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     color: '#2081E2',
   },
-  // Ajoutez ces styles dans la section StyleSheet.create
-emitterInfo: {
-  marginTop: 20,
-  marginBottom: 15,
-  padding: 10,
-  backgroundColor: '#F9FAFB',
-  borderRadius: 5,
-},
-emitterTitle: {
-  fontSize: 11,
-  fontWeight: 'bold',
-  marginBottom: 5,
-},
-emitterName: {
-  fontSize: 14,
-  fontWeight: 'bold',
-  color: '#2081E2',
-  marginBottom: 5,
-},
-emitterDetail: {
-  fontSize: 9,
-  color: '#4B5563',
-  marginBottom: 2,
-},
+  // Styles pour les informations de l'émetteur
+  emitterInfo: {
+    marginTop: 20,
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 5,
+  },
+  emitterTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  emitterName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2081E2',
+    marginBottom: 5,
+  },
+  emitterDetail: {
+    fontSize: 9,
+    color: '#4B5563',
+    marginBottom: 2,
+  },
 });
 
 // Composant principal pour le PDF
@@ -134,37 +134,31 @@ const AnalyticsPDF = ({ data, period }) => {
 
   return (
     <Document>
-      {/* Page de garde */}
-      <Page size="A4" style={styles.page}>
-
-     
-<View style={styles.header}>
-  <View style={styles.headerLeft}>
-  {serviceInfo?.logo && (
-  <Image 
-    src={`${BASE_URL}/uploads/logos/${serviceInfo.logo}`} 
-    style={styles.logo} 
-  />
-)}
-  </View>
-  <View style={styles.headerRight}>
-    <Text style={styles.serviceName}>{serviceInfo?.name || 'GesVillage'}</Text>
-    <Text style={styles.emitterDetail}>Adresse : {serviceInfo?.location || 'N/A'}</Text>
-  <Text style={styles.emitterDetail}>Région : {serviceInfo?.region?.name || 'N/A'}</Text>
-  <Text style={styles.emitterDetail}>Commune : {serviceInfo?.commune?.name || 'N/A'}</Text>
-  <Text style={styles.emitterDetail}>{serviceInfo?.zone?.type || 'Village'} : {serviceInfo?.zone?.name || 'N/A'}</Text>
-    <Text style={styles.serviceInfo}>{serviceInfo?.contact_info || ''}</Text>
-  </View>
-</View>
-
-
+      {/* Page de garde - EN PAYSAGE */}
+      <Page size="A4" orientation="landscape" style={styles.page}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            {serviceInfo?.logo && (
+              <Image 
+                src={`${BASE_URL}/uploads/logos/${serviceInfo.logo}`} 
+                style={styles.logo} 
+              />
+            )}
+          </View>
+          <View style={styles.headerRight}>
+            <Text style={styles.serviceName}>{serviceInfo?.name || 'GesVillage'}</Text>
+            <Text style={styles.emitterDetail}>Adresse : {serviceInfo?.location || 'N/A'}</Text>
+            <Text style={styles.emitterDetail}>Région : {serviceInfo?.region?.name || 'N/A'}</Text>
+            <Text style={styles.emitterDetail}>Commune : {serviceInfo?.commune?.name || 'N/A'}</Text>
+            <Text style={styles.emitterDetail}>{serviceInfo?.zone?.type || 'Village'} : {serviceInfo?.zone?.name || 'N/A'}</Text>
+            <Text style={styles.serviceInfo}>{serviceInfo?.contact_info || ''}</Text>
+          </View>
+        </View>
 
         <Text style={styles.title}>RAPPORT</Text>
         <Text style={styles.subtitle}>
           Période: {format(period[0], 'dd MMMM yyyy')} - {format(period[1], 'dd MMMM yyyy')}
         </Text>
-
-
 
         <PDFOverviewSection data={data} />
         
@@ -174,43 +168,43 @@ const AnalyticsPDF = ({ data, period }) => {
         <Text style={styles.pageNumber}>1</Text>
       </Page>
 
-      {/* Page Consommateurs */}
-      <Page size="A4" style={styles.page}>
+      {/* Page Consommateurs - EN PAYSAGE */}
+      <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.sectionTitle}>Analyse des Consommateurs</Text>
         <PDFConsumersSection data={consumers} />
         <Text style={styles.pageNumber}>2</Text>
       </Page>
 
-      {/* Page Compteurs */}
-      <Page size="A4" style={styles.page}>
+      {/* Page Compteurs - EN PAYSAGE */}
+      <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.sectionTitle}>Analyse des Compteurs</Text>
         <PDFMetersSection data={meters} />
         <Text style={styles.pageNumber}>3</Text>
       </Page>
 
-      {/* Page Consommation */}
-      <Page size="A4" style={styles.page}>
+      {/* Page Consommation - EN PAYSAGE */}
+      <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.sectionTitle}>Analyse de la Consommation</Text>
         <PDFConsumptionSection data={consumption} />
         <Text style={styles.pageNumber}>4</Text>
       </Page>
 
-      {/* Page Factures */}
-      <Page size="A4" style={styles.page}>
+      {/* Page Factures - EN PAYSAGE */}
+      <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.sectionTitle}>Analyse des Factures</Text>
         <PDFInvoicesSection data={invoices} />
         <Text style={styles.pageNumber}>5</Text>
       </Page>
 
-      {/* Page Dépenses */}
-      <Page size="A4" style={styles.page}>
+      {/* Page Dépenses - EN PAYSAGE */}
+      <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.sectionTitle}>Analyse des Dépenses</Text>
         <PDFExpensesSection data={expenses} />
         <Text style={styles.pageNumber}>6</Text>
       </Page>
 
-      {/* Page Bilan */}
-      <Page size="A4" style={styles.page}>
+      {/* Page Bilan - EN PAYSAGE */}
+      <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.sectionTitle}>Bilan Financier</Text>
         <PDFSummarySection data={summary} />
         <Text style={styles.footer}>

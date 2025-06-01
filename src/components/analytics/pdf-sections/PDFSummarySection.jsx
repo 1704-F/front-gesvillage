@@ -536,7 +536,7 @@ const PDFSummarySection = ({ data }) => {
         </View>
       )}
 
-      {/* Graphique d'évolution financière mis à jour */}
+      {/* Graphique d'évolution financière mis à jour 
       <Text style={styles.sectionTitle}>Évolution Financière Mensuelle</Text>
       <View style={styles.chartContainer}>
         <PDFLineChart
@@ -552,6 +552,8 @@ const PDFSummarySection = ({ data }) => {
           xKey="month"
         />
       </View>
+
+      */}
 
       {/* Graphiques de répartition des revenus et dépenses */}
       <View style={{ flexDirection: 'row' }}>

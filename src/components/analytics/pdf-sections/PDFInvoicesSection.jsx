@@ -133,7 +133,7 @@ const PDFInvoicesSection = ({ data }) => {
 
         <View style={{ width: '100%' }}>
 
-        {/* Âge des factures impayées */}
+        {/* Âge des factures impayées 
         <View style={{ width: '100%' }}>
           <Text style={styles.sectionTitle}>Âge des Factures Impayées</Text>
           <View style={styles.chartContainer}>
@@ -145,11 +145,11 @@ const PDFInvoicesSection = ({ data }) => {
             />
           </View>
         </View>
-
+*/}
         </View>
       
 
-      {/* Taux de recouvrement */}
+      {/* Taux de recouvrement 
       <Text style={styles.sectionTitle}>Taux de Recouvrement Mensuel</Text>
       <View style={[styles.chartContainer, { height: 160 }]}>
         <PDFLineChart
@@ -160,6 +160,7 @@ const PDFInvoicesSection = ({ data }) => {
           xKey="month"
         />
       </View>
+*/}
 
       {/* Tableau récapitulatif */}
       <Text style={styles.sectionTitle}>État des Factures par Période</Text>

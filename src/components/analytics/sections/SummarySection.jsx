@@ -96,6 +96,7 @@ const SummarySection = ({ data, period }) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Bilan Financier</h2>
+{/* 
         {currentBalanceSheet && (
           <Button 
             onClick={() => setShowSaveModal(true)}
@@ -105,6 +106,7 @@ const SummarySection = ({ data, period }) => {
             Sauvegarder comme bilan historique
           </Button>
         )}
+ */}
       </div>
       
       {/* Métriques principales avec nouveaux revenus */}

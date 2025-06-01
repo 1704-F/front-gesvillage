@@ -85,9 +85,10 @@ const PDFOverviewSection = ({ data }) => {
         ))}
       </View>
 
-      {/* Section graphiques */}
+      {/* Section graphiques 
       <View style={styles.chartsSection}>
-        {/* Graphique d'évolution financière */}
+      
+
         <Text style={styles.chartTitle}>Évolution financière</Text>
         <View style={styles.chartContainer}>
           <PDFLineChart
@@ -101,7 +102,7 @@ const PDFOverviewSection = ({ data }) => {
           />
         </View>
 
-        {/* Graphique de consommation */}
+       
         <Text style={styles.chartTitle}>Évolution de la consommation</Text>
         <View style={styles.chartContainer}>
           <PDFBarChart
@@ -113,6 +114,8 @@ const PDFOverviewSection = ({ data }) => {
           />
         </View>
       </View>
+*/}
+      
     </View>
   );
 };

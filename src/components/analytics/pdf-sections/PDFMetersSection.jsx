@@ -133,7 +133,7 @@ const PDFMetersSection = ({ data }) => {
 
         <View style={{ flexDirection: 'row' }}>
 
-        {/* Consommation moyenne par type */}
+        {/* Consommation moyenne par type 
         <View style={{ width: '100%' }}>
           <Text style={styles.sectionTitle}>Consommation Moyenne par Type</Text>
           <View style={styles.chartContainer}>
@@ -146,6 +146,7 @@ const PDFMetersSection = ({ data }) => {
             />
           </View>
         </View>
+        */}
         
         </View>
 
