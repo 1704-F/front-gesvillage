@@ -634,6 +634,8 @@ if (response.status === 200) {
         <div className="grid grid-cols-2 gap-2 text-sm pl-4">
           <div>Factures d'eau : <span className="font-medium">{formatNumber(formData.calculation_details.cash_inflows.invoices)} FCFA</span></div>
           <div>Dons reçus : <span className="font-medium">{formatNumber(formData.calculation_details.cash_inflows.donations)} FCFA</span></div>
+          <div>Frais de branchement : <span className="font-medium">{formatNumber(formData.calculation_details.cash_inflows.connection_fees)} FCFA</span></div>
+          <div>Pénalités de coupure : <span className="font-medium">{formatNumber(formData.calculation_details.cash_inflows.penalties)} FCFA</span></div>
           <div>Emprunts contractés : <span className="font-medium">{formatNumber(formData.calculation_details.cash_inflows.loans)} FCFA</span></div>
           <div className="col-span-2 border-t pt-2 font-medium text-green-700">
             Total entrées : {formatNumber(formData.calculation_details.cash_inflows.total)} FCFA

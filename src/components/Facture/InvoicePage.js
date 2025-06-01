@@ -324,7 +324,6 @@ const ViewInvoiceDialog = ({ open, onOpenChange, invoice }) => {
 };
 
 const InvoiceListPDF = ({ invoices, dateRange, statusFilter, consumerFilter }) => {
-  // Trier les factures par numéro de compteur
   const sortedInvoices = [...invoices].sort((a, b) => {
     if (!a.meter || !b.meter) return 0;
     return a.meter.meter_number.localeCompare(b.meter.meter_number);
@@ -339,7 +338,6 @@ const InvoiceListPDF = ({ invoices, dateRange, statusFilter, consumerFilter }) =
           Période du {format(dateRange[0], 'dd/MM/yyyy')} au {format(dateRange[1], 'dd/MM/yyyy')}
         </Text>
 
-        {/* Afficher les filtres appliqués */}
         {statusFilter !== 'all' && (
           <Text style={styles.dateRange}>
             Statut: {statusFilter === 'paid' ? 'Payé' : 'Non payé'}
@@ -353,7 +351,7 @@ const InvoiceListPDF = ({ invoices, dateRange, statusFilter, consumerFilter }) =
         )}
 
         <View style={styles.table}>
-          {/* En-têtes */}
+          {/* En-têtes MODIFIÉS - Ajout de la date de paiement */}
           <View style={[styles.tableRow, styles.tableHeader]}>
             <Text style={styles.tableCell}>N°</Text>
             <Text style={styles.tableCell}>N° Facture</Text>
@@ -363,10 +361,11 @@ const InvoiceListPDF = ({ invoices, dateRange, statusFilter, consumerFilter }) =
             <Text style={styles.tableCell}>Montant (FCFA)</Text>
             <Text style={styles.tableCell}>Période</Text>
             <Text style={styles.tableCell}>Échéance</Text>
+            <Text style={styles.tableCell}>Date de paiement</Text>
             <Text style={styles.tableCell}>Statut</Text>
           </View>
 
-          {/* Données */}
+          {/* Données MODIFIÉES - Ajout de la date de paiement */}
           {sortedInvoices.map((invoice, index) => (
             <View key={invoice.id} style={styles.tableRow}>
               <Text style={styles.tableCell}>{index + 1}</Text>
@@ -382,18 +381,22 @@ const InvoiceListPDF = ({ invoices, dateRange, statusFilter, consumerFilter }) =
                   parseFloat(invoice.reading.consumption).toFixed(2) : 
                   'N/A'}
               </Text>
-
               <Text style={styles.tableCell}>
-  {invoice.amount_due ? 
-    formatNumber(Math.round(invoice.amount_due)) : 
-    'N/A'}
-</Text>
-
+                {invoice.amount_due ? 
+                  formatNumber(Math.round(invoice.amount_due)) : 
+                  'N/A'}
+              </Text>
               <Text style={styles.tableCell}>
                 {`${format(new Date(invoice.start_date), 'dd/MM/yy')} au ${format(new Date(invoice.end_date), 'dd/MM/yy')}`}
               </Text>
               <Text style={styles.tableCell}>
                 {format(new Date(invoice.due_date), 'dd/MM/yyyy')}
+              </Text>
+              {/* NOUVELLE COLONNE - Date de paiement */}
+              <Text style={styles.tableCell}>
+                {invoice.payment_date ? 
+                  format(new Date(invoice.payment_date), 'dd/MM/yyyy') : 
+                  '-'}
               </Text>
               <Text style={styles.tableCell}>
                 {invoice.status === 'paid' ? 'Payé' : 'Non payé'}
@@ -402,7 +405,7 @@ const InvoiceListPDF = ({ invoices, dateRange, statusFilter, consumerFilter }) =
           ))}
         </View>
 
-        {/* Résumé */}
+        {/* Résumé inchangé */}
         <View style={{ marginTop: 20 }}>
           <Text style={{ fontSize: 12, fontWeight: 'bold' }}>
             Résumé: {sortedInvoices.length} facture(s)
@@ -411,12 +414,10 @@ const InvoiceListPDF = ({ invoices, dateRange, statusFilter, consumerFilter }) =
             Total consommation: {sortedInvoices.reduce((sum, inv) => 
               sum + parseFloat(inv.reading?.consumption || 0), 0).toFixed(2)} m³
           </Text>
-
           <Text style={{ fontSize: 10 }}>
-  Total montant: {formatNumber(Math.round(sortedInvoices.reduce((sum, inv) => 
-    sum + (inv.amount_due || 0), 0)))} FCFA
-</Text>
-
+            Total montant: {formatNumber(Math.round(sortedInvoices.reduce((sum, inv) => 
+              sum + (inv.amount_due || 0), 0)))} FCFA
+          </Text>
         </View>
       </Page>
     </Document>
@@ -800,7 +801,7 @@ const [dateRange, setDateRange] = useState([
       {({ loading }) => (
         <Button variant="outline" disabled={loading}>
           <Download className="h-4 w-4 mr-2" />
-          {loading ? 'Génération...' : 'Télécharger PDF'}
+          {loading ? 'Génération...' : 'Exporter la liste'}
         </Button>
       )}
     </PDFDownloadLink>
@@ -945,188 +946,172 @@ const [dateRange, setDateRange] = useState([
 
       <Card>
         <Table>
+
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox 
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setSelectedInvoices(invoices.map(invoice => invoice.id));
-                    } else {
-                      setSelectedInvoices([]);
-                    }
-                  }}
-                />
-              </TableHead>
-              <TableHead>N° Facture</TableHead>
-              <TableHead>Compteur</TableHead>
-              <TableHead>Consommateur</TableHead>
-              {/*<TableHead>Ancien Index</TableHead>*/}
-              {/*<TableHead>Nouvel Index</TableHead>*/}
-              <TableHead>Consommation (m³)</TableHead>
-              <TableHead>Montant (FCFA)</TableHead>
-              <TableHead>Période</TableHead>
-              <TableHead>Échéance</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
+  <TableRow>
+    <TableHead className="w-12">
+      <Checkbox 
+        onCheckedChange={(checked) => {
+          if (checked) {
+            setSelectedInvoices(invoices.map(invoice => invoice.id));
+          } else {
+            setSelectedInvoices([]);
+          }
+        }}
+      />
+    </TableHead>
+    <TableHead>N° Facture</TableHead>
+    <TableHead>Compteur</TableHead>
+    <TableHead>Consommateur</TableHead>
+    <TableHead>Consommation (m³)</TableHead>
+    <TableHead>Montant (FCFA)</TableHead>
+    <TableHead>Période</TableHead>
+    <TableHead>Échéance</TableHead>
+    <TableHead>Date de paiement</TableHead> {/* NOUVELLE COLONNE */}
+    <TableHead>Statut</TableHead>
+    <TableHead>Actions</TableHead>
+  </TableRow>
+</TableHeader>
+
+          
+
           <TableBody>
+
           {invoices.map((invoice) => (
-              <TableRow 
-                key={invoice.id}
-                className={invoice.status === 'paid' ? 'bg-green-50/50' : ''}
-              >
-                <TableCell>
-                  <Checkbox 
-                    checked={selectedInvoices.includes(invoice.id)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setSelectedInvoices(prev => [...prev, invoice.id]);
-                      } else {
-                        setSelectedInvoices(prev => prev.filter(id => id !== invoice.id));
-                      }
-                    }}
-                  />
-                </TableCell>
-                <TableCell>{invoice.invoice_number}</TableCell>
-                <TableCell>{invoice.meter?.meter_number}</TableCell>
-                <TableCell>
-                  {invoice.meter?.user ? 
-                    `${invoice.meter.user.first_name} ${invoice.meter.user.last_name}` : 
-                    'N/A'}
-                </TableCell>
+  <TableRow 
+    key={invoice.id}
+    className={invoice.status === 'paid' ? 'bg-green-50/50' : ''}
+  >
+    <TableCell>
+      <Checkbox 
+        checked={selectedInvoices.includes(invoice.id)}
+        onCheckedChange={(checked) => {
+          if (checked) {
+            setSelectedInvoices(prev => [...prev, invoice.id]);
+          } else {
+            setSelectedInvoices(prev => prev.filter(id => id !== invoice.id));
+          }
+        }}
+      />
+    </TableCell>
+    <TableCell>{invoice.invoice_number}</TableCell>
+    <TableCell>{invoice.meter?.meter_number}</TableCell>
+    <TableCell>
+      {invoice.meter?.user ? 
+        `${invoice.meter.user.first_name} ${invoice.meter.user.last_name}` : 
+        'N/A'}
+    </TableCell>
+    <TableCell>
+      {invoice.reading?.consumption ? 
+        parseFloat(invoice.reading.consumption).toFixed(2) : 
+        'N/A'}
+    </TableCell>
+    <TableCell>
+      {invoice.amount_due ? 
+        formatNumber(Math.round(invoice.amount_due)) : 
+        'N/A'}
+    </TableCell>
+    <TableCell>
+      {`${format(new Date(invoice.start_date), 'dd/MM/yy')} au ${format(new Date(invoice.end_date), 'dd/MM/yy')}`}
+    </TableCell>
+    <TableCell>
+      {format(new Date(invoice.due_date), 'dd/MM/yyyy')}
+    </TableCell>
+    {/* NOUVELLE CELLULE - Date de paiement */}
+    <TableCell>
+      {invoice.payment_date ? (
+        <span className="text-green-600 font-medium">
+          {format(new Date(invoice.payment_date), 'dd/MM/yyyy')}
+        </span>
+      ) : (
+        <span className="text-gray-400">-</span>
+      )}
+    </TableCell>
+    <TableCell>
+      <Badge 
+        variant={invoice.status === 'paid' ? 'success' : 'warning'}
+      >
+        {invoice.status === 'paid' ? 'Payé' : 'Non payé'}
+      </Badge>
+    </TableCell>
+    <TableCell>
+      {/* Actions inchangées */}
+      <div className="flex space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setCurrentInvoice(invoice);
+            setIsViewModalOpen(true);
+          }}
+        >
+          <FileText className="h-4 w-4" />
+        </Button>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={async () => {
+            try {
+              const response = await api.get(`/invoices/${invoice.id}/pdf`, {
+                responseType: 'blob'
+              });
+              const url = window.URL.createObjectURL(new Blob([response.data]));
+              const link = document.createElement('a');
+              link.href = url;
+              link.setAttribute('download', `facture-${invoice.invoice_number}.pdf`);
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+            } catch (error) {
+              console.error('Error:', error);
+            }
+          }}
+        >
+          <Download className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleUpdateStatus(invoice.id, 'paid')}
+          disabled={invoice.status === 'paid'}
+        >
+          <Check className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => {
+            setCurrentInvoice(invoice);
+            setIsDeleteDialogOpen(true);
+          }}
+          disabled={invoice.status === 'paid'}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </TableCell>
+  </TableRow>
+))}
 
-              {/*<TableHead>Ancien Index</TableHead>
-                <TableCell>
-                  {invoice.reading?.last_reading_value ? 
-                    parseFloat(invoice.reading.last_reading_value).toFixed(2) : 
-                    'N/A'}
-                </TableCell>
-                <TableCell>
-                  {invoice.reading?.reading_value ? 
-                    parseFloat(invoice.reading.reading_value).toFixed(2) : 
-                    'N/A'}
-                </TableCell>
-
-                */}
-
-                <TableCell>
-                  {invoice.reading?.consumption ? 
-                    parseFloat(invoice.reading.consumption).toFixed(2) : 
-                    'N/A'}
-                </TableCell>
-
-                <TableCell>
-  {invoice.amount_due ? 
-    formatNumber(Math.round(invoice.amount_due)) : 
-    'N/A'}
-</TableCell>
-
-                <TableCell>
-                  {`${format(new Date(invoice.start_date), 'dd/MM/yy')} au ${format(new Date(invoice.end_date), 'dd/MM/yy')}`}
-                </TableCell>
-                <TableCell>
-                  {format(new Date(invoice.due_date), 'dd/MM/yyyy')}
-                </TableCell>
-                <TableCell>
-                  <Badge 
-                    variant={invoice.status === 'paid' ? 'success' : 'warning'}
-                  >
-                    {invoice.status === 'paid' ? 'Payé' : 'Non payé'}
-                  </Badge>
-                </TableCell>
-
-                <TableCell>
-  <div className="flex space-x-2">
-    
-    {/* Voir les détails */}
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => {
-        setCurrentInvoice(invoice);
-        console.log('Current invoice:', invoice);
-        setIsViewModalOpen(true);
-      }}
-    >
-      <FileText className="h-4 w-4" />
-    </Button>
-
-
-
-{/* Télécharger PDF - Changé l'icône et l'action */}
-
-<Button 
-  variant="outline" 
-  size="sm"
-  onClick={async () => {
-    try {
-      const response = await api.get(`/invoices/${invoice.id}/pdf`, {
-        responseType: 'blob'
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `facture-${invoice.invoice_number}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  }}
->
-  <Download className="h-4 w-4" />
-</Button>
-
-
-    {/* Marquer comme payé - Nouvelle action */}
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => handleUpdateStatus(invoice.id, 'paid')}
-      disabled={invoice.status === 'paid'}
-    >
-      <Check className="h-4 w-4" />
-    </Button>
-    <Button
-      variant="destructive"
-      size="sm"
-      onClick={() => {
-        setCurrentInvoice(invoice);
-        setIsDeleteDialogOpen(true);
-      }}
-      disabled={invoice.status === 'paid'}
-    >
-      <Trash2 className="h-4 w-4" />
-    </Button>
-  </div>
-</TableCell>
-               
-              </TableRow>
-            ))}
   {/* Nouvelle ligne de total avec correction */}
   {invoices.length > 0 && (
-    <TableRow className="font-bold bg-gray-50">
-      <TableCell colSpan={4} className="text-right">Total</TableCell>
-      <TableCell>
-        {parseFloat(
-          invoices.reduce((sum, invoice) => 
-            sum + parseFloat(invoice.reading?.consumption || 0), 0)
-        ).toFixed(2)} m³
-      </TableCell>
-
-      <TableCell>
-  {formatNumber(Math.round(
-    invoices.reduce((sum, invoice) => 
-      sum + (invoice.amount_due || 0), 0)
-  ))} FCFA
-</TableCell>
-
-      <TableCell colSpan={2}></TableCell>
-    </TableRow>
-  )}
+  <TableRow className="font-bold bg-gray-50">
+    <TableCell colSpan={4} className="text-right">Total</TableCell>
+    <TableCell>
+      {parseFloat(
+        invoices.reduce((sum, invoice) => 
+          sum + parseFloat(invoice.reading?.consumption || 0), 0)
+      ).toFixed(2)} m³
+    </TableCell>
+    <TableCell>
+      {formatNumber(Math.round(
+        invoices.reduce((sum, invoice) => 
+          sum + (invoice.amount_due || 0), 0)
+      ))} FCFA
+    </TableCell>
+    <TableCell colSpan={4}></TableCell> {/* Augmenté de 3 à 4 pour inclure la nouvelle colonne */}
+  </TableRow>
+)}
 
           </TableBody>
         </Table>

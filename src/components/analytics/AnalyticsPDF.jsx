@@ -10,7 +10,7 @@ import {
   Font, 
   pdf 
 } from '@react-pdf/renderer';
-import { format } from 'date-fns';
+import { format } from 'date-fns'; 
 
 // Sections PDF spécifiques
 import PDFOverviewSection from './pdf-sections/PDFOverviewSection';
