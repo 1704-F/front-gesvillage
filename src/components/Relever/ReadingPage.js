@@ -31,45 +31,80 @@ import { format } from 'date-fns';
 import { axiosPrivate as api } from '../../utils/axios';
 
 
+// Styles améliorés pour éviter les problèmes de rendu PDF
 const styles = StyleSheet.create({
   page: {
     padding: 30,
     orientation: 'landscape',
+    backgroundColor: '#ffffff', // Assurer un fond blanc
+    color: '#000000', // Assurer un texte noir
   },
   header: {
     marginBottom: 20,
     textAlign: 'center',
     fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000000',
+  },
+  dateRange: {
+    marginBottom: 15,
+    fontSize: 12,
+    color: '#333333',
+    textAlign: 'center',
   },
   table: {
     display: 'table',
     width: '100%',
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#000000',
+    borderStyle: 'solid',
   },
   tableRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#000',
+    borderBottomColor: '#000000',
     borderBottomStyle: 'solid',
     alignItems: 'center',
-    minHeight: 24,
+    minHeight: 30,
+    backgroundColor: '#ffffff', // Fond blanc pour toutes les lignes
   },
   tableHeader: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f8f9fa', // Fond gris très clair pour l'en-tête
     fontWeight: 'bold',
+    borderBottomWidth: 2, // Ligne plus épaisse sous l'en-tête
   },
   tableCell: {
     flex: 1,
-    padding: 4,
-    fontSize: 8,
+    padding: 6,
+    fontSize: 9,
     textAlign: 'left',
+    color: '#000000',
+    borderRightWidth: 1,
+    borderRightColor: '#cccccc',
+    borderRightStyle: 'solid',
   },
-  dateRange: {
-    marginBottom: 10,
-    fontSize: 12,
-    color: '#666',
-  }
+  // Styles spécifiques pour différents types de cellules
+  tableCellNumber: {
+    flex: 0.5,
+    textAlign: 'center',
+  },
+  tableCellMeter: {
+    flex: 1.2,
+  },
+  tableCellConsumer: {
+    flex: 1.5,
+  },
+  tableCellLocation: {
+    flex: 1.3,
+  },
+  tableCellStatus: {
+    flex: 1,
+    textAlign: 'center',
+  },
 });
+
+
 
 const formatNumber = (num, decimals = 0) => {
   if (isNaN(num)) return '0';
@@ -153,6 +188,66 @@ const RelevePDF = ({ readings, dateRange }) => {
               <Text style={styles.tableCell}>
                 {/* Colonne de date de paiement - vide par défaut */}
               </Text>
+            </View>
+          ))}
+        </View>
+      </Page>
+    </Document>
+  );
+};
+
+
+// Composant PDF complet pour les compteurs sans relevés
+// Version de debug pour tester le rendu de base
+const MetersPDF = ({ meters, dateRange }) => {
+  console.log('MetersPDF - Nombre de compteurs:', meters.length);
+  
+  const sortedMeters = [...meters].sort((a, b) => {
+    const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
+    const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
+    
+    if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
+      return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+    }
+    return a.meter_number.localeCompare(b.meter_number);
+  });
+
+  return (
+    <Document>
+      <Page size="A4" orientation="landscape" style={styles.page}>
+        <Text style={styles.header}>Compteurs sans relevés</Text>
+        
+        <Text style={styles.dateRange}>
+          Période du {format(dateRange[0], 'dd/MM/yyyy')} au {format(dateRange[1], 'dd/MM/yyyy')}
+        </Text>
+
+        {/* Test simple d'abord */}
+        <Text style={{ fontSize: 12, marginBottom: 10 }}>
+          Total de compteurs: {sortedMeters.length}
+        </Text>
+
+        <View style={styles.table}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={styles.tableCell}>N°</Text>
+            <Text style={styles.tableCell}>N° Compteur</Text>
+            <Text style={styles.tableCell}>N° Série</Text>
+            <Text style={styles.tableCell}>Consommateur</Text>
+            <Text style={styles.tableCell}>Emplacement</Text>
+            <Text style={styles.tableCell}>Statut</Text>
+          </View>
+
+          {sortedMeters.map((meter, index) => (
+            <View key={meter.id} style={styles.tableRow}>
+              <Text style={styles.tableCell}>{index + 1}</Text>
+              <Text style={styles.tableCell}>{meter.meter_number}</Text>
+              <Text style={styles.tableCell}>{meter.serial_number || 'N/A'}</Text>
+              <Text style={styles.tableCell}>
+                {meter.user ? 
+                  `${meter.user.first_name} ${meter.user.last_name}` : 
+                  'N/A'}
+              </Text>
+              <Text style={styles.tableCell}>{meter.quartier?.name || meter.location || 'N/A'}</Text>
+              <Text style={styles.tableCell}>Sans relevé</Text>
             </View>
           ))}
         </View>
@@ -537,7 +632,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                         />
                       </div>
                       
-                      <ScrollArea className="max-h-60 overflow-y-auto">
+                      <ScrollArea className="max-h-60 overflow-y-auto"> 
                         {filteredMeters.length > 0 ? (
                           filteredMeters.map((meter) => (
                             <SelectItem key={meter.id} value={String(meter.id)}>
@@ -746,16 +841,32 @@ const sortedMeters = [...meters].sort((a, b) => {
   return (
     <Card>
       <div className="p-4 border-b flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <AlertTriangle className="h-5 w-5 text-yellow-500" />
-          <h2 className="text-lg font-medium">
-            Compteurs sans relevés pour la période sélectionnée
-          </h2>
-        </div>
-        <Badge variant="outline" className="bg-yellow-50">
-          {meters.length} compteur(s)
-        </Badge>
-      </div>
+  <div className="flex items-center space-x-2">
+    <AlertTriangle className="h-5 w-5 text-yellow-500" />
+    <h2 className="text-lg font-medium">
+      Compteurs sans relevés pour la période sélectionnée
+    </h2>
+  </div>
+  <div className="flex items-center space-x-2">
+    <Badge variant="outline" className="bg-yellow-50">
+      {meters.length} compteur(s)
+    </Badge>
+    {meters.length > 0 && (
+      <PDFDownloadLink
+        document={<MetersPDF meters={meters} dateRange={dateRange} />}
+        fileName={`compteurs-sans-releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
+      >
+        {({ loading }) => (
+          <Button variant="outline" size="sm" disabled={loading}>
+            <Download className="h-4 w-4 mr-2" />
+            {loading ? 'Génération...' : 'Télécharger PDF'}
+          </Button>
+        )}
+      </PDFDownloadLink>
+    )}
+  </div>
+</div>
+      
 
       <Table>
         <TableHeader>
