@@ -341,7 +341,6 @@ const OverviewContent = ({ data, period }) => {
         <MetricCard
           title="Frais de Branchement"
           value={`${formatNumber(summary?.stats?.connectionLaborRevenue || 0)} FCFA`}
-          subtitle="Main-d'œuvre payée"
           icon={Wrench}
           trend="up"
         />

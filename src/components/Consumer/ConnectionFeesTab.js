@@ -705,7 +705,7 @@ const ConnectionFeesTab = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Frais de branchement (main d'œuvre) *</label>
+                <label className="text-sm font-medium">Frais de branchement</label>
                 <Input
                   type="number"
                   placeholder="0"

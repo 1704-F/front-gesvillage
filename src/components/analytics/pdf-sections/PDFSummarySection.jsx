@@ -227,7 +227,7 @@ const PDFSummarySection = ({ data }) => {
           <Text style={styles.col2}>{formatNumber(stats.donationRevenue || 0)}</Text>
         </View>
         <View style={[styles.row, styles.tableRow, styles.newRevenueRow]}>
-          <Text style={styles.col1}>Frais de branchement (main-d'œuvre)</Text>
+          <Text style={styles.col1}>Frais de branchement</Text>
           <Text style={styles.col2}>{formatNumber(stats.connectionLaborRevenue || 0)}</Text>
         </View>
         <View style={[styles.row, styles.tableRow, styles.newRevenueRow]}>

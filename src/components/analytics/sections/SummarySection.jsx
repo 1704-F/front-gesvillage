@@ -122,7 +122,6 @@ const SummarySection = ({ data, period }) => {
         <MetricCard
           title="Frais de Branchement"
           value={`${formatNumber(stats?.connectionLaborRevenue || 0)} FCFA`}
-          subtitle="Main-d'œuvre payée"
           trend="up"
           icon={Wrench}
         />
@@ -198,7 +197,7 @@ const SummarySection = ({ data, period }) => {
                 <TableCell className="text-right">{formatNumber(stats.donationRevenue || 0)}</TableCell>
               </TableRow>
               <TableRow className="bg-green-50">
-                <TableCell className="font-medium">Frais de branchement (main-d'œuvre)</TableCell>
+                <TableCell className="font-medium">Frais de branchement</TableCell>
                 <TableCell className="text-right">{formatNumber(stats.connectionLaborRevenue || 0)}</TableCell>
               </TableRow>
               <TableRow className="bg-green-50">
