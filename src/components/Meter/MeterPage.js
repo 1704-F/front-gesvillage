@@ -1,5 +1,5 @@
 //Meter/MeterPage
-import React, { useState, useEffect, lazy, Suspense  } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useCallback } from 'react';
 import { Card, CardContent } from "../ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 import { ScrollArea } from "../ui/scroll-area";
@@ -41,6 +41,22 @@ import MeterProblemDialog from './MeterProblemDialog';
 import MeterStatistics from './MeterStatistics';
 import WaterDropLoader from './WaterDropLoader';
 
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
+
 const MeterUserHistoryDialog = lazy(() => import('./MeterUserHistoryDialog'));
 
 const api = axiosPrivate; 
@@ -63,6 +79,11 @@ const [meters, setMeters] = useState([]); // Déplacer en premier
 const [loading, setLoading] = useState(true);
 const [currentPage, setCurrentPage] = useState(1);
 const [itemsPerPage, setItemsPerPage] = useState(50);
+
+const [totalPages, setTotalPages] = useState(0); // ← NOUVEAU
+const [totalItems, setTotalItems] = useState(0); // ← NOUVEAU
+
+
 const [consumers, setConsumers] = useState([]);
 const [isModalOpen, setIsModalOpen] = useState(false);
 const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -82,34 +103,11 @@ const [canDelete, setCanDelete] = useState(true); // Si le compteur peut être s
 
 const { toast } = useToast();
 
-// Filtrer les compteurs après la recherche, le statut et le filtre de problème
-const filteredMeters = meters
-.filter(meter => 
-  // Filtrer par recherche
-  (meter.meter_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-   `${meter.user?.first_name || ''} ${meter.user?.last_name || ''}`.toLowerCase().includes(searchTerm.toLowerCase())) &&
-  // Filtrer par statut
-  (statusFilter === 'all' || meter.status === statusFilter) &&
-  // Filtrer par problème
-  (!problemFilterActive || meter.has_problem)
-);
+const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
 
-// Calculer les indices pour la pagination après la déclaration de meters
-const totalPages = Math.ceil(filteredMeters.length / itemsPerPage);
-const startIndex = (currentPage - 1) * itemsPerPage;
-const endIndex = startIndex + itemsPerPage;
-const currentMeters = filteredMeters.slice(startIndex, endIndex);
 
-  // Chargement initial des données
-  useEffect(() => {
-    Promise.all([
-      fetchMeters(),
-      fetchConsumers(),
-      fetchStatistics()
-    ]).finally(() => setLoading(false));
-  }, [statusFilter]);
-
+ 
 
   useEffect(() => {
     const fetchQuartiers = async () => {
@@ -129,37 +127,39 @@ const currentMeters = filteredMeters.slice(startIndex, endIndex);
   }, []);
 
   // Fonctions de récupération des données
-  const fetchMeters = async () => {
-    try {
-      const response = await api.get('/meters', {
-        params: { status: statusFilter !== 'all' ? statusFilter : undefined }
-      });
-      
-      // Tri des compteurs par numéro croissant
-      const sortedMeters = response.data.data.sort((a, b) => {
-        // Extraire les parties numériques
-        const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
-        const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
-        
-        if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
-          // Si les préfixes sont identiques (ex: MTR-), comparer les numéros
-          return parseInt(aMatch[2]) - parseInt(bMatch[2]);
-        }
-        // Sinon comparer les chaînes entières
-        return a.meter_number.localeCompare(b.meter_number);
-      });
-      
-      setMeters(sortedMeters);
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de récupérer les compteurs."
-      });
+  const fetchMeters = useCallback(async () => {
+  try {
+    setLoading(true);
+    const params = {
+      page: currentPage,
+      limit: itemsPerPage,
+      search: debouncedSearchTerm,
+      problem_filter: problemFilterActive
+    };
+    
+    if (statusFilter !== 'all') {
+      params.status = statusFilter;
     }
-  };
+    
+    const response = await api.get('/meters', { params });
+    
+    setMeters(response.data.data);
+    setTotalPages(response.data.pagination.totalPages);
+    setTotalItems(response.data.pagination.totalItems);
+  } catch (error) {
+    toast({
+      variant: "destructive",
+      title: "Erreur",
+      description: "Impossible de récupérer les compteurs."
+    });
+  } finally {
+    setLoading(false);
+  }
+}, [currentPage, itemsPerPage, statusFilter, debouncedSearchTerm, problemFilterActive, toast]);
 
-  const fetchConsumers = async () => {
+
+
+  const fetchConsumers = useCallback(async () => {
     try {
       const response = await api.get('/consumers/active');
       setConsumers(response.data.data);
@@ -170,9 +170,9 @@ const currentMeters = filteredMeters.slice(startIndex, endIndex);
         variant: "destructive"
       });
     }
-  };
+  }, [toast]);
 
-  const fetchStatistics = async () => {
+  const fetchStatistics = useCallback(async () => {
     try {
       const response = await api.get('/meters/statistics');
       setStatistics(response.data.data);
@@ -184,8 +184,23 @@ const currentMeters = filteredMeters.slice(startIndex, endIndex);
         description: "Impossible de récupérer les statistiques."
       });
     }
-  };
+  }, [toast]);
 
+   // Chargement initial des données
+ 
+useEffect(() => {
+  fetchMeters();
+}, [fetchMeters]);
+
+// Garder ce useEffect séparé pour le chargement initial :
+useEffect(() => {
+  Promise.all([
+    fetchConsumers(),
+    fetchStatistics()
+  ]);
+}, []);
+
+ 
   // Gestionnaires d'événements
   const handleAdd = async () => {
     try {
@@ -219,7 +234,12 @@ const currentMeters = filteredMeters.slice(startIndex, endIndex);
         title: "Succès",
         description: "Compteur supprimé avec succès"
       });
-      fetchMeters();
+      await Promise.all([
+            fetchMeters(),
+            fetchStatistics()
+        ]);
+      
+
     } catch (error) {
       toast({
         title: "Erreur",
@@ -240,7 +260,12 @@ const currentMeters = filteredMeters.slice(startIndex, endIndex);
         title: "Succès",
         description: `Compteur ${newStatus === 'active' ? 'activé' : 'désactivé'} avec succès`
       });
-      fetchMeters();
+
+      await Promise.all([
+            fetchMeters(),
+            fetchStatistics()
+        ]);
+
     } catch (error) {
       toast({
         title: "Erreur",
@@ -269,7 +294,12 @@ const currentMeters = filteredMeters.slice(startIndex, endIndex);
         });
       }
       setIsModalOpen(false);
-      fetchMeters();
+      await Promise.all([
+            fetchMeters(),
+            fetchStatistics()
+        ]);
+
+      
     } catch (error) {
       toast({
         title: "Erreur",
@@ -315,7 +345,11 @@ const handlePermanentDeleteConfirm = async () => {
       title: "Succès",
       description: "Compteur supprimé définitivement avec succès"
     });
-    fetchMeters();
+    await Promise.all([
+            fetchMeters(),
+            fetchStatistics()
+        ]);
+
   } catch (error) {
     toast({
       title: "Erreur",
@@ -337,12 +371,16 @@ const handleReportProblem = (meter) => {
 };
 
 // Ajoutez cette fonction pour mettre à jour les compteurs après signalement/résolution d'un problème
-const handleProblemSuccess = (updatedMeter) => {
-  setMeters(prev => prev.map(meter => 
-    meter.id === updatedMeter.id ? updatedMeter : meter
-  ));
- 
+const handleProblemSuccess = async (updatedMeter) => {
+    // Mettre à jour la liste locale
+    setMeters(prev => prev.map(meter => 
+        meter.id === updatedMeter.id ? updatedMeter : meter
+    ));
+    
+   
+    await fetchStatistics();
 };
+
 
   // Composant de formulaire modal
   const MeterForm = ({ isOpen, onClose, editMeter }) => {
@@ -606,13 +644,16 @@ const handleProblemSuccess = (updatedMeter) => {
             <span>Problèmes</span>
           </Button>
 
-    
+
           <MeterPDFDownloadButton 
-  meters={filteredMeters} 
+  meters={meters} 
   quartiers={quartiers} 
   filterStatus={statusFilter}
   problemFilterActive={problemFilterActive}
 />
+
+    
+    
 
     <Button onClick={handleAdd}>
       <Plus className="h-4 w-4 mr-2" />
@@ -640,9 +681,8 @@ const handleProblemSuccess = (updatedMeter) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-            {currentMeters
-      
-                .map(meter => (
+
+            {meters.map(meter => (
                   <TableRow key={meter.id}>
                     <TableCell>
   <div>
@@ -753,52 +793,54 @@ const handleProblemSuccess = (updatedMeter) => {
             </TableBody>
 
           </Table>
+
           <div className="flex items-center justify-between mt-4 px-2">
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-gray-600">Lignes par page:</span>
-      <Select
-        value={String(itemsPerPage)}
-        onValueChange={(value) => {
-          setItemsPerPage(Number(value));
-          setCurrentPage(1);
-        }}
-      >
-        <SelectTrigger className="w-[70px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="50">50</SelectItem>
-          <SelectItem value="100">100</SelectItem>
-          <SelectItem value="500">500</SelectItem>
-          <SelectItem value="1000">1000</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-
-    <div className="flex items-center gap-2">
-
-    <span className="text-sm text-gray-600">
-  {startIndex + 1}-{Math.min(endIndex, filteredMeters.length)} sur {filteredMeters.length}
-</span>
-
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-        disabled={currentPage === 1}
-      >
-        Précédent
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-        disabled={currentPage === totalPages}
-      >
-        Suivant
-      </Button>
-    </div>
+  <div className="flex items-center gap-2">
+    <span className="text-sm text-gray-600">Lignes par page:</span>
+    <Select
+      value={String(itemsPerPage)}
+      onValueChange={(value) => {
+        setItemsPerPage(Number(value));
+        setCurrentPage(1);
+      }}
+    >
+      <SelectTrigger className="w-[70px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="50">50</SelectItem>
+        <SelectItem value="100">100</SelectItem>
+        <SelectItem value="500">500</SelectItem>
+        <SelectItem value="1000">1000</SelectItem>
+      </SelectContent>
+    </Select>
   </div>
+
+  <div className="flex items-center gap-2">
+    <span className="text-sm text-gray-600">
+      {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} sur {totalItems}
+    </span>
+
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+      disabled={currentPage === 1}
+    >
+      Précédent
+    </Button>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+      disabled={currentPage === totalPages}
+    >
+      Suivant
+    </Button>
+  </div>
+</div>
+
+         
 
         </CardContent>
       </Card>
