@@ -34,6 +34,8 @@ import ConsumerMeters from './components/Consumer/ConsumerMeters';
 import ConsumerProfile from './components/Consumer/ConsumerProfile';
 import ReadingPage from './components/Relever/ReadingPage';
 
+import SuperAdminReadingsPage from './components/SuperAdmin/SuperAdminReadingsPage';
+
 import { axiosPrivate } from './utils/axios';
 import { Toaster } from "./components/ui/toast/toaster"; 
 import { ToastProvider } from "./components/ui/toast/use-toast"
@@ -106,6 +108,7 @@ const App = () => {
                   <Route path="/services" element={<ServiceTable />} />
                   <Route path="/services/new" element={<ServiceForm />} />
                   <Route path="/admins/new" element={<AdminForm />} />
+                  <Route path="/superadmin/readings" element={<SuperAdminReadingsPage />} />
                   <Route path="/service-billing" element={<ServiceBillingPage />} />
                   <Route path="/zones" element={<ZoneManagementPage />} />
                   <Route path="/settings" element={<SettingsPage />} />

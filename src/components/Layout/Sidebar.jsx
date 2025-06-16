@@ -50,6 +50,11 @@ const Sidebar = ({ role, isOpen, setIsOpen }) => {
             icon: <UserPlus className="w-5 h-5" /> 
           },
           { 
+  title: 'Relevés Services', 
+  path: '/superadmin/readings', 
+  icon: <FileSpreadsheet className="w-5 h-5" /> 
+},
+          { 
             title: 'Factures Services', 
             path: '/service-billing', 
             icon: <Receipt className="w-5 h-5" /> 

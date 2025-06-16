@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { useToast } from "../ui/toast/use-toast";
+import { useToast } from "../ui/toast/use-toast"; 
 import { 
   FileText, 
   Scissors, 
@@ -896,56 +896,56 @@ const DisconnectionTab = () => {
             
             {/* Pagination pour factures impayées */}
             {consumers.length > 0 && (
-              <div className="flex items-center justify-between p-4 border-t">
-                <div className="text-sm text-gray-500">
-                  Affichage de {pagination.totalItems ? (pagination.page - 1) * pagination.limit + 1 : 0} à {Math.min(pagination.page * pagination.limit, pagination.totalItems)} sur {pagination.totalItems} consommateurs
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(pagination.page - 1)}
-                    disabled={pagination.page === 1 || loading}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  
-                  <span className="text-sm">
-                    Page {pagination.page} sur {pagination.totalPages || 1}
-                  </span>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(pagination.page + 1)}
-                    disabled={pagination.page >= pagination.totalPages || loading}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  
-                  <Select 
-                    value={pagination.limit.toString()} 
-                    onValueChange={(value) => {
-                      setPagination(prev => ({
-                        ...prev,
-                        page: 1,
-                        limit: parseInt(value)
-                      }));
-                    }}
-                  >
-                    <SelectTrigger className="w-[100px]">
-                      <SelectValue placeholder="Lignes" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10 lignes</SelectItem>
-                      <SelectItem value="25">25 lignes</SelectItem>
-                      <SelectItem value="50">50 lignes</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
+  <div className="flex items-center justify-between mt-4 px-2">
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-600">Lignes par page:</span>
+      <Select
+        value={String(pagination.limit)}
+        onValueChange={(value) => {
+          setPagination(prev => ({
+            ...prev,
+            page: 1,
+            limit: parseInt(value)
+          }));
+        }}
+      >
+        <SelectTrigger className="w-[70px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="10">10</SelectItem>
+          <SelectItem value="25">25</SelectItem>
+          <SelectItem value="50">50</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-600">
+        {((pagination.page - 1) * pagination.limit) + 1}-
+        {Math.min(pagination.page * pagination.limit, pagination.totalItems)} sur {pagination.totalItems}
+      </span>
+     
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handlePageChange(pagination.page - 1)}
+        disabled={pagination.page === 1 || loading}
+      >
+        Précédent
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handlePageChange(pagination.page + 1)}
+        disabled={pagination.page >= pagination.totalPages || loading}
+      >
+        Suivant
+      </Button>
+    </div>
+  </div>
+)}
+
           </Card>
         </TabsContent>
 
@@ -1061,36 +1061,56 @@ const DisconnectionTab = () => {
             
             {/* Pagination pour consommateurs coupés */}
             {disconnectedConsumers.length > 0 && (
-              <div className="flex items-center justify-between p-4 border-t">
-                <div className="text-sm text-gray-500">
-                  Affichage de {disconnectedPagination.totalItems ? (disconnectedPagination.page - 1) * disconnectedPagination.limit + 1 : 0} à {Math.min(disconnectedPagination.page * disconnectedPagination.limit, disconnectedPagination.totalItems)} sur {disconnectedPagination.totalItems} consommateurs
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDisconnectedPageChange(disconnectedPagination.page - 1)}
-                    disabled={disconnectedPagination.page === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  
-                  <span className="text-sm">
-                    Page {disconnectedPagination.page} sur {disconnectedPagination.totalPages || 1}
-                  </span>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDisconnectedPageChange(disconnectedPagination.page + 1)}
-                    disabled={disconnectedPagination.page >= disconnectedPagination.totalPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
+  <div className="flex items-center justify-between mt-4 px-2">
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-600">Lignes par page:</span>
+      <Select
+        value={String(disconnectedPagination.limit)}
+        onValueChange={(value) => {
+          setDisconnectedPagination(prev => ({
+            ...prev,
+            page: 1,
+            limit: parseInt(value)
+          }));
+        }}
+      >
+        <SelectTrigger className="w-[70px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="10">10</SelectItem>
+          <SelectItem value="25">25</SelectItem>
+          <SelectItem value="50">50</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-600">
+        {((disconnectedPagination.page - 1) * disconnectedPagination.limit) + 1}-
+        {Math.min(disconnectedPagination.page * disconnectedPagination.limit, disconnectedPagination.totalItems)} sur {disconnectedPagination.totalItems}
+      </span>
+     
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleDisconnectedPageChange(disconnectedPagination.page - 1)}
+        disabled={disconnectedPagination.page === 1}
+      >
+        Précédent
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleDisconnectedPageChange(disconnectedPagination.page + 1)}
+        disabled={disconnectedPagination.page >= disconnectedPagination.totalPages}
+      >
+        Suivant
+      </Button>
+    </div>
+  </div>
+)}
+
           </Card>
         </TabsContent>
 
@@ -1289,56 +1309,55 @@ const DisconnectionTab = () => {
             
             {/* Pagination historique */}
             {historyData.length > 0 && (
-              <div className="flex items-center justify-between p-4 border-t">
-                <div className="text-sm text-gray-500">
-                  Affichage de {historyPagination.totalItems ? (historyPagination.page - 1) * historyPagination.limit + 1 : 0} à {Math.min(historyPagination.page * historyPagination.limit, historyPagination.totalItems)} sur {historyPagination.totalItems} bons
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleHistoryPageChange(historyPagination.page - 1)}
-                    disabled={historyPagination.page === 1 || historyLoading}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  
-                  <span className="text-sm">
-                    Page {historyPagination.page} sur {historyPagination.totalPages || 1}
-                  </span>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleHistoryPageChange(historyPagination.page + 1)}
-                    disabled={historyPagination.page >= historyPagination.totalPages || historyLoading}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  
-                  <Select 
-                    value={historyPagination.limit.toString()} 
-                    onValueChange={(value) => {
-                      setHistoryPagination(prev => ({
-                        ...prev,
-                        page: 1,
-                        limit: parseInt(value)
-                      }));
-                    }}
-                  >
-                    <SelectTrigger className="w-[100px]">
-                      <SelectValue placeholder="Lignes" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="10">10 lignes</SelectItem>
-                      <SelectItem value="25">25 lignes</SelectItem>
-                      <SelectItem value="50">50 lignes</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
+  <div className="flex items-center justify-between mt-4 px-2">
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-600">Lignes par page:</span>
+      <Select
+        value={String(historyPagination.limit)}
+        onValueChange={(value) => {
+          setHistoryPagination(prev => ({
+            ...prev,
+            page: 1,
+            limit: parseInt(value)
+          }));
+        }}
+      >
+        <SelectTrigger className="w-[70px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="10">10</SelectItem>
+          <SelectItem value="25">25</SelectItem>
+          <SelectItem value="50">50</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-600">
+        {((historyPagination.page - 1) * historyPagination.limit) + 1}-
+        {Math.min(historyPagination.page * historyPagination.limit, historyPagination.totalItems)} sur {historyPagination.totalItems}
+      </span>
+     
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleHistoryPageChange(historyPagination.page - 1)}
+        disabled={historyPagination.page === 1 || historyLoading}
+      >
+        Précédent
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleHistoryPageChange(historyPagination.page + 1)}
+        disabled={historyPagination.page >= historyPagination.totalPages || historyLoading}
+      >
+        Suivant
+      </Button>
+    </div>
+  </div>
+)}
           </Card>
         </TabsContent>
       </Tabs>

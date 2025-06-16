@@ -34,64 +34,81 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     }
   };
 
-  const fetchNotifications = async () => {
-    try {
-      // 1. D'abord, obtenir l'ID du service actuel
-      const serviceResponse = await axiosPrivate.get("/services/info-optimized");
-      const serviceId = serviceResponse.data.data.service.id;
-      
-      // 2. Récupérer les notifications standard
+ const fetchNotifications = async () => {
+  try {
+    // Vérifier d'abord le rôle de l'utilisateur
+    if (adminProfile?.role === 'SuperAdmin') {
+      // Pour SuperAdmin, récupérer seulement les notifications standard
       const notificationsResponse = await axiosPrivate.get("/notifications");
-      
-      // 3. Récupérer les factures en attente UNIQUEMENT pour ce service
-      const invoicesResponse = await axiosPrivate.get("/service-billing", {
-        params: {
-          status: "pending",
-          service_id: serviceId // Important: filtrer par service_id
-        }
-      });
-      
-      // 4. Transformer les factures en format notification
-      let invoiceNotifications = [];
-      if (invoicesResponse.data.data && invoicesResponse.data.data.billings) {
-        invoiceNotifications = invoicesResponse.data.data.billings.map(invoice => {
-          const periodStart = new Date(invoice.billing_period_start);
-          const month = periodStart.toLocaleString('fr-FR', { month: 'long' });
-          
-          return {
-            id: `invoice-${invoice.id}`,
-            message: `Votre facture de ${month} est disponible (Réf: ${invoice.reference})`,
-            status: "unread",
-            created_at: invoice.created_at,
-            type: "invoice",
-            invoice_id: invoice.id
-          };
-        });
-      }
-      
-      // 5. Fusionner les notifications
-      const allNotifications = [...invoiceNotifications, ...notificationsResponse.data];
-      allNotifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      
-      setNotifications(allNotifications);
-      setUnreadCount(allNotifications.filter(notif => notif.status === "unread").length);
-    } catch (error) {
-      console.error("Erreur lors de la récupération des notifications :", error);
+      setNotifications(notificationsResponse.data);
+      setUnreadCount(notificationsResponse.data.filter(notif => notif.status === "unread").length);
+      return;
     }
-  };
+
+    // Pour les autres rôles (Admin, etc.), continuer avec la logique existante
+    // 1. D'abord, obtenir l'ID du service actuel
+    const serviceResponse = await axiosPrivate.get("/services/info-optimized");
+    const serviceId = serviceResponse.data.data.service.id;
+    
+    // 2. Récupérer les notifications standard
+    const notificationsResponse = await axiosPrivate.get("/notifications");
+    
+    // 3. Récupérer les factures en attente UNIQUEMENT pour ce service
+    const invoicesResponse = await axiosPrivate.get("/service-billing", {
+      params: {
+        status: "pending",
+        service_id: serviceId // Important: filtrer par service_id
+      }
+    });
+    
+    // 4. Transformer les factures en format notification
+    let invoiceNotifications = [];
+    if (invoicesResponse.data.data && invoicesResponse.data.data.billings) {
+      invoiceNotifications = invoicesResponse.data.data.billings.map(invoice => {
+        const periodStart = new Date(invoice.billing_period_start);
+        const month = periodStart.toLocaleString('fr-FR', { month: 'long' });
+        
+        return {
+          id: `invoice-${invoice.id}`,
+          message: `Votre facture de ${month} est disponible (Réf: ${invoice.reference})`,
+          status: "unread",
+          created_at: invoice.created_at,
+          type: "invoice",
+          invoice_id: invoice.id
+        };
+      });
+    }
+    
+    // 5. Fusionner les notifications
+    const allNotifications = [...invoiceNotifications, ...notificationsResponse.data];
+    allNotifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    setNotifications(allNotifications);
+    setUnreadCount(allNotifications.filter(notif => notif.status === "unread").length);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des notifications :", error);
+  }
+};
+
+
 
   const navigateToInvoice = (invoiceId) => {
     navigate("/service-info?tab=billing");
   };
   
 
- 
   useEffect(() => {  
-    fetchProfile();
+  fetchProfile();
+}, []);
+
+// Séparer pour s'assurer que adminProfile est chargé
+useEffect(() => {
+  if (adminProfile) {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }
+}, [adminProfile]);
 
   return (
  <header
