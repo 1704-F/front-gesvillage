@@ -460,49 +460,197 @@ const ServiceInfoPage = () => {
         {/* Vue d'ensemble */}
         <TabsContent value="overview">
           {/* Cartes de tarification */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <Card className="relative shadow-md hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="p-3 bg-yellow-100 rounded-full shadow">
-                    <Gauge className="w-6 h-6 text-yellow-600" />
-                  </div>
-                </div>
-                <div className="mt-8 text-center">
-                <div className="text-2xl font-bold mb-2">{pricing?.current?.threshold || 0} m³</div>
-                  <div className="text-sm text-gray-500">Seuil de consommation</div>
-                </div>
-              </CardContent>
-            </Card>
-  
-            <Card className="relative shadow-md hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="p-3 bg-blue-100 rounded-full shadow">
-                    <Receipt className="w-6 h-6 text-blue-600" />
-                  </div>
-                </div>
-                <div className="mt-8 text-center">
-                <div className="text-2xl font-bold mb-2">{pricing?.current?.base_price || 0} FCFA</div>
-                  <div className="text-sm text-gray-500">Prix de base par m³</div>
-                </div>
-              </CardContent>
-            </Card>
-  
-            <Card className="relative shadow-md hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <div className="p-3 bg-red-100 rounded-full shadow">
-                    <CreditCard className="w-6 h-6 text-red-600" />
-                  </div>
-                </div>
-                <div className="mt-8 text-center">
-                <div className="text-2xl font-bold mb-2">{pricing?.current?.extra_price || 0} FCFA</div>
-                  <div className="text-sm text-gray-500">Prix au-delà du seuil</div>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+  {/* Nombre de tranches */}
+  <Card className="relative shadow-md hover:shadow-lg transition-shadow">
+    <CardContent className="p-6">
+      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+        <div className="p-3 bg-blue-100 rounded-full shadow">
+          <Calculator className="w-6 h-6 text-blue-600" />
+        </div>
+      </div>
+      <div className="mt-8 text-center">
+        <div className="text-2xl font-bold mb-2">
+          {pricing?.current?.threshold_3 ? '4' :
+           pricing?.current?.threshold_2 ? '3' :
+           pricing?.current?.threshold ? '2' : '1'} tranches
+        </div>
+        <div className="text-sm text-gray-500">Configuration tarifaire</div>
+      </div>
+    </CardContent>
+  </Card>
+
+  {/* Prix de base */}
+  <Card className="relative shadow-md hover:shadow-lg transition-shadow">
+    <CardContent className="p-6">
+      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+        <div className="p-3 bg-green-100 rounded-full shadow">
+          <Receipt className="w-6 h-6 text-green-600" />
+        </div>
+      </div>
+      <div className="mt-8 text-center">
+        <div className="text-2xl font-bold mb-2">{pricing?.current?.base_price || 0} FCFA</div>
+        <div className="text-sm text-gray-500">Prix tranche 1 (base)</div>
+      </div>
+    </CardContent>
+  </Card>
+
+  {/* Types de compteurs */}
+  <Card className="relative shadow-md hover:shadow-lg transition-shadow">
+    <CardContent className="p-6">
+      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+        <div className="p-3 bg-purple-100 rounded-full shadow">
+          <Gauge className="w-6 h-6 text-purple-600" />
+        </div>
+      </div>
+      <div className="mt-8 text-center">
+        <div className="text-2xl font-bold mb-2">6 types</div>
+        <div className="text-sm text-gray-500">Types de compteurs</div>
+      </div>
+    </CardContent>
+  </Card>
+
+  {/* Compteurs gratuits */}
+  <Card className="relative shadow-md hover:shadow-lg transition-shadow">
+    <CardContent className="p-6">
+      <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+        <div className="p-3 bg-orange-100 rounded-full shadow">
+          <FileCheck className="w-6 h-6 text-orange-600" />
+        </div>
+      </div>
+      <div className="mt-8 text-center">
+        <div className="text-2xl font-bold mb-2">
+          {pricing?.current?.free_enabled ? 'Activé' : 'Désactivé'}
+        </div>
+        <div className="text-sm text-gray-500">Compteurs gratuits</div>
+      </div>
+    </CardContent>
+  </Card>
+</div>
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+  {/* Détail des tranches */}
+  <Card className="shadow-md">
+    <CardHeader>
+      <CardTitle>Détail des tranches tarifaires</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-3">
+        <div className="flex justify-between items-center p-2 bg-blue-50 rounded">
+          <span className="font-medium">Tranche 1 (0 - {pricing?.current?.threshold || '∞'} m³)</span>
+          <span className="font-bold">{pricing?.current?.base_price || 0} FCFA/m³</span>
+        </div>
+        
+        {pricing?.current?.threshold && (
+          <div className="flex justify-between items-center p-2 bg-green-50 rounded">
+            <span className="font-medium">Tranche 2 ({pricing.current.threshold} - {pricing?.current?.threshold_2 || '∞'} m³)</span>
+            <span className="font-bold">{pricing?.current?.extra_price || 0} FCFA/m³</span>
           </div>
+        )}
+        
+        {pricing?.current?.threshold_2 && (
+          <div className="flex justify-between items-center p-2 bg-yellow-50 rounded">
+            <span className="font-medium">Tranche 3 ({pricing.current.threshold_2} - {pricing?.current?.threshold_3 || '∞'} m³)</span>
+            <span className="font-bold">{pricing?.current?.price_3 || 0} FCFA/m³</span>
+          </div>
+        )}
+        
+        {pricing?.current?.threshold_3 && (
+          <div className="flex justify-between items-center p-2 bg-red-50 rounded">
+            <span className="font-medium">Tranche 4 (au-delà de {pricing.current.threshold_3} m³)</span>
+            <span className="font-bold">{pricing?.current?.price_4 || 0} FCFA/m³</span>
+          </div>
+        )}
+      </div>
+    </CardContent>
+  </Card>
+
+  {/* Multiplicateurs par type de compteur */}
+  <Card className="shadow-md">
+    <CardHeader>
+      <CardTitle>Multiplicateurs par type</CardTitle>
+    </CardHeader>
+
+
+    <CardContent>
+  <div className="space-y-2">
+    <div className="flex justify-between items-center">
+      <span>Standard</span>
+      <Badge variant="secondary">Tarif normal</Badge>
+    </div>
+    
+    <div className="flex justify-between items-center">
+      <span>Premium</span>
+      <Badge variant={parseFloat(pricing?.current?.premium_multiplier || 1.5) > 1 ? "destructive" : "secondary"}>
+        {parseFloat(pricing?.current?.premium_multiplier || 1.5) > 1 
+          ? `+${Math.round((parseFloat(pricing?.current?.premium_multiplier || 1.5) - 1) * 100)}% d'augmentation`
+          : "Tarif normal"
+        }
+      </Badge>
+    </div>
+    
+    <div className="flex justify-between items-center">
+      <span>Agricole</span>
+      <Badge variant={
+        parseFloat(pricing?.current?.agricole_multiplier || 0.8) < 1 ? "success" :
+        parseFloat(pricing?.current?.agricole_multiplier || 0.8) > 1 ? "destructive" :
+        "secondary"
+      }>
+        {parseFloat(pricing?.current?.agricole_multiplier || 0.8) < 1 
+          ? `Réduction de ${Math.round((1 - parseFloat(pricing?.current?.agricole_multiplier || 0.8)) * 100)}%`
+          : parseFloat(pricing?.current?.agricole_multiplier || 0.8) > 1
+          ? `+${Math.round((parseFloat(pricing?.current?.agricole_multiplier || 0.8) - 1) * 100)}% d'augmentation`
+          : "Tarif normal"
+        }
+      </Badge>
+    </div>
+    
+    <div className="flex justify-between items-center">
+      <span>Industriel</span>
+      <Badge variant={
+        parseFloat(pricing?.current?.industriel_multiplier || 0.8) < 1 ? "success" :
+        parseFloat(pricing?.current?.industriel_multiplier || 0.8) > 1 ? "destructive" :
+        "secondary"
+      }>
+        {parseFloat(pricing?.current?.industriel_multiplier || 0.8) < 1 
+          ? `Réduction de ${Math.round((1 - parseFloat(pricing?.current?.industriel_multiplier || 0.8)) * 100)}%`
+          : parseFloat(pricing?.current?.industriel_multiplier || 0.8) > 1
+          ? `+${Math.round((parseFloat(pricing?.current?.industriel_multiplier || 0.8) - 1) * 100)}% d'augmentation`
+          : "Tarif normal"
+        }
+      </Badge>
+    </div>
+    
+    <div className="flex justify-between items-center">
+      <span>Autre tarif</span>
+      <Badge variant={
+        parseFloat(pricing?.current?.autre_tarif_multiplier || 0.8) < 1 ? "success" :
+        parseFloat(pricing?.current?.autre_tarif_multiplier || 0.8) > 1 ? "destructive" :
+        "secondary"
+      }>
+        {parseFloat(pricing?.current?.autre_tarif_multiplier || 0.8) < 1 
+          ? `Réduction de ${Math.round((1 - parseFloat(pricing?.current?.autre_tarif_multiplier || 0.8)) * 100)}%`
+          : parseFloat(pricing?.current?.autre_tarif_multiplier || 0.8) > 1
+          ? `+${Math.round((parseFloat(pricing?.current?.autre_tarif_multiplier || 0.8) - 1) * 100)}% d'augmentation`
+          : "Tarif normal"
+        }
+      </Badge>
+    </div>
+    
+    <div className="flex justify-between items-center">
+      <span>Gratuit</span>
+      <Badge variant="success">Gratuit (0%)</Badge>
+    </div>
+  </div>
+</CardContent>
+
+    
+
+    
+
+  </Card>
+</div>
+          
   
           {/* Informations de base */}
           <Card className="shadow-md">

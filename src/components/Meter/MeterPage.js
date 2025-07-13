@@ -570,21 +570,30 @@ const handleProblemSuccess = async (updatedMeter) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Type de facturation</label>
-              <Select
-                value={formData.billing_type}
-                onValueChange={(value) => handleChange('billing_type', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un type de facturation" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="standard">Standard</SelectItem>
-                  <SelectItem value="premium">Premium (Tarif élevé)</SelectItem>
-                  <SelectItem value="free">Gratuit (Bâtiment public)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+  <label className="text-sm font-medium">Type de facturation</label>
+  <Select
+    value={formData.billing_type}
+    onValueChange={(value) => handleChange('billing_type', value)}
+  >
+    <SelectTrigger>
+      <SelectValue placeholder="Sélectionner un type de facturation" />
+    </SelectTrigger>
+    <SelectContent>
+      <ScrollArea className="h-40">
+        <SelectItem value="standard">Standard</SelectItem>
+        <SelectItem value="premium">Premium</SelectItem>
+        <SelectItem value="agricole">Agricole</SelectItem>
+        <SelectItem value="industriel">Industriel</SelectItem>
+        <SelectItem value="autre_tarif">Autre tarif</SelectItem>
+        <SelectItem value="free">Gratuit</SelectItem>
+      </ScrollArea>
+    </SelectContent>
+  </Select>
+</div>
+
+          
+
+            
 
 
           </div>
@@ -721,19 +730,28 @@ const handleProblemSuccess = async (updatedMeter) => {
                       </Badge>
                     </TableCell>
 
-                    <TableCell>
-          <Badge 
-            variant={
-              meter.billing_type === 'premium' ? 'destructive' : 
-              meter.billing_type === 'free' ? 'success' : 
-              'secondary'
-            }
-          >
-            {meter.billing_type === 'premium' ? 'Premium' : 
-             meter.billing_type === 'free' ? 'Gratuit' : 
-             'Standard'}
-          </Badge>
-        </TableCell>
+                  <TableCell>
+  <Badge 
+    variant={
+      meter.billing_type === 'premium' ? 'destructive' : 
+      meter.billing_type === 'free' ? 'success' : 
+      meter.billing_type === 'agricole' ? 'outline' :
+      meter.billing_type === 'industriel' ? 'default' :
+      meter.billing_type === 'autre_tarif' ? 'secondary' :
+      'secondary'
+    }
+  >
+    {meter.billing_type === 'premium' ? 'Premium' : 
+     meter.billing_type === 'free' ? 'Gratuit' : 
+     meter.billing_type === 'agricole' ? 'Agricole' :
+     meter.billing_type === 'industriel' ? 'Industriel' :
+     meter.billing_type === 'autre_tarif' ? 'Autre' :
+     'Standard'}
+  </Badge>
+</TableCell>
+
+
+
         <TableCell>
                     <MeterProblemBadge meter={meter} />
                   </TableCell>

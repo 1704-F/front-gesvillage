@@ -260,11 +260,14 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
   const [calculationDetails, setCalculationDetails] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const billingTypeLabels = {
-    'standard': 'Standard',
-    'premium': 'Premium (tarif majoré)',
-    'free': 'Gratuit'
-  };
+ const billingTypeLabels = {
+  'standard': 'Standard',
+  'premium': 'Premium',
+  'agricole': 'Agricole',
+  'industriel': 'Industriel',
+  'autre_tarif': 'Autre tarif',
+  'free': 'Gratuit'
+};
 
   useEffect(() => {
     const fetchCalculation = async () => {
@@ -308,15 +311,21 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
           Calcul
         </h3>
         {details.billing_type && (
-          <Badge 
-            variant={
-              details.billing_type === 'premium' ? 'destructive' : 
-              details.billing_type === 'free' ? 'success' : 
-              'secondary'
-            }
-          >
-            {billingTypeLabels[details.billing_type]}
-          </Badge>
+
+         <Badge 
+  variant={
+    details.billing_type === 'premium' ? 'destructive' : 
+    details.billing_type === 'free' ? 'success' : 
+    details.billing_type === 'agricole' ? 'outline' :
+    details.billing_type === 'industriel' ? 'default' :
+    details.billing_type === 'autre_tarif' ? 'secondary' :
+    'secondary'
+  }
+>
+  {billingTypeLabels[details.billing_type]}
+</Badge>
+
+
         )}
         <div className="text-lg font-bold text-blue-700">
           {Math.round(details.total_amount).toLocaleString()} FCFA
@@ -338,45 +347,58 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
           </div>
 
           <div className="space-y-4">
-            {isSingleTier ? (
-              // Affichage pour tarification unique
-              <div>
-                <div className="text-sm font-medium">Tarification unique</div>
-                <div className="pl-3 text-sm text-gray-600">
-                  <div>Prix unitaire : {details.first_tier.rate} FCFA/m³</div>
-                  <div>{details.first_tier.consumption.toFixed(2)} m³ × {details.first_tier.rate} FCFA</div>
-                  <div className="font-medium text-black">
-                    = {Math.round(details.first_tier.amount).toLocaleString()} FCFA
-                  </div>
-                </div>
+  {details.pricing_type === 'SINGLE' ? (
+    // Affichage pour tarification unique
+    <div>
+      <div className="text-sm font-medium">Tarification unique</div>
+      <div className="pl-3 text-sm text-gray-600">
+        <div>Prix unitaire : {details.tranches[0].rate} FCFA/m³</div>
+        <div>{details.tranches[0].consumption.toFixed(2)} m³ × {details.tranches[0].rate} FCFA</div>
+        <div className="font-medium text-black">
+          = {Math.round(details.tranches[0].amount).toLocaleString()} FCFA
+        </div>
+      </div>
+    </div>
+  ) : (
+    // Affichage pour tarification multi-tranches
+    <>
+      {details.tranches.map((tranche, index) => (
+        tranche.consumption > 0 && (
+          <div key={index}>
+            <div className="text-sm font-medium">
+              Tranche {index + 1} {tranche.range && `(${tranche.range})`}
+            </div>
+            <div className="pl-3 text-sm text-gray-600">
+              <div>{tranche.consumption.toFixed(2)} m³ × {tranche.rate} FCFA</div>
+              <div className="font-medium text-black">
+                = {Math.round(tranche.amount).toLocaleString()} FCFA
               </div>
-            ) : (
-              // Affichage pour tarification à deux tranches
-              <>
-                <div>
-                  <div className="text-sm font-medium">Première tranche</div>
-                  <div className="pl-3 text-sm text-gray-600">
-                    <div>{details.first_tier.consumption.toFixed(2)} m³ × {details.first_tier.rate} FCFA</div>
-                    <div className="font-medium text-black">
-                      = {Math.round(details.first_tier.amount).toLocaleString()} FCFA
-                    </div>
-                  </div>
-                </div>
-
-                {details.second_tier.consumption > 0 && ( 
-                  <div>
-                    <div className="text-sm font-medium">Deuxième tranche</div>
-                    <div className="pl-3 text-sm text-gray-600">
-                      <div>{details.second_tier.consumption.toFixed(2)} m³ × {details.second_tier.rate} FCFA</div>
-                      <div className="font-medium text-black">
-                        = {Math.round(details.second_tier.amount).toLocaleString()} FCFA
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+            </div>
           </div>
+        )
+      ))}
+    </>
+  )}
+
+  {/* Affichage du multiplicateur si différent de 1 */}
+  {/* Remplacer cette section dans ConsumptionDetails : */}
+{details.multiplier && details.multiplier !== 1 && (
+  <div className="border-t pt-2">
+    <div className={`text-sm font-medium ${
+      details.multiplier > 1 ? 'text-red-600' : 'text-green-600'
+    }`}>
+      {details.billing_type} : {
+        details.multiplier > 1 
+          ? `+${Math.round((details.multiplier - 1) * 100)}% d'augmentation`
+          : `Réduction de ${Math.round((1 - details.multiplier) * 100)}%`
+      }
+    </div>
+  </div>
+)}
+  
+
+
+</div>
 
           <div className="text-xs text-gray-500 mt-2">
             * Calcul basé sur la tarification en vigueur
@@ -406,48 +428,28 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
   const [searchMeter, setSearchMeter] = useState('');
   const [isSelectOpen, setIsSelectOpen] = useState(false); // État pour contrôler l'ouverture du Select
 
-useEffect(() => {
-  if (editingReading) {
-    setFormData({
-      meter_id: String(editingReading.meter_id),
-      last_reading_value: editingReading.last_reading_value,
-      reading_value: editingReading.reading_value,
-      method: editingReading.method,
-      reading_date: new Date(editingReading.reading_date),
-      status: editingReading.status,
-      period: {
-        from: new Date(editingReading.start_date),
-        to: new Date(editingReading.end_date)
-      }
-    });
-  } else if (selectedMeterId) {
-    // Nouveau cas: initialiser seulement l'ID du compteur
-    setFormData(prev => ({
-      ...prev,
-      meter_id: String(selectedMeterId)
-    }));
-  } else if (isOpen && !editingReading && !selectedMeterId) {
-    // Nouveau relevé : réinitialiser complètement
-    const today = new Date();
-    const lastMonth = new Date();
-    lastMonth.setMonth(lastMonth.getMonth() - 1);
-    
-    setFormData({
-      meter_id: '',
-      last_reading_value: '',
-      reading_value: '',
-      method: 'manual',
-      reading_date: today,
-      status: 'pending',
-      period: {
-        from: lastMonth,
-        to: today
-      }
-    });
-    setConsumption(null);
-    setSearchMeter('');
-  }
-}, [editingReading, selectedMeterId, isOpen]);
+  useEffect(() => {
+    if (editingReading) {
+      setFormData({
+        meter_id: String(editingReading.meter_id),
+        last_reading_value: editingReading.last_reading_value,
+        reading_value: editingReading.reading_value,
+        method: editingReading.method,
+        reading_date: new Date(editingReading.reading_date),
+        status: editingReading.status,
+        period: {
+          from: new Date(editingReading.start_date),
+          to: new Date(editingReading.end_date)
+        }
+      });
+    } else if (selectedMeterId) {
+      // Nouveau cas: initialiser seulement l'ID du compteur
+      setFormData(prev => ({
+        ...prev,
+        meter_id: String(selectedMeterId)
+      }));
+    }
+  }, [editingReading, selectedMeterId]);
 
   useEffect(() => {
     if (formData.last_reading_value && formData.reading_value) {
@@ -486,77 +488,56 @@ useEffect(() => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError(null);
+    e.preventDefault();
+    setError(null);
 
-  if (parseFloat(formData.reading_value) <= parseFloat(formData.last_reading_value)) {
-    setError("Le nouvel index doit être supérieur à l'ancien index");
-    return;
-  }
+    if (parseFloat(formData.reading_value) <= parseFloat(formData.last_reading_value)) {
+      setError("Le nouvel index doit être supérieur à l'ancien index");
+      return;
+    }
 
-  const submitData = {
-    ...formData,
-    start_date: format(formData.period.from, 'yyyy-MM-dd'),
-    end_date: format(formData.period.to, 'yyyy-MM-dd'),
-    reading_date: format(formData.reading_date, 'yyyy-MM-dd')
+    const submitData = {
+      ...formData,
+      start_date: format(formData.period.from, 'yyyy-MM-dd'),
+      end_date: format(formData.period.to, 'yyyy-MM-dd'),
+      reading_date: format(formData.reading_date, 'yyyy-MM-dd')
+    };
+
+    try {
+      await onSubmit(submitData);
+    } catch (error) {
+      const errorData = error.response?.data;
+      const errorText = errorData?.error || '';
+      
+      if (errorText.includes('unique_reading_per_day')) {
+        setError(
+          <div className="space-y-2">
+            <p className="font-medium text-red-700">Un relevé existe déjà pour cette date</p>
+            <ul className="list-disc list-inside space-y-1 text-sm">
+              <li>Un seul relevé est autorisé par jour pour chaque compteur</li>
+              <li>Veuillez choisir une autre date pour ce relevé</li>
+            </ul>
+          </div>
+        );
+      } else if (
+        errorText.includes('existe déjà sur cette période') || 
+        errorText.includes('existe d,j') || 
+        errorText.toLowerCase().includes('relev')
+      ) {
+        setError(
+          <div className="space-y-2">
+            <p className="font-medium text-red-700">Période déjà couverte</p>
+            <ul className="list-disc list-inside space-y-1 text-sm">
+              <li>Un relevé existe déjà pour la période sélectionnée</li>
+              <li>Veuillez choisir une autre période pour ce relevé</li>
+            </ul>
+          </div>
+        );
+      } else {
+        setError(errorData?.message || "Une erreur est survenue lors de l'enregistrement du relevé");
+      }
+    }
   };
-
-  try {
-    await onSubmit(submitData);
-    
-    // Réinitialiser le formulaire en gardant seulement les périodes
-    if (!editingReading) {
-      const currentPeriod = formData.period;
-      const currentReadingDate = formData.reading_date;
-      
-      setFormData({
-        meter_id: '',
-        last_reading_value: '',
-        reading_value: '',
-        method: 'manual',
-        reading_date: currentReadingDate,
-        status: 'pending',
-        period: currentPeriod
-      });
-      
-      setConsumption(null);
-      setSearchMeter('');
-    }
-    
-  } catch (error) {
-    const errorData = error.response?.data;
-    const errorText = errorData?.error || '';
-    
-    if (errorText.includes('unique_reading_per_day')) {
-      setError(
-        <div className="space-y-2">
-          <p className="font-medium text-red-700">Un relevé existe déjà pour cette date</p>
-          <ul className="list-disc list-inside space-y-1 text-sm">
-            <li>Un seul relevé est autorisé par jour pour chaque compteur</li>
-            <li>Veuillez choisir une autre date pour ce relevé</li>
-          </ul>
-        </div>
-      );
-    } else if (
-      errorText.includes('existe déjà sur cette période') || 
-      errorText.includes('existe d,j') || 
-      errorText.toLowerCase().includes('relev')
-    ) {
-      setError(
-        <div className="space-y-2">
-          <p className="font-medium text-red-700">Période déjà couverte</p>
-          <ul className="list-disc list-inside space-y-1 text-sm">
-            <li>Un relevé existe déjà pour la période sélectionnée</li>
-            <li>Veuillez choisir une autre période pour ce relevé</li>
-          </ul>
-        </div>
-      );
-    } else {
-      setError(errorData?.message || "Une erreur est survenue lors de l'enregistrement du relevé");
-    }
-    throw error;
-  }
-};
 
   const fetchLatestReading = async (meterId) => {
     if (!meterId) return;
@@ -788,22 +769,21 @@ useEffect(() => {
           </div>
 
           <DialogFooter className="mt-6">
-  <Button 
-    type="button" 
-    variant="outline" 
-    onClick={() => {
-      setError(null);
-      setSearchMeter('');
-      onClose();
-    }}
-  >
-    Annuler
-  </Button>
-  <Button type="submit">
-    {editingReading ? 'Modifier' : 'Ajouter'}
-  </Button>
-</DialogFooter>
-
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setError(null);
+                setSearchMeter(''); // Réinitialiser la recherche à la fermeture
+                onClose();
+              }}
+            >
+              Annuler
+            </Button>
+            <Button type="submit">
+              {editingReading ? 'Modifier' : 'Ajouter'}
+            </Button>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

@@ -1311,7 +1311,7 @@ const DisconnectionTab = () => {
             {historyData.length > 0 && (
   <div className="flex items-center justify-between mt-4 px-2">
     <div className="flex items-center gap-2">
-      <span className="text-sm text-gray-600">Lignes par page:</span>
+      <span className="text-sm text-gray-600">Lignes par page:</span> 
       <Select
         value={String(historyPagination.limit)}
         onValueChange={(value) => {
