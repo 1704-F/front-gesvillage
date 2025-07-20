@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "../../ui/card";
 import { Badge } from "../../ui/badge";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../../ui/table";
-import { ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign, TrendingDown, Activity, Target, BarChart3, Wallet, Save, Wrench, AlertTriangle } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign, TrendingDown, Activity, Target, BarChart3, Wallet, Save, Wrench, AlertTriangle, Percent } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Tooltip, Legend, CartesianGrid, XAxis, YAxis, Cell, ResponsiveContainer, ComposedChart, Area } from 'recharts';
 import { Button } from "../../ui/button";
 import { useToast } from "../../ui/toast/use-toast";
@@ -109,8 +109,8 @@ const SummarySection = ({ data, period }) => {
  */}
       </div>
       
-      {/* Métriques principales avec nouveaux revenus */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Métriques principales avec nouveaux revenus ET remboursements */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Revenus Totaux"
           value={`${formatNumber(stats?.totalRevenue || 0)} FCFA`}
@@ -137,6 +137,7 @@ const SummarySection = ({ data, period }) => {
         <MetricCard
           title="Dépenses Totales"
           value={`${formatNumber(stats?.totalExpense || 0)} FCFA`}
+          subtitle={`Opé: ${formatNumber(stats?.operationalExpense || 0)} | Sal: ${formatNumber(stats?.salaryExpense || 0)} | Remb: ${formatNumber(stats?.repaymentExpense || 0)}`}
           trend="down"
           icon={TrendingDown}
         />
@@ -152,23 +153,21 @@ const SummarySection = ({ data, period }) => {
           title="Marge Opérationnelle"
           value={`${stats?.margin || 0}%`}
           trend={parseFloat(stats?.margin || 0) > 20 ? 'up' : 'down'}
-          trendValue={parseFloat(stats?.margin || 0)}
-          icon={Target}
+          icon={Percent}
         />
 
         <MetricCard
           title="Ratio Dépenses/Revenus"
           value={`${stats?.expenseRatio || 0}%`}
           trend={parseFloat(stats?.expenseRatio || 0) < 80 ? 'up' : 'down'}
-          trendValue={100 - parseFloat(stats?.expenseRatio || 0)}
-          icon={Activity}
+          icon={Target}
         />
 
         <MetricCard
           title="Trésorerie Finale"
           value={`${formatNumber(stats?.finalCashBalance || 0)} FCFA`}
-          subtitle={`(${formatNumber(stats?.initialCashBalance || 0)} FCFA initiale)`}
-          trend={parseFloat(stats?.netCashFlow || 0) > 0 ? 'up' : 'down'}
+          subtitle={`Initial: ${formatNumber(stats?.initialCashBalance || 0)}`}
+          trend={parseFloat(stats?.finalCashBalance || 0) > parseFloat(stats?.initialCashBalance || 0) ? 'up' : 'down'}
           icon={Wallet}
         />
       </div>

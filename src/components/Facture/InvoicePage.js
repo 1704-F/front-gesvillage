@@ -494,19 +494,6 @@ const [dateRange, setDateRange] = useState([
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-
-      console.log("=== DEBUG FETCH DASHBOARD ===");
-    console.log("Paramètres envoyés:", {
-      start_date: format(dateRange[0], 'yyyy-MM-dd'),
-      end_date: format(dateRange[1], 'yyyy-MM-dd'),
-      status: statusFilter !== 'all' ? statusFilter : undefined,
-      consumer_id: consumerFilter?.id,
-      page: currentPage,
-      limit: itemsPerPage
-    });
-
-     
-      
       const response = await api.get('/invoices/dashboard', {
         params: {
           start_date: format(dateRange[0], 'yyyy-MM-dd'),
@@ -519,17 +506,7 @@ const [dateRange, setDateRange] = useState([
       });
       
       const data = response.data.data;
-      console.log("=== RÉPONSE API ===");
-    console.log("Données complètes reçues:", data);
-    console.log("Nombre de validatedReadings:", data.validatedReadings?.length);
-    console.log("Validated readings from API:", data.validatedReadings);
-
-    // Chercher spécifiquement MTR-0253
-    const mtr0253Reading = data.validatedReadings?.find(r => 
-      r.meter?.meter_number === 'MTR-0253'
-    );
-    console.log("Relevé MTR-0253 trouvé:", mtr0253Reading);
-      
+     
       
       // Mettre à jour tous les états avec les données
       setInvoices(data.invoices);

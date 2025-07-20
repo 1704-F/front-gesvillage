@@ -208,55 +208,63 @@ const PDFSummarySection = ({ data }) => {
         />
       </View>
 
-      {/* 1. COMPTE DE RÉSULTAT DÉTAILLÉ */}
-      <Text style={styles.sectionTitle}>1. Compte de Résultat Détaillé</Text>
-      <Text style={styles.sectionSubtitle}>Affiche toutes les sources de revenus et les dépenses de l'exercice :</Text>
+      {/* 1. COMPTE DE RÉSULTAT DÉTAILLÉ - ✅ CORRIGÉ */}
+      <Text style={styles.sectionTitle}>1. Compte de Résultat</Text>
+      <Text style={styles.sectionSubtitle}>Performance financière incluant tous les revenus et dépenses :</Text>
       <View>
         <View style={[styles.row, styles.tableHeader]}>
-          <Text style={styles.col1}>Catégorie</Text>
+          <Text style={styles.col1}>Rubrique</Text>
           <Text style={styles.col2}>Montant (FCFA)</Text>
         </View>
         
-        {/* Revenus */}
+        {/* REVENUS */}
         <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Revenus d'exploitation (factures)</Text>
+          <Text style={styles.col1}>Revenus factures d'eau</Text>
           <Text style={styles.col2}>{formatNumber(stats.invoiceRevenue || 0)}</Text>
         </View>
         <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Autres revenus (dons)</Text>
+          <Text style={styles.col1}>Dons et subventions</Text>
           <Text style={styles.col2}>{formatNumber(stats.donationRevenue || 0)}</Text>
         </View>
-        <View style={[styles.row, styles.tableRow, styles.newRevenueRow]}>
+        <View style={[styles.row, styles.tableRow]}>
           <Text style={styles.col1}>Frais de branchement</Text>
           <Text style={styles.col2}>{formatNumber(stats.connectionLaborRevenue || 0)}</Text>
         </View>
-        <View style={[styles.row, styles.tableRow, styles.newRevenueRow]}>
-          <Text style={styles.col1}>Pénalités de coupure payées</Text>
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Pénalités de coupure</Text>
           <Text style={styles.col2}>{formatNumber(stats.penaltyRevenue || 0)}</Text>
         </View>
         <View style={[styles.row, styles.tableRow, styles.subtotalRow]}>
-          <Text style={styles.col1}>Total Revenus</Text>
+          <Text style={styles.col1}>TOTAL REVENUS</Text>
           <Text style={styles.col2}>{formatNumber(stats.totalRevenue || 0)}</Text>
         </View>
         
-        {/* Dépenses */}
+        {/* DÉPENSES - ✅ INCLURE LES REMBOURSEMENTS */}
         <View style={[styles.row, styles.tableRow]}>
           <Text style={styles.col1}>Dépenses opérationnelles</Text>
           <Text style={styles.col2}>{formatNumber(stats.operationalExpense || 0)}</Text>
         </View>
         <View style={[styles.row, styles.tableRow]}>
-          <Text style={styles.col1}>Salaires</Text>
+          <Text style={styles.col1}>Salaires et charges</Text>
           <Text style={styles.col2}>{formatNumber(stats.salaryExpense || 0)}</Text>
         </View>
-        <View style={[styles.row, styles.tableRow, styles.expenseRow]}>
-          <Text style={styles.col1}>Total Dépenses</Text>
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Remboursements d'emprunts</Text>
+          <Text style={styles.col2}>{formatNumber(stats.repaymentExpense || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow, styles.subtotalRow]}>
+          <Text style={styles.col1}>TOTAL DÉPENSES</Text>
           <Text style={styles.col2}>{formatNumber(stats.totalExpense || 0)}</Text>
         </View>
         
-        {/* Résultat */}
-        <View style={[styles.row, styles.tableRow, styles.resultatRow]}>
-          <Text style={styles.col1}>Résultat d'exploitation</Text>
+        {/* RÉSULTAT */}
+        <View style={[styles.row, styles.tableRow, styles.totalRow]}>
+          <Text style={styles.col1}>RÉSULTAT D'EXPLOITATION</Text>
           <Text style={styles.col2}>{formatNumber(stats.profit || 0)}</Text>
+        </View>
+        <View style={[styles.row, styles.tableRow]}>
+          <Text style={styles.col1}>Marge opérationnelle</Text>
+          <Text style={styles.col2}>{stats.margin || 0}%</Text>
         </View>
       </View>
 
