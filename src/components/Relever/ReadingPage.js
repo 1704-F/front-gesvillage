@@ -409,27 +409,49 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
   );
 };
 
-const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, selectedMeterId  }) => {
+const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, selectedMeterId }) => {
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     meter_id: '',
     last_reading_value: '',
     reading_value: '',
     method: 'manual',
-    reading_date: new Date(),
+    reading_date: null, // Changé de new Date() à null
     status: 'pending',
     period: {
-      from: new Date(),
-      to: new Date()
+      from: null, // Changé de new Date() à null
+      to: null    // Changé de new Date() à null
     }
   });
 
   const [consumption, setConsumption] = useState(null);
   const [searchMeter, setSearchMeter] = useState('');
-  const [isSelectOpen, setIsSelectOpen] = useState(false); // État pour contrôler l'ouverture du Select
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
 
+  // Réinitialiser le formulaire quand le modal se ferme
   useEffect(() => {
-    if (editingReading) {
+    if (!isOpen) {
+      setFormData({
+        meter_id: '',
+        last_reading_value: '',
+        reading_value: '',
+        method: 'manual',
+        reading_date: null,
+        status: 'pending',
+        period: {
+          from: null,
+          to: null
+        }
+      });
+      setConsumption(null);
+      setError(null);
+      setSearchMeter('');
+    }
+  }, [isOpen]);
+
+  // Gérer les données d'édition - PRIORITÉ 1
+  useEffect(() => {
+    if (editingReading && isOpen) {
       setFormData({
         meter_id: String(editingReading.meter_id),
         last_reading_value: editingReading.last_reading_value,
@@ -442,15 +464,26 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
           to: new Date(editingReading.end_date)
         }
       });
-    } else if (selectedMeterId) {
-      // Nouveau cas: initialiser seulement l'ID du compteur
+    }
+  }, [editingReading, isOpen]);
+
+  // Gérer le compteur présélectionné - PRIORITÉ 2
+  useEffect(() => {
+    if (selectedMeterId && !editingReading && isOpen) {
       setFormData(prev => ({
         ...prev,
-        meter_id: String(selectedMeterId)
+        meter_id: String(selectedMeterId),
+        // Définir des dates par défaut uniquement pour un nouveau relevé
+        reading_date: new Date(),
+        period: {
+          from: new Date(),
+          to: new Date()
+        }
       }));
     }
-  }, [editingReading, selectedMeterId]);
+  }, [selectedMeterId, editingReading, isOpen]);
 
+  // Calcul de la consommation
   useEffect(() => {
     if (formData.last_reading_value && formData.reading_value) {
       const newConsumption = parseFloat(formData.reading_value) - parseFloat(formData.last_reading_value);
@@ -460,14 +493,14 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     }
   }, [formData.last_reading_value, formData.reading_value]);
 
+  // Récupérer le dernier relevé SEULEMENT pour les nouveaux relevés
   useEffect(() => {
-    if (formData.meter_id && !editingReading) {
+    if (formData.meter_id && !editingReading && isOpen) {
       fetchLatestReading(formData.meter_id);
     }
-  }, [formData.meter_id]);
+  }, [formData.meter_id, editingReading, isOpen]);
 
   const handleChange = (field, value) => {
-    // Créez une nouvelle référence de l'objet formData pour garantir que React détecte le changement
     const newFormData = {
       ...formData,
       [field]: value
@@ -498,9 +531,9 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
 
     const submitData = {
       ...formData,
-      start_date: format(formData.period.from, 'yyyy-MM-dd'),
-      end_date: format(formData.period.to, 'yyyy-MM-dd'),
-      reading_date: format(formData.reading_date, 'yyyy-MM-dd')
+      start_date: formData.period.from ? format(formData.period.from, 'yyyy-MM-dd') : null,
+      end_date: formData.period.to ? format(formData.period.to, 'yyyy-MM-dd') : null,
+      reading_date: formData.reading_date ? format(formData.reading_date, 'yyyy-MM-dd') : null
     };
 
     try {
@@ -621,8 +654,8 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                     value={formData.meter_id}
                     onValueChange={(value) => {
                       handleChange('meter_id', value);
-                      setIsSelectOpen(false); // Fermer le Select après sélection
-                      setSearchMeter(''); // Réinitialiser la recherche
+                      setIsSelectOpen(false);
+                      setSearchMeter('');
                     }}
                     disabled={!!editingReading}
                   >
@@ -634,7 +667,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                       className="max-h-80 overflow-y-auto"
                       onPointerDownOutside={() => {
                         setIsSelectOpen(false);
-                        setSearchMeter(''); // Réinitialiser la recherche quand on ferme
+                        setSearchMeter('');
                       }}
                     >
                       <div className="sticky top-0 bg-white p-2 border-b z-10">
@@ -642,14 +675,14 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                           placeholder="Rechercher un compteur..."
                           value={searchMeter}
                           onChange={(e) => {
-                            e.stopPropagation(); // Empêcher la fermeture du Select
+                            e.stopPropagation();
                             setSearchMeter(e.target.value);
                           }}
                           onKeyDown={(e) => {
-                            e.stopPropagation(); // Empêcher les interactions avec le Select
+                            e.stopPropagation();
                           }}
                           onClick={(e) => {
-                            e.stopPropagation(); // Empêcher la fermeture du Select
+                            e.stopPropagation();
                           }}
                         />
                       </div>
@@ -668,8 +701,6 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                         )}
                       </ScrollArea>
                     </SelectContent>
-
-                    
                   </Select>
                 </div>
               </div>
@@ -774,7 +805,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
               variant="outline" 
               onClick={() => {
                 setError(null);
-                setSearchMeter(''); // Réinitialiser la recherche à la fermeture
+                setSearchMeter('');
                 onClose();
               }}
             >
