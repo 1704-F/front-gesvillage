@@ -30,6 +30,7 @@ import { useToast } from "../ui/toast/use-toast";
 import { Dialog, DialogContent } from "../ui/dialog";
 import AnomalySettings from "./AnomalySettings";
 import AnomalyDetail from "./AnomalyDetail";
+import AnomalyList from "./AnomalyList";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const AnomalyDashboard = () => {
@@ -39,6 +40,7 @@ const AnomalyDashboard = () => {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [selectedAnomalyId, setSelectedAnomalyId] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showListModal, setShowListModal] = useState(false);
   const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState('30d'); // 7d, 30d, 90d
   const [refreshInterval, setRefreshInterval] = useState(null);
@@ -594,10 +596,16 @@ const AnomalyDashboard = () => {
 
           {recentAnomalies && recentAnomalies.length > 0 && (
             <div className="mt-6 pt-4 border-t flex justify-center">
-              <Button variant="outline" className="w-full md:w-auto">
-                <List className="w-4 h-4 mr-2" />
-                Voir toutes les anomalies ({formatNumber(stats?.active || 0)})
-              </Button>
+
+              <Button 
+  variant="outline" 
+  className="w-full"
+  onClick={() => setShowListModal(true)}
+>
+  <List className="w-4 h-4 mr-2" />
+  Voir toutes les anomalies ({formatNumber(stats?.active || 0)})
+</Button>
+
             </div>
           )}
         </CardContent>
@@ -663,6 +671,14 @@ const AnomalyDashboard = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {showListModal && (
+  <Dialog open={showListModal} onOpenChange={setShowListModal}>
+    <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-y-auto p-6">
+      <AnomalyList />
+    </DialogContent>
+  </Dialog>
+)}
     </div>
   );
 };
