@@ -45,6 +45,8 @@ const AnomalyDashboard = () => {
   const [timeRange, setTimeRange] = useState('30d'); // 7d, 30d, 90d
   const [refreshInterval, setRefreshInterval] = useState(null);
 
+  
+
   const { toast } = useToast();
 
   // Couleurs pour les graphiques
@@ -611,7 +613,7 @@ const AnomalyDashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Alertes importantes avec actions suggérées */}
+      {/* Alertes importantes avec actions suggérées 
       {stats?.critical > 0 && (
         <Alert variant="destructive" className="border-l-4 border-l-red-500">
           <AlertCircle className="h-4 w-4" />
@@ -629,6 +631,9 @@ const AnomalyDashboard = () => {
           </AlertDescription>
         </Alert>
       )}
+        */}
+
+        {/* Alertes importantes avec actions suggérées 
 
       {stats?.active > 15 && (
         <Alert className="border-l-4 border-l-yellow-500">
@@ -647,6 +652,8 @@ const AnomalyDashboard = () => {
           </AlertDescription>
         </Alert>
       )}
+
+      */}
 
       {/* Modals */}
       {showSettingsModal && (

@@ -43,6 +43,112 @@ import { axiosPrivate as api } from '../../utils/axios';
 import { useToast } from "../ui/toast/use-toast";
 import { Dialog, DialogContent } from "../ui/dialog";
 import AnomalyDetail from "./AnomalyDetail";
+import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { format } from 'date-fns';
+
+const styles = StyleSheet.create({
+  page: {
+    padding: 30,
+    backgroundColor: '#ffffff',
+    orientation: 'landscape', // ✅ AJOUTÉ
+  },
+  header: {
+    marginBottom: 20,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  dateRange: {
+    marginBottom: 15,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  table: {
+    display: 'table',
+    width: '100%',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#000000',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#000000',
+    minHeight: 30,
+  },
+  tableHeader: {
+    backgroundColor: '#f8f9fa',
+    fontWeight: 'bold',
+  },
+  tableCell: {
+    flex: 1,
+    padding: 6,
+    fontSize: 9,
+    borderRightWidth: 1,
+    borderRightColor: '#cccccc',
+  },
+});
+
+
+const AnomaliesPDF = ({ anomalies, filters }) => (
+  <Document>
+    <Page size="A4" orientation="landscape" style={styles.page}>
+      <Text style={styles.header}>Rapport des Anomalies de Consommation</Text>
+      
+      {filters.startDate && filters.endDate && (
+        <Text style={styles.dateRange}>
+          Période du {format(new Date(filters.startDate), 'dd/MM/yyyy')} au {format(new Date(filters.endDate), 'dd/MM/yyyy')}
+        </Text>
+      )}
+
+      <View style={styles.table}>
+        <View style={[styles.tableRow, styles.tableHeader]}>
+          <Text style={styles.tableCell}>N°</Text>
+          <Text style={styles.tableCell}>Consommateur</Text>
+          <Text style={styles.tableCell}>Type</Text>
+          <Text style={styles.tableCell}>Sévérité</Text>
+          <Text style={styles.tableCell}>Écart (%)</Text>
+          <Text style={styles.tableCell}>Actuel (m³)</Text>
+          <Text style={styles.tableCell}>Moyenne (m³)</Text>
+          <Text style={styles.tableCell}>Date détection</Text>
+          <Text style={styles.tableCell}>Statut</Text>
+        </View>
+
+        {anomalies.map((item, index) => (
+          <View key={item.id} style={styles.tableRow}>
+            <Text style={styles.tableCell}>{index + 1}</Text>
+            <Text style={styles.tableCell}>{item.consumer?.name || 'N/A'}</Text>
+            <Text style={styles.tableCell}>{item.anomaly?.typeLabel || 'N/A'}</Text>
+            <Text style={styles.tableCell}>{item.anomaly?.severityLabel || 'N/A'}</Text>
+            <Text style={styles.tableCell}>
+              {item.anomaly?.deviation != null 
+                ? `${item.anomaly.deviation > 0 ? '+' : ''}${Number(item.anomaly.deviation).toFixed(1)}%` 
+                : 'N/A'}
+            </Text>
+            <Text style={styles.tableCell}>
+              {item.anomaly?.currentReading != null 
+                ? Number(item.anomaly.currentReading).toFixed(1) 
+                : 'N/A'}
+            </Text>
+            <Text style={styles.tableCell}>
+              {item.anomaly?.averageReading != null 
+                ? Number(item.anomaly.averageReading).toFixed(1) 
+                : 'N/A'}
+            </Text>
+
+            <Text style={styles.tableCell}>
+      {item.detectionDate 
+        ? format(new Date(item.detectionDate), 'dd/MM/yyyy') 
+        : 'N/A'}
+    </Text>
+
+            <Text style={styles.tableCell}>{item.statusLabel || item.status || 'N/A'}</Text>
+          </View>
+        ))}
+      </View>
+    </Page>
+  </Document>
+);
 
 const AnomalyList = () => {
   const [anomalies, setAnomalies] = useState([]);
@@ -246,10 +352,21 @@ const AnomalyList = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Exporter
-          </Button>
+
+          {anomalies.length > 0 && (
+  <PDFDownloadLink
+    document={<AnomaliesPDF anomalies={anomalies} filters={filters} />}
+    fileName={`rapport-anomalies-${format(new Date(), 'dd-MM-yyyy')}.pdf`}
+  >
+    {({ loading }) => (
+      <Button variant="outline" disabled={loading}>
+        <Download className="h-4 w-4 mr-2" />
+        {loading ? 'Génération...' : 'Télécharger PDF'}
+      </Button>
+    )}
+  </PDFDownloadLink>
+)}
+
         </div>
       </div>
 
@@ -307,7 +424,7 @@ const AnomalyList = () => {
                   <option value="critical">Critique</option>
                   <option value="high">Élevée</option>
                   <option value="medium">Modérée</option>
-                  <option value="low">Faible</option>
+                  <option value="low">Faible</option> 
                 </select>
               </div>
 
@@ -381,7 +498,7 @@ const AnomalyList = () => {
           ) : error ? (
             <Alert variant="destructive" className="m-4">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{error}</AlertDescription> 
             </Alert>
           ) : anomalies.length === 0 ? (
             <div className="p-12 text-center">
@@ -499,7 +616,7 @@ const AnomalyList = () => {
                       {/* Date de détection */}
                       <div className="col-span-2">
                         <div className="text-sm text-gray-900">
-                          {formatDate(anomaly.anomaly.detectionDate)}
+                          {formatDate(anomaly.detectionDate)}
                         </div>
                         <div className="text-xs text-gray-500">
                           Période: {new Date(anomaly.anomaly.period.start).toLocaleDateString('fr-FR')} - 
@@ -510,7 +627,7 @@ const AnomalyList = () => {
                       {/* Statut */}
                       <div className="col-span-1">
                         <Badge className={`${getStatusColor(anomaly.anomaly.status)} text-xs`}>
-                          {anomaly.anomaly.statusLabel}
+                          {anomaly.statusLabel}
                         </Badge>
                       </div>
 
