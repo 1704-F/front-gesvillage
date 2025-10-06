@@ -45,6 +45,7 @@ import { Dialog, DialogContent } from "../ui/dialog";
 import AnomalyDetail from "./AnomalyDetail";
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { format } from 'date-fns';
+import { pdf } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
   page: {
@@ -392,39 +393,35 @@ const AnomalyList = () => {
             {pagination.totalItems} anomalies trouvées
           </p>
         </div>
+
         <div className="flex gap-2">
+  {anomalies.length > 0 && (
+    <Button
+      variant="outline"
+      onClick={async () => {
+        setLoadingPDF(true);
+        const allData = await fetchAllAnomaliesForPDF();
+        if (allData.length > 0) {
+          // Créer et déclencher le téléchargement automatiquement
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(
+            await pdf(
+              <AnomaliesPDF anomalies={allData} filters={filters} />
+            ).toBlob()
+          );
+          link.download = `rapport-anomalies-${format(new Date(), 'dd-MM-yyyy')}.pdf`;
+          link.click();
+          setLoadingPDF(false);
+        }
+      }}
+      disabled={loadingPDF}
+    >
+      <Download className="h-4 w-4 mr-2" />
+      {loadingPDF ? 'Génération...' : 'Télécharger PDF'}
+    </Button>
+  )}
+</div>
 
-       <Button
-  variant="outline"
-  onClick={async () => {
-    const allData = await fetchAllAnomaliesForPDF();
-    if (allData.length > 0) {
-      // Le téléchargement se fera automatiquement via le hook
-    }
-  }}
-  disabled={loadingPDF || anomalies.length === 0}
->
-  <Download className="h-4 w-4 mr-2" />
-  {loadingPDF ? 'Préparation...' : 'Télécharger PDF'}
-</Button>
-
-{allAnomaliesForPDF.length > 0 && (
-  <PDFDownloadLink
-    document={<AnomaliesPDF anomalies={allAnomaliesForPDF} filters={filters} />}
-    fileName={`rapport-anomalies-${format(new Date(), 'dd-MM-yyyy')}.pdf`}
-    style={{ display: 'none' }}
-  >
-    {({ blob, url, loading, error }) => {
-      if (url && !loading) {
-        window.open(url);
-      }
-      return null;
-    }}
-  </PDFDownloadLink>
-)}
-         
-
-        </div>
       </div>
 
       {/* Filtres */}
