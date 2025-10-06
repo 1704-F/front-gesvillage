@@ -157,6 +157,9 @@ const AnomalyList = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [error, setError] = useState(null);
 
+  const [allAnomaliesForPDF, setAllAnomaliesForPDF] = useState([]);
+  const [loadingPDF, setLoadingPDF] = useState(false);
+
   // États de filtrage et pagination
   const [filters, setFilters] = useState({
     status: 'all',
@@ -334,6 +337,44 @@ const AnomalyList = () => {
     });
   };
 
+  const fetchAllAnomaliesForPDF = async () => {
+  try {
+    setLoadingPDF(true);
+    const params = new URLSearchParams({
+      page: 1,
+      limit: 10000,
+      sortBy,
+      sortOrder,
+      ...Object.fromEntries(
+        Object.entries(filters).filter(([_, value]) => value && value !== 'all')
+      )
+    });
+
+    const response = await api.get(`/anomalies?${params}`);
+    const data = response.data.data;
+    
+    setAllAnomaliesForPDF(data.anomalies || []);
+    
+    toast({
+      title: "Succès",
+      description: `${data.anomalies?.length || 0} anomalies chargées pour l'export PDF`
+    });
+    
+    return data.anomalies || [];
+  } catch (err) {
+    toast({
+      variant: "destructive",
+      title: "Erreur",
+      description: "Impossible de charger les données pour le PDF"
+    });
+    return [];
+  } finally {
+    setLoadingPDF(false);
+  }
+};
+
+
+
   // Nombre de filtres actifs
   const activeFiltersCount = Object.values(filters).filter(value => 
     value && value !== '' && value !== 'all'
@@ -353,19 +394,35 @@ const AnomalyList = () => {
         </div>
         <div className="flex gap-2">
 
-          {anomalies.length > 0 && (
+       <Button
+  variant="outline"
+  onClick={async () => {
+    const allData = await fetchAllAnomaliesForPDF();
+    if (allData.length > 0) {
+      // Le téléchargement se fera automatiquement via le hook
+    }
+  }}
+  disabled={loadingPDF || anomalies.length === 0}
+>
+  <Download className="h-4 w-4 mr-2" />
+  {loadingPDF ? 'Préparation...' : 'Télécharger PDF'}
+</Button>
+
+{allAnomaliesForPDF.length > 0 && (
   <PDFDownloadLink
-    document={<AnomaliesPDF anomalies={anomalies} filters={filters} />}
+    document={<AnomaliesPDF anomalies={allAnomaliesForPDF} filters={filters} />}
     fileName={`rapport-anomalies-${format(new Date(), 'dd-MM-yyyy')}.pdf`}
+    style={{ display: 'none' }}
   >
-    {({ loading }) => (
-      <Button variant="outline" disabled={loading}>
-        <Download className="h-4 w-4 mr-2" />
-        {loading ? 'Génération...' : 'Télécharger PDF'}
-      </Button>
-    )}
+    {({ blob, url, loading, error }) => {
+      if (url && !loading) {
+        window.open(url);
+      }
+      return null;
+    }}
   </PDFDownloadLink>
 )}
+         
 
         </div>
       </div>
