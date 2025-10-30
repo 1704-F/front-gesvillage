@@ -39,7 +39,7 @@ import MeterPDFDownloadButton from './MeterPDFDownloadButton';
 import MeterProblemBadge from './MeterProblemBadge';
 import MeterProblemDialog from './MeterProblemDialog';
 import MeterStatistics from './MeterStatistics';
-import WaterDropLoader from './WaterDropLoader';
+import MeterPageSkeleton from './MeterPageSkeletonShimmer';
 
 const useDebounce = (value, delay) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -470,11 +470,20 @@ const handleProblemSuccess = async (updatedMeter) => {
               <SelectValue placeholder="Sélectionner un consommateur" />
             </SelectTrigger>
             <SelectContent>
-              <div className="sticky top-0 bg-white p-2">
+              <div className="sticky top-0 bg-white p-2 z-50">
                 <Input
                   placeholder="Rechercher un consommateur..."
                   value={searchConsumer}
-                  onChange={(e) => setSearchConsumer(e.target.value)}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setSearchConsumer(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
                 />
               </div>
               <ScrollArea className="h-72">
@@ -616,7 +625,7 @@ const handleProblemSuccess = async (updatedMeter) => {
   return (
     <div className="p-6 space-y-6">
       {loading ? (
-        <WaterDropLoader />
+        <MeterPageSkeleton />
       ) : (
         <>
 
