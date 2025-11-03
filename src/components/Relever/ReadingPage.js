@@ -1045,6 +1045,11 @@ const ReadingPage = () => {
   const [isSearchingConsumers, setIsSearchingConsumers] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
+  // État pour le chargement du PDF avec toutes les données
+  const [allReadingsForPDF, setAllReadingsForPDF] = useState([]);
+  const [isLoadingPDF, setIsLoadingPDF] = useState(false);
+  const [shouldGeneratePDF, setShouldGeneratePDF] = useState(false);
+  
 
   useEffect(() => {
     const handleCreateReadingForMeter = (event) => {
@@ -1113,6 +1118,59 @@ const ReadingPage = () => {
       });
     } finally {
       setIsSearchingConsumers(false);
+    }
+  };
+
+  // Fonction pour récupérer TOUTES les données pour le PDF (sans pagination)
+  const fetchAllReadingsForPDF = async () => {
+    try {
+      setIsLoadingPDF(true);
+      setShouldGeneratePDF(false);
+      
+      const response = await api.get('/readings/dashboard', {
+        params: {
+          start_date: format(dateRange[0], 'yyyy-MM-dd'),
+          end_date: format(dateRange[1], 'yyyy-MM-dd'),
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          consumer_id: consumerFilter?.id,
+          // Ne pas envoyer de pagination pour avoir toutes les données
+          page: 1,
+          limit: 999999 // Valeur très élevée pour tout récupérer
+        }
+      });
+      
+      const data = response.data.data;
+      
+      // Trier les données correctement
+      const sortedData = [...data.readings].sort((a, b) => {
+        if (!a.meter || !b.meter) return 0;
+        
+        const aMatch = a.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
+        const bMatch = b.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
+        
+        if (aMatch && bMatch) {
+          if (aMatch[1] !== bMatch[1]) {
+            return aMatch[1].localeCompare(bMatch[1]);
+          }
+          return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+        }
+        
+        return a.meter.meter_number.localeCompare(b.meter.meter_number);
+      });
+      
+      setAllReadingsForPDF(sortedData);
+      setShouldGeneratePDF(true);
+      return sortedData;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des données pour le PDF:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de récupérer toutes les données pour le PDF"
+      });
+      return [];
+    } finally {
+      setIsLoadingPDF(false);
     }
   };
 
@@ -1339,7 +1397,6 @@ const ReadingPage = () => {
                 }}
                 variant="default"
               >
-               
                 Valider
               </Button>
             </div>
@@ -1442,16 +1499,43 @@ const ReadingPage = () => {
             )}
 
             {activeTab === "readings" && (
+              <Button 
+                variant="outline" 
+                disabled={isLoadingPDF}
+                onClick={async () => {
+                  await fetchAllReadingsForPDF();
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isLoadingPDF ? 'Chargement...' : 'Télécharger PDF'}
+              </Button>
+            )}
+
+            {/* Composant caché pour le téléchargement PDF */}
+            {activeTab === "readings" && shouldGeneratePDF && allReadingsForPDF.length > 0 && (
               <PDFDownloadLink
-                document={<RelevePDF readings={readings} dateRange={dateRange} />}
+                document={<RelevePDF readings={allReadingsForPDF} dateRange={dateRange} />}
                 fileName={`releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
               >
-                {({ loading }) => (
-                  <Button variant="outline" disabled={loading}>
-                    <Download className="h-4 w-4 mr-2" />
-                    {loading ? 'Génération...' : 'Télécharger PDF'}
-                  </Button>
-                )}
+                {({ blob, url, loading, error }) => {
+                  // Déclencher le téléchargement automatiquement une seule fois
+                  if (!loading && url && shouldGeneratePDF) {
+                    // Créer un timeout pour éviter les appels multiples
+                    setTimeout(() => {
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      
+                      // Réinitialiser immédiatement pour éviter les re-téléchargements
+                      setShouldGeneratePDF(false);
+                      setAllReadingsForPDF([]);
+                    }, 100);
+                  }
+                  return null;
+                }}
               </PDFDownloadLink>
             )}
 
