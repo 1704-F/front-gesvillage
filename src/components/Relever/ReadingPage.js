@@ -29,6 +29,7 @@ import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-
 import { Users, XCircle, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { axiosPrivate as api } from '../../utils/axios';
+import ReadingPageSkeleton from './ReadingPageSkeleton';
 
 
 // Styles améliorés pour éviter les problèmes de rendu PDF
@@ -36,8 +37,8 @@ const styles = StyleSheet.create({
   page: {
     padding: 30,
     orientation: 'landscape',
-    backgroundColor: '#ffffff', // Assurer un fond blanc
-    color: '#000000', // Assurer un texte noir
+    backgroundColor: '#ffffff',
+    color: '#000000',
   },
   header: {
     marginBottom: 20,
@@ -67,12 +68,12 @@ const styles = StyleSheet.create({
     borderBottomStyle: 'solid',
     alignItems: 'center',
     minHeight: 30,
-    backgroundColor: '#ffffff', // Fond blanc pour toutes les lignes
+    backgroundColor: '#ffffff',
   },
   tableHeader: {
-    backgroundColor: '#f8f9fa', // Fond gris très clair pour l'en-tête
+    backgroundColor: '#f8f9fa',
     fontWeight: 'bold',
-    borderBottomWidth: 2, // Ligne plus épaisse sous l'en-tête
+    borderBottomWidth: 2,
   },
   tableCell: {
     flex: 1,
@@ -84,7 +85,6 @@ const styles = StyleSheet.create({
     borderRightColor: '#cccccc',
     borderRightStyle: 'solid',
   },
-  // Styles spécifiques pour différents types de cellules
   tableCellNumber: {
     flex: 0.5,
     textAlign: 'center',
@@ -111,11 +111,11 @@ const formatNumber = (num, decimals = 0) => {
   return new Intl.NumberFormat('fr-FR', { 
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-    useGrouping: true // S'assurer que le groupement est activé
+    useGrouping: true
   }).format(num)
-    .replace(/\s/g, ' ') // Remplacer tous les espaces par des espaces normaux
-    .replace(/[.,]\s/g, '.') // Gérer les décimales
-    .replace(/\//g, ' '); // Remplacer les slashes par des espaces
+    .replace(/\s/g, ' ')
+    .replace(/[.,]\s/g, '.')
+    .replace(/\//g, ' ');
 };
 
 const formatPercent = (num) => {
@@ -123,15 +123,43 @@ const formatPercent = (num) => {
   return Number(num).toFixed(2);
 };
 
+// Fonction de tri améliorée pour les compteurs
+const sortMeterNumber = (a, b) => {
+  const aMatch = a.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
+  const bMatch = b.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
+  
+  if (aMatch && bMatch) {
+    // Comparer les préfixes
+    if (aMatch[1] !== bMatch[1]) {
+      return aMatch[1].localeCompare(bMatch[1]);
+    }
+    // Si préfixes identiques, comparer les numéros
+    return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+  }
+  
+  // Fallback si le format ne correspond pas
+  return a.meter.meter_number.localeCompare(b.meter.meter_number);
+};
+
 // Composant PDF
 
 const RelevePDF = ({ readings, dateRange }) => {
-  // Trier les données par numéro de compteur avant de les rendre
+  // Trier les données par numéro de compteur CORRECTEMENT
   const sortedReadings = [...readings].sort((a, b) => {
-    // S'assurer que les deux relevés ont bien un compteur associé
     if (!a.meter || !b.meter) return 0;
     
-    // Comparer les numéros de compteur
+    const aMatch = a.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
+    const bMatch = b.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
+    
+    if (aMatch && bMatch) {
+      // Comparer les préfixes
+      if (aMatch[1] !== bMatch[1]) {
+        return aMatch[1].localeCompare(bMatch[1]);
+      }
+      // Si préfixes identiques, comparer les numéros
+      return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+    }
+    
     return a.meter.meter_number.localeCompare(b.meter.meter_number);
   });
 
@@ -198,15 +226,17 @@ const RelevePDF = ({ readings, dateRange }) => {
 
 
 // Composant PDF complet pour les compteurs sans relevés
-// Version de debug pour tester le rendu de base
 const MetersPDF = ({ meters, dateRange }) => {
   console.log('MetersPDF - Nombre de compteurs:', meters.length);
   
   const sortedMeters = [...meters].sort((a, b) => {
-    const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
-    const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
+    const aMatch = a.meter_number.match(/([A-Za-z]+)-?(\d+)/);
+    const bMatch = b.meter_number.match(/([A-Za-z]+)-?(\d+)/);
     
-    if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
+    if (aMatch && bMatch) {
+      if (aMatch[1] !== bMatch[1]) {
+        return aMatch[1].localeCompare(bMatch[1]);
+      }
       return parseInt(aMatch[2]) - parseInt(bMatch[2]);
     }
     return a.meter_number.localeCompare(b.meter_number);
@@ -221,7 +251,6 @@ const MetersPDF = ({ meters, dateRange }) => {
           Période du {format(dateRange[0], 'dd/MM/yyyy')} au {format(dateRange[1], 'dd/MM/yyyy')}
         </Text>
 
-        {/* Test simple d'abord */}
         <Text style={{ fontSize: 12, marginBottom: 10 }}>
           Total de compteurs: {sortedMeters.length}
         </Text>
@@ -277,7 +306,7 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
         setLoading(true);
         const response = await api.post('/readings/calculate-preview', { 
           consumption,
-          meter_id: meterId // Utiliser l'ID du compteur passé en prop
+          meter_id: meterId
         });
         
         setCalculationDetails(response.data.data);
@@ -332,14 +361,12 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
         </div>
       </div>
 
-      {/* Cas spécial pour les compteurs gratuits */}
       {details.billing_type === 'free' ? (
         <div className="bg-green-50 rounded-md p-4 text-center">
           <p className="font-medium text-green-700">Ce compteur est configuré en mode gratuit</p>
           <p className="text-sm text-green-600">Aucun frais ne sera facturé pour cette consommation</p>
         </div>
       ) : (
-        /* Affichage normal des détails de calcul */
         <div className="bg-white rounded-md p-4 space-y-4">
           <div className="pb-3 border-b">
             <div className="text-sm font-medium text-gray-500">Consommation totale</div>
@@ -348,7 +375,6 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
 
           <div className="space-y-4">
   {details.pricing_type === 'SINGLE' ? (
-    // Affichage pour tarification unique
     <div>
       <div className="text-sm font-medium">Tarification unique</div>
       <div className="pl-3 text-sm text-gray-600">
@@ -360,7 +386,6 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
       </div>
     </div>
   ) : (
-    // Affichage pour tarification multi-tranches
     <>
       {details.tranches.map((tranche, index) => (
         tranche.consumption > 0 && (
@@ -380,8 +405,6 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
     </>
   )}
 
-  {/* Affichage du multiplicateur si différent de 1 */}
-  {/* Remplacer cette section dans ConsumptionDetails : */}
 {details.multiplier && details.multiplier !== 1 && (
   <div className="border-t pt-2">
     <div className={`text-sm font-medium ${
@@ -395,8 +418,6 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
     </div>
   </div>
 )}
-  
-
 
 </div>
 
@@ -416,11 +437,11 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     last_reading_value: '',
     reading_value: '',
     method: 'manual',
-    reading_date: null, // Changé de new Date() à null
+    reading_date: null,
     status: 'pending',
     period: {
-      from: null, // Changé de new Date() à null
-      to: null    // Changé de new Date() à null
+      from: null,
+      to: null
     }
   });
 
@@ -428,7 +449,6 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
   const [searchMeter, setSearchMeter] = useState('');
   const [isSelectOpen, setIsSelectOpen] = useState(false);
 
-  // Réinitialiser le formulaire quand le modal se ferme
   useEffect(() => {
     if (!isOpen) {
       setFormData({
@@ -449,7 +469,6 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     }
   }, [isOpen]);
 
-  // Gérer les données d'édition - PRIORITÉ 1
   useEffect(() => {
     if (editingReading && isOpen) {
       setFormData({
@@ -467,13 +486,11 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     }
   }, [editingReading, isOpen]);
 
-  // Gérer le compteur présélectionné - PRIORITÉ 2
   useEffect(() => {
     if (selectedMeterId && !editingReading && isOpen) {
       setFormData(prev => ({
         ...prev,
         meter_id: String(selectedMeterId),
-        // Définir des dates par défaut uniquement pour un nouveau relevé
         reading_date: new Date(),
         period: {
           from: new Date(),
@@ -483,7 +500,6 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     }
   }, [selectedMeterId, editingReading, isOpen]);
 
-  // Calcul de la consommation
   useEffect(() => {
     if (formData.last_reading_value && formData.reading_value) {
       const newConsumption = parseFloat(formData.reading_value) - parseFloat(formData.last_reading_value);
@@ -493,7 +509,6 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     }
   }, [formData.last_reading_value, formData.reading_value]);
 
-  // Récupérer le dernier relevé SEULEMENT pour les nouveaux relevés
   useEffect(() => {
     if (formData.meter_id && !editingReading && isOpen) {
       fetchLatestReading(formData.meter_id);
@@ -508,7 +523,6 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     
     setFormData(newFormData);
     
-    // Forcer le calcul immédiatement si les deux valeurs sont disponibles
     if (field === 'last_reading_value' && newFormData.reading_value) {
       const newConsumption = parseFloat(newFormData.reading_value) - parseFloat(value);
       setConsumption(newConsumption > 0 ? newConsumption : null);
@@ -576,22 +590,17 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     if (!meterId) return;
     
     try {
-      // Appel à l'API pour récupérer le dernier relevé
       const response = await api.get(`/readings/meter/${meterId}/latest`);
       
       if (response.data && response.data.data) {
         const latestReading = response.data.data;
-        
-        // Important: Utiliser le reading_value du dernier relevé comme last_reading_value pour le nouveau relevé
         handleChange('last_reading_value', latestReading.reading_value);
       } else {
-        // Si pas de relevé, essayer de récupérer la valeur initiale du compteur
         try {
           const meterResponse = await api.get(`/api/meters/${meterId}`);
           if (meterResponse.data && meterResponse.data.initial_reading_value) {
             handleChange('last_reading_value', meterResponse.data.initial_reading_value);
           } else {
-            // Valeur par défaut si ni relevé ni valeur initiale
             handleChange('last_reading_value', '0');
           }
         } catch (err) {
@@ -605,18 +614,14 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     }
   };
 
-  // Filtrer les compteurs selon la recherche
   const filteredMeters = meters
     .sort((a, b) => {
-      // Extraire les parties numériques si possible
       const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
       const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
       
       if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
-        // Si les préfixes sont identiques (ex: MTR-), comparer les numéros
         return parseInt(aMatch[2]) - parseInt(bMatch[2]);
       }
-      // Sinon comparer les chaînes entières
       return a.meter_number.localeCompare(b.meter_number);
     })
     .filter(meter => 
@@ -852,28 +857,22 @@ const MetersWithoutReadings = ({ dateRange }) => {
     }
   };
 
- // Triez les compteurs avant de les afficher
 const sortedMeters = [...meters].sort((a, b) => {
-  // Extraire les parties numériques si possible
   const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
   const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
   
   if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
-    // Si les préfixes sont identiques (ex: MTR-), comparer les numéros
     return parseInt(aMatch[2]) - parseInt(bMatch[2]);
   }
-  // Sinon comparer les chaînes entières
   return a.meter_number.localeCompare(b.meter_number);
 });
 
-  // Premier useEffect pour le chargement initial
   useEffect(() => {
     if (dateRange[0] && dateRange[1]) {
       fetchMetersWithoutReadings();
     }
   }, [dateRange, toast]);
 
-  // Deuxième useEffect pour écouter l'événement de rafraîchissement
   useEffect(() => {
     const handleRefresh = () => {
       if (dateRange[0] && dateRange[1]) {
@@ -1000,18 +999,20 @@ const ReadingPage = () => {
   const [editingReading, setEditingReading] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
-  const [dateRange, setDateRange] = useState([
+  
+  // États pour le contrôle du chargement des dates
+  const [tempDateRange, setTempDateRange] = useState([
     (() => {
-
       const date = new Date();
-    date.setMonth(date.getMonth() - 1); // Mois dernier 
-    date.setDate(1); // Premier jour du mois
-    date.setHours(0, 0, 0, 0);
-    return date;
-
+      date.setMonth(date.getMonth() - 1);
+      date.setDate(1);
+      date.setHours(0, 0, 0, 0);
+      return date;
     })(),
     new Date()
   ]);
+  const [dateRange, setDateRange] = useState(tempDateRange);
+  
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [readingToDelete, setReadingToDelete] = useState(null);
@@ -1023,32 +1024,21 @@ const ReadingPage = () => {
 
   const [selectedMeterId, setSelectedMeterId] = useState(null);
 
-    // Fonction de tri pour les numéros de compteur
-const sortByMeterNumber = (a, b) => {
-  // S'assurer que les deux objets ont un compteur associé
-  if (!a.meter || !b.meter) return 0;
-  
-  // Extraire les parties numériques si possible
-  const aMatch = a.meter.meter_number.match(/(\D+)-?(\d+)/);
-  const bMatch = b.meter.meter_number.match(/(\D+)-?(\d+)/);
-  
-  if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
-    // Si les préfixes sont identiques (ex: MTR-), comparer les numéros
-    return parseInt(aMatch[2]) - parseInt(bMatch[2]);
-  }
-  // Sinon comparer les chaînes entières
-  return a.meter.meter_number.localeCompare(b.meter.meter_number);
-};
+  const sortByMeterNumber = (a, b) => {
+    if (!a.meter || !b.meter) return 0;
+    
+    const aMatch = a.meter.meter_number.match(/(\D+)-?(\d+)/);
+    const bMatch = b.meter.meter_number.match(/(\D+)-?(\d+)/);
+    
+    if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
+      return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+    }
+    return a.meter.meter_number.localeCompare(b.meter.meter_number);
+  };
 
   const currentReadings = readings;
   const sortedReadings = [...currentReadings].sort(sortByMeterNumber);
 
-  
-
-
-  
-
-  // recherche d'un utilisateur
   const [consumerFilter, setConsumerFilter] = useState(null);
   const [consumerSearchQuery, setConsumerSearchQuery] = useState("");
   const [consumerSearchResults, setConsumerSearchResults] = useState([]);
@@ -1056,7 +1046,6 @@ const sortByMeterNumber = (a, b) => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
 
-  // Écouter l'événement personnalisé pour créer un relevé pour un compteur spécifique
   useEffect(() => {
     const handleCreateReadingForMeter = (event) => {
       const meterId = event.detail.meterId;
@@ -1068,9 +1057,6 @@ const sortByMeterNumber = (a, b) => {
     window.addEventListener('create-reading-for-meter', handleCreateReadingForMeter);
     return () => window.removeEventListener('create-reading-for-meter', handleCreateReadingForMeter);
   }, [meters]);
-
-
-
 
   const fetchDashboardData = async () => {
     try {
@@ -1089,13 +1075,10 @@ const sortByMeterNumber = (a, b) => {
       
       const data = response.data.data;
 
-      
       setReadings(data.readings);
       setTotalPages(data.pagination.totalPages);
       setTotalItems(data.pagination.total);
       setMeters(data.meters);
-      
-      // Pas besoin d'appeler fetchMeters() séparément
       
     } catch (error) {
       toast({
@@ -1108,52 +1091,42 @@ const sortByMeterNumber = (a, b) => {
     }
   };
 
+  const searchConsumers = async (query) => {
+    if (!query || query.length < 2) {
+      setConsumerSearchResults([]);
+      return;
+    }
+    
+    setIsSearchingConsumers(true);
+    try {
+      const response = await api.get('/readings/search-consumers', {
+        params: { query }
+      });
+      console.log("Résultats:", response.data.data);
+      setConsumerSearchResults(response.data.data);
+    } catch (error) {
+      console.error('Erreur lors de la recherche des consommateurs:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de rechercher les consommateurs"
+      });
+    } finally {
+      setIsSearchingConsumers(false);
+    }
+  };
 
-  // Ajoutez cette fonction pour rechercher des consommateurs
-const searchConsumers = async (query) => {
-  if (!query || query.length < 2) {
-    setConsumerSearchResults([]);
-    return;
-  }
-  
-  setIsSearchingConsumers(true);
-  try {
-    const response = await api.get('/readings/search-consumers', {
-      params: { query }
-    });
-    console.log("Résultats:", response.data.data);
-    setConsumerSearchResults(response.data.data);
-  } catch (error) {
-    console.error('Erreur lors de la recherche des consommateurs:', error);
-    toast({
-      variant: "destructive",
-      title: "Erreur",
-      description: "Impossible de rechercher les consommateurs"
-    });
-  } finally {
-    setIsSearchingConsumers(false);
-  }
-};
-
-
-  // Ajoutez un effet pour déclencher la recherche lorsque la requête change
-useEffect(() => {
-  const delayDebounceFn = setTimeout(() => {
-    searchConsumers(consumerSearchQuery);
-  }, 300);
-  
-  return () => clearTimeout(delayDebounceFn);
-}, [consumerSearchQuery]);
-
-
-
-
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      searchConsumers(consumerSearchQuery);
+    }, 300);
+    
+    return () => clearTimeout(delayDebounceFn);
+  }, [consumerSearchQuery]);
 
   useEffect(() => {
     fetchDashboardData();
   }, [dateRange, statusFilter, consumerFilter, currentPage, itemsPerPage]);
-
-  
 
   const handleSubmit = async (data) => {
     try {
@@ -1172,38 +1145,35 @@ useEffect(() => {
       }
       setIsModalOpen(false);
       fetchDashboardData();
-      // Recharger les compteurs sans relevés si nous sommes sur cet onglet
       if (activeTab === "missing") {
-        // Un événement pour déclencher le rechargement dans le composant MetersWithoutReadings
         window.dispatchEvent(new CustomEvent('refresh-meters-without-readings'));
       }
     } catch (error) {
-      // Gestion des erreurs spécifiques provenant du backend
       const errorMessage = error.response?.data?.message || "Une erreur est survenue";
       const errorDetail = error.response?.data?.error || "";
   
-      // Identifier les erreurs et afficher un message clair
       if (errorDetail.includes("unique_reading_per_day")) {
         toast({
           variant: "destructive",
           title: "Erreur",
           description: "Un relevé existe déjà pour cette date.",
         });
-      } else if (errorDetail.includes("période") || errorDetail.includes("chevauchement")) {
+      } else if (
+        errorDetail.includes("période") || errorDetail.includes("chevauchement")
+      ) {
         toast({
           variant: "destructive",
           title: "Erreur",
           description: "Un relevé existe déjà sur cette période. Veuillez choisir une autre période.",
         });
       } else {
-        // Message générique pour les erreurs non gérées
         toast({
           variant: "destructive",
           title: "Erreur",
           description: errorMessage,
         });
       }
-      throw error; // Optionnel : relancer l'erreur pour d'autres traitements éventuels
+      throw error;
     }
   };
   
@@ -1279,7 +1249,6 @@ useEffect(() => {
   
   const handleBulkStatusChange = async (status) => {
     try {
-      // Mise à jour locale immédiate pour un feedback visuel rapide
       const updatedReadings = readings.map(reading => {
         if (selectedReadings.includes(reading.id)) {
           return { ...reading, status };
@@ -1287,34 +1256,26 @@ useEffect(() => {
         return reading;
       });
       
-      // Mettre à jour l'UI immédiatement
       setReadings(updatedReadings);
       
-      // Appel API
       const response = await api.post('/readings/bulk-status-update', { 
         ids: selectedReadings,
         status 
       });
       
-      // Réinitialiser la sélection
       setSelectedReadings([]);
       
-      // Notification de succès
       toast({
         title: "Succès",
         description: "Le statut des relevés sélectionnés a été mis à jour"
       });
       
-      // Rafraîchir les données du tableau de bord après un court délai
-      // pour s'assurer que le cache a été invalidé côté serveur
       setTimeout(() => {
         fetchDashboardData();
       }, 100);
     } catch (error) {
-      // En cas d'erreur, rafraîchir complètement pour montrer l'état réel
       fetchDashboardData();
       
-      // Gestion des erreurs existante...
       if (error.response?.status === 400 && 
           error.response?.data?.message?.includes('Impossible de changer le statut')) {
         toast({
@@ -1334,397 +1295,406 @@ useEffect(() => {
 
   return (
     <div className="p-6 space-y-6">
-      {activeTab === "readings" && (
-        <ActionsBar
-          selectedCount={selectedReadings.length}
-          onValidate={handleBulkValidate}
-          onChangeStatus={handleBulkStatusChange}
-        />
-      )}
-   
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Gestion des Relevés</h1>
-
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <input
-              type="date"
-              className="pl-10 pr-3 py-2 border rounded-lg"
-              value={dateRange[0] instanceof Date ? format(dateRange[0], 'yyyy-MM-dd') : ''}
-              onChange={(e) => setDateRange([e.target.value ? new Date(e.target.value) : null, dateRange[1]])}
-            />
-            <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
-          </div>
-          
-          <div className="relative">
-            <input
-              type="date"
-              className="pl-10 pr-3 py-2 border rounded-lg"
-              value={dateRange[1] instanceof Date ? format(dateRange[1], 'yyyy-MM-dd') : ''}
-              onChange={(e) => setDateRange([dateRange[0], e.target.value ? new Date(e.target.value) : null])}
-            />
-            <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
-          </div>
-
+      {loading ? (
+        <ReadingPageSkeleton />
+      ) : (
+        <>
           {activeTab === "readings" && (
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous</SelectItem>
-                <SelectItem value="pending">En attente</SelectItem>
-                <SelectItem value="validated">Validé</SelectItem>
-              </SelectContent>
-            </Select>
+            <ActionsBar
+              selectedCount={selectedReadings.length}
+              onValidate={handleBulkValidate}
+              onChangeStatus={handleBulkStatusChange}
+            />
           )}
+     
+          {/* Ligne 1 : Titre et Dates */}
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold">Gestion des Relevés</h1>
 
-          {activeTab === "readings" && (
-            <PDFDownloadLink
-              document={<RelevePDF readings={readings} dateRange={dateRange} />}
-              fileName={`releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
-            >
-              {({ loading }) => (
-                <Button variant="outline" disabled={loading}>
-                  <Download className="h-4 w-4 mr-2" />
-                  {loading ? 'Génération...' : 'Télécharger PDF'}
-                </Button>
-              )}
-            </PDFDownloadLink>
-          )}
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <input
+                  type="date"
+                  className="pl-10 pr-3 py-2 border rounded-lg"
+                  value={tempDateRange[0] instanceof Date ? format(tempDateRange[0], 'yyyy-MM-dd') : ''}
+                  onChange={(e) => setTempDateRange([e.target.value ? new Date(e.target.value) : null, tempDateRange[1]])}
+                />
+                <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+              </div>
+              
+              <div className="relative">
+                <input
+                  type="date"
+                  className="pl-10 pr-3 py-2 border rounded-lg"
+                  value={tempDateRange[1] instanceof Date ? format(tempDateRange[1], 'yyyy-MM-dd') : ''}
+                  onChange={(e) => setTempDateRange([tempDateRange[0], e.target.value ? new Date(e.target.value) : null])}
+                />
+                <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+              </div>
 
-          <Button onClick={() => {
-            setEditingReading(null);
-            setIsModalOpen(true);
-          }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Ajouter
-          </Button>
-        </div>
-      </div>
-
-      {/* Juste après la section des filtres principaux */}
-<div className="flex items-center space-x-4 mt-2 pb-4 w-full">
-  <div className="flex-1 relative">
-    <div className="relative">
-      <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-        <PopoverTrigger asChild>
-          <Button 
-            variant="outline" 
-            role="combobox" 
-            aria-expanded={isSearchOpen} 
-            className="w-full justify-between"
-          >
-            <div className="flex items-center">
-              <Users className="h-4 w-4 mr-2" />
-              {consumerFilter ? consumerFilter.name : "Rechercher un consommateur..."}
+              <Button 
+                onClick={() => {
+                  setDateRange(tempDateRange);
+                  setCurrentPage(1);
+                }}
+                variant="default"
+              >
+               
+                Valider
+              </Button>
             </div>
-            <Search className="h-4 w-4 ml-2 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-0" align="start">
-          <div className="p-2">
-            <Input 
-              placeholder="Rechercher un consommateur..." 
-              value={consumerSearchQuery}
-              onChange={(e) => setConsumerSearchQuery(e.target.value)}
-              autoFocus
-            />
-            
-            {isSearchingConsumers && (
-              <div className="flex justify-center my-2">
-                <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+          </div>
+
+          {/* Ligne 2 : Recherche, Filtres et Actions */}
+          <div className="flex items-center justify-between space-x-4 w-full">
+            <div className="flex-1 relative">
+              <div className="relative">
+                <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      role="combobox" 
+                      aria-expanded={isSearchOpen} 
+                      className="w-full justify-between"
+                    >
+                      <div className="flex items-center">
+                        <Users className="h-4 w-4 mr-2" />
+                        {consumerFilter ? consumerFilter.name : "Rechercher un consommateur..."}
+                      </div>
+                      <Search className="h-4 w-4 ml-2 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <div className="p-2">
+                      <Input 
+                        placeholder="Rechercher un consommateur..." 
+                        value={consumerSearchQuery}
+                        onChange={(e) => setConsumerSearchQuery(e.target.value)}
+                        autoFocus
+                      />
+                      
+                      {isSearchingConsumers && (
+                        <div className="flex justify-center my-2">
+                          <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                        </div>
+                      )}
+                      
+                      <div className="mt-2 max-h-60 overflow-y-auto">
+                        {consumerSearchResults.length > 0 ? (
+                          consumerSearchResults.map((consumer) => (
+                            <div
+                              key={consumer.id}
+                              className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer rounded"
+                              onClick={() => {
+                                setConsumerFilter(consumer);
+                                setConsumerSearchQuery("");
+                                setIsSearchOpen(false);
+                              }}
+                            >
+                              <Users className="h-4 w-4 mr-2 text-blue-500" />
+                              <span>{consumer.name}</span>
+                              <span className="ml-2 text-sm text-gray-500">
+                                ({consumer.meter_number})
+                              </span>
+                            </div>
+                          ))
+                        ) : consumerSearchQuery.length > 1 ? (
+                          <div className="text-center py-2 text-gray-500">
+                            Aucun consommateur trouvé
+                          </div>
+                        ) : (
+                          <div className="text-center py-2 text-gray-500">
+                            Saisissez au moins 2 caractères
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {consumerFilter && (
+              <div className="flex items-center bg-blue-50 px-3 py-2 rounded-lg">
+                <span className="mr-2 text-sm font-medium">
+                  {consumerFilter.name}
+                </span>
+                <button
+                  onClick={() => setConsumerFilter(null)}
+                  className="text-gray-400 hover:text-red-500"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
               </div>
             )}
-            
-            <div className="mt-2 max-h-60 overflow-y-auto">
-              {consumerSearchResults.length > 0 ? (
-                consumerSearchResults.map((consumer) => (
-                  <div
-                    key={consumer.id}
-                    className="flex items-center px-3 py-2 hover:bg-blue-50 cursor-pointer rounded"
-                    onClick={() => {
-                      setConsumerFilter(consumer);
-                      setConsumerSearchQuery("");
-                      setIsSearchOpen(false);
-                    }}
-                  >
-                    <Users className="h-4 w-4 mr-2 text-blue-500" />
-                    <span>{consumer.name}</span>
-                    <span className="ml-2 text-sm text-gray-500">
-                      ({consumer.meter_number})
-                    </span>
-                  </div>
-                ))
-              ) : consumerSearchQuery.length > 1 ? (
-                <div className="text-center py-2 text-gray-500">
-                  Aucun consommateur trouvé
-                </div>
-              ) : (
-                <div className="text-center py-2 text-gray-500">
-                  Saisissez au moins 2 caractères
-                </div>
-              )}
-            </div>
+
+            {activeTab === "readings" && (
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous</SelectItem>
+                  <SelectItem value="pending">En attente</SelectItem>
+                  <SelectItem value="validated">Validé</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
+            {activeTab === "readings" && (
+              <PDFDownloadLink
+                document={<RelevePDF readings={readings} dateRange={dateRange} />}
+                fileName={`releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button variant="outline" disabled={loading}>
+                    <Download className="h-4 w-4 mr-2" />
+                    {loading ? 'Génération...' : 'Télécharger PDF'}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+            )}
+
+            <Button onClick={() => {
+              setEditingReading(null);
+              setIsModalOpen(true);
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter
+            </Button>
           </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  </div>
 
-  {/* Affichage du filtre actif */}
-  {consumerFilter && (
-    <div className="flex items-center bg-blue-50 px-3 py-2 rounded-lg">
-      <span className="mr-2 text-sm font-medium">
-        Filtré par: {consumerFilter.name}
-      </span>
-      <button
-        onClick={() => setConsumerFilter(null)}
-        className="text-gray-400 hover:text-red-500"
-      >
-        <XCircle className="h-5 w-5" />
-      </button>
-    </div>
-  )}
-</div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="readings">
-            <FileText className="h-4 w-4 mr-2" />
-            Relevés enregistrés
-          </TabsTrigger>
-          <TabsTrigger value="missing">
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            Compteurs sans relevés
-          </TabsTrigger>
-        </TabsList>
-
-        {activeTab === "readings" && readings.length === 0 && !loading && (
-  <div className="bg-blue-50 p-6 rounded-lg flex items-center space-x-4 mb-4">
-    <Calendar className="h-10 w-10 text-blue-500" />
-    <div>
-      <h3 className="text-lg font-medium text-blue-800">Sélectionnez une période</h3>
-      <p className="text-blue-600">
-        Veuillez sélectionner les dates de début et de fin pour afficher les relevés de consommation correspondants.
-      </p>
-    </div>
-  </div>
-)}
-
-
-
-        <TabsContent value="readings">
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <input
-                      type="checkbox"
-                      className="rounded border-gray-300"
-                      checked={selectAll}
-                      onChange={(e) => {
-                        setSelectAll(e.target.checked);
-                        setSelectedReadings(
-                          e.target.checked ? currentReadings.map(r => r.id) : []
-                        );
-                      }}
-                    />
-                  </TableHead>
-                  <TableHead className="w-16">N°</TableHead>
-                  <TableHead>Compteur</TableHead>
-                  <TableHead>Consommateur</TableHead>
-                  <TableHead>Ancien Index</TableHead>
-                  <TableHead>Nouvel Index</TableHead>
-                  <TableHead>Consommation (m³)</TableHead>
-                  <TableHead>Montant (FCFA)</TableHead>
-                  <TableHead>Période</TableHead>
-                  <TableHead>Date du relevé</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-              {sortedReadings.map((reading, index) => (
-  <TableRow 
-    key={reading.id}
-    className={reading.status === 'validated' ? 'bg-green-50/50' : ''}
-  >
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        className="rounded border-gray-300"
-                        checked={selectedReadings.includes(reading.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedReadings([...selectedReadings, reading.id]);
-                          } else {
-                            setSelectedReadings(selectedReadings.filter(id => id !== reading.id));
-                          }
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{reading.meter?.meter_number}</TableCell>
-                    <TableCell>
-                      {reading.meter?.user ? 
-                        `${reading.meter.user.first_name} ${reading.meter.user.last_name}` : 
-                        'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {reading.last_reading_value ? 
-                        parseFloat(reading.last_reading_value).toFixed(2) : 
-                        'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {parseFloat(reading.reading_value).toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      {reading.consumption ? 
-                        parseFloat(reading.consumption).toFixed(2) : 
-                        'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {reading.amount ? 
-                        Number(reading.amount).toLocaleString() : 
-                        'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {`${format(new Date(reading.start_date), 'dd/MM/yy')} au ${format(new Date(reading.end_date), 'dd/MM/yy')}`}
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(reading.reading_date), 'dd/MM/yyyy')}
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={reading.status === 'validated' ? 'success' : 'warning'}
-                        className={cn(
-                          "w-24 flex justify-center",
-                          reading.status === 'validated' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        )}
-                      >
-                        {reading.status === 'validated' ? 'Validé' : 'En attente'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={reading.status === 'validated' || reading.is_invoiced}
-                          onClick={() => {
-                            setEditingReading(reading);
-                            setIsModalOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          disabled={reading.status === 'validated' || reading.is_invoiced}
-                          onClick={() => {
-                            setReadingToDelete(reading);
-                            setIsDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className="flex items-center justify-between mt-4 px-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Lignes par page:</span>
-                <Select
-                  value={String(itemsPerPage)}
-                  onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-[70px]">
-                    <SelectValue />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                    <SelectItem value="500">500</SelectItem>
-                    <SelectItem value="1000">1000</SelectItem>
-                  </SelectContent>
-                </Select>
+          {activeTab === "readings" && readings.length === 0 && !loading && (
+            <div className="bg-blue-50 p-6 rounded-lg flex items-center space-x-4 mb-4">
+              <Calendar className="h-10 w-10 text-blue-500" />
+              <div>
+                <h3 className="text-lg font-medium text-blue-800">Sélectionnez une période</h3>
+                <p className="text-blue-600">
+                  Veuillez sélectionner les dates de début et de fin puis cliquer sur "Valider" pour afficher les relevés de consommation correspondants.
+                </p>
               </div>
-
-              <div className="flex items-center gap-2">
-  <span className="text-sm text-gray-600">
-    {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} sur {totalItems}
-  </span>
-  <Button
-    variant="outline"
-    size="sm"
-    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-    disabled={currentPage === 1}
-  >
-    Précédent
-  </Button>
-  <Button
-    variant="outline"
-    size="sm"
-    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-    disabled={currentPage === totalPages}
-  >
-    Suivant
-  </Button>
-</div>
-
-
-
-      
             </div>
-          </Card>
-          
-          
-        </TabsContent>
+          )}
 
-        <TabsContent value="missing">
-          <MetersWithoutReadings dateRange={dateRange} />
-        </TabsContent>
-      </Tabs>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="readings">
+                <FileText className="h-4 w-4 mr-2" />
+                Relevés enregistrés
+              </TabsTrigger>
+              <TabsTrigger value="missing">
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Compteurs sans relevés
+              </TabsTrigger>
+            </TabsList>
 
-      <ReadingForm
-  isOpen={isModalOpen}
-  onClose={() => {
-    setIsModalOpen(false);
-    setEditingReading(null);
-    setSelectedMeterId(null);  // Réinitialiser l'ID du compteur sélectionné à la fermeture
-  }}
-  editingReading={editingReading}
-  meters={meters}
-  onSubmit={handleSubmit}
-  selectedMeterId={selectedMeterId}
-/>
+            <TabsContent value="readings">
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300"
+                          checked={selectAll}
+                          onChange={(e) => {
+                            setSelectAll(e.target.checked);
+                            setSelectedReadings(
+                              e.target.checked ? currentReadings.map(r => r.id) : []
+                            );
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead className="w-16">N°</TableHead>
+                      <TableHead>Compteur</TableHead>
+                      <TableHead>Consommateur</TableHead>
+                      <TableHead>Ancien Index</TableHead>
+                      <TableHead>Nouvel Index</TableHead>
+                      <TableHead>Consommation (m³)</TableHead>
+                      <TableHead>Montant (FCFA)</TableHead>
+                      <TableHead>Période</TableHead>
+                      <TableHead>Date du relevé</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedReadings.map((reading, index) => (
+                      <TableRow 
+                        key={reading.id}
+                        className={reading.status === 'validated' ? 'bg-green-50/50' : ''}
+                      >
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            className="rounded border-gray-300"
+                            checked={selectedReadings.includes(reading.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedReadings([...selectedReadings, reading.id]);
+                              } else {
+                                setSelectedReadings(selectedReadings.filter(id => id !== reading.id));
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
+                        <TableCell>{reading.meter?.meter_number}</TableCell>
+                        <TableCell>
+                          {reading.meter?.user ? 
+                            `${reading.meter.user.first_name} ${reading.meter.user.last_name}` : 
+                            'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {reading.last_reading_value ? 
+                            parseFloat(reading.last_reading_value).toFixed(2) : 
+                            'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {parseFloat(reading.reading_value).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          {reading.consumption ? 
+                            parseFloat(reading.consumption).toFixed(2) : 
+                            'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {reading.amount ? 
+                            Number(reading.amount).toLocaleString() : 
+                            'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {`${format(new Date(reading.start_date), 'dd/MM/yy')} au ${format(new Date(reading.end_date), 'dd/MM/yy')}`}
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(reading.reading_date), 'dd/MM/yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={reading.status === 'validated' ? 'success' : 'warning'}
+                            className={cn(
+                              "w-24 flex justify-center",
+                              reading.status === 'validated' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                            )}
+                          >
+                            {reading.status === 'validated' ? 'Validé' : 'En attente'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={reading.status === 'validated' || reading.is_invoiced}
+                              onClick={() => {
+                                setEditingReading(reading);
+                                setIsModalOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={reading.status === 'validated' || reading.is_invoiced}
+                              onClick={() => {
+                                setReadingToDelete(reading);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="flex items-center justify-between mt-4 px-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Lignes par page:</span>
+                    <Select
+                      value={String(itemsPerPage)}
+                      onValueChange={(value) => {
+                        setItemsPerPage(Number(value));
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="w-[70px]">
+                        <SelectValue />
+                      </SelectTrigger>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cette action ne peut pas être annulée. Cela supprimera définitivement ce relevé.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>
-              Supprimer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+                      <SelectContent>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                        <SelectItem value="500">500</SelectItem>
+                        <SelectItem value="1000">1000</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">
+                      {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} sur {totalItems}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Précédent
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Suivant
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="missing">
+              <MetersWithoutReadings dateRange={dateRange} />
+            </TabsContent>
+          </Tabs>
+
+          <ReadingForm
+            isOpen={isModalOpen}
+            onClose={() => {
+              setIsModalOpen(false);
+              setEditingReading(null);
+              setSelectedMeterId(null);
+            }}
+            editingReading={editingReading}
+            meters={meters}
+            onSubmit={handleSubmit}
+            selectedMeterId={selectedMeterId}
+          />
+
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Cette action ne peut pas être annulée. Cela supprimera définitivement ce relevé.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete}>
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </div>
   );
 };
