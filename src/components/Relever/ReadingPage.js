@@ -1036,8 +1036,7 @@ const ReadingPage = () => {
     return a.meter.meter_number.localeCompare(b.meter.meter_number);
   };
 
-  const currentReadings = readings;
-  const sortedReadings = [...currentReadings].sort(sortByMeterNumber);
+  const sortedReadings = [...readings].sort(sortByMeterNumber);
 
   const [consumerFilter, setConsumerFilter] = useState(null);
   const [consumerSearchQuery, setConsumerSearchQuery] = useState("");
@@ -1584,9 +1583,7 @@ const ReadingPage = () => {
                           checked={selectAll}
                           onChange={(e) => {
                             setSelectAll(e.target.checked);
-                            setSelectedReadings(
-                              e.target.checked ? currentReadings.map(r => r.id) : []
-                            );
+                          
                           }}
                         />
                       </TableHead>
