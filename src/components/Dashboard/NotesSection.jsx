@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '../ui/select';
 import { Badge } from '../ui/badge';
+import NotesPDFDownload from './NotesPDFDownload';
 
 const COLORS = [
   { name: 'blue', label: 'Bleu', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
@@ -335,6 +336,17 @@ const NotesSection = () => {
             {showArchived ? 'Actives' : 'Archives'}
           </Button>
 
+          {/* Bouton télécharger PDF */}
+          <NotesPDFDownload 
+            notes={notes}
+            filters={{
+              search: searchTerm,
+              category: categoryFilter,
+              color: colorFilter,
+              showArchived: showArchived
+            }}
+          />
+
           {/* Bouton nouvelle note */}
           <Button onClick={() => handleOpenModal()}>
             <Plus className="h-4 w-4 mr-2" />
@@ -566,7 +578,7 @@ const NotesSection = () => {
                   accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Max 5 fichiers, 10MB par fichier
+                  Max 5 fichiers, 2MB par fichier
                 </p>
               </div>
 
