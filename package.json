@@ -67,11 +67,12 @@
     "zod": "^3.24.1"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "set \"GENERATE_SOURCEMAP=false\" && set NODE_OPTIONS=\"--max-old-space-size=4096\" && react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
+  "start": "react-scripts start",
+  "build": "GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=4096' CI=false react-scripts build",
+  "test": "react-scripts test",
+  "eject": "react-scripts eject"
+},
+
   "eslintConfig": {
     "extends": [
       "react-app",
