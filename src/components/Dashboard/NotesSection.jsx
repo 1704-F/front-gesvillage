@@ -5,26 +5,26 @@ import {
   X, FileText, Download, Upload, Filter, Tag
 } from 'lucide-react';
 import { axiosPrivate as api } from '../../utils/axios';
-import { useToast } from '../../ui/toast/use-toast';
-import { Card } from '../../ui/card';
-import { Button } from '../../ui/button';
-import { Input } from '../../ui/input';
-import { Textarea } from '../../ui/textarea';
+import { useToast } from '../ui/toast/use-toast';
+import { Card } from '../ui/card';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
   DialogTitle,
   DialogFooter 
-} from '../../ui/dialog';
+} from '../ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../ui/select';
-import { Badge } from '../../ui/badge';
+} from '../ui/select';
+import { Badge } from '../ui/badge';
 
 const COLORS = [
   { name: 'blue', label: 'Bleu', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
