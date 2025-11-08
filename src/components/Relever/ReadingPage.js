@@ -683,7 +683,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
             <div className="flex-1 space-y-4">
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
-  <label className="text-sm font-medium">Filtrer par quartier</label>
+  <label className="text-sm font-medium">Filtrer par sections</label>
   <Select
     value={quartierFilter}
     onValueChange={setQuartierFilter}
@@ -693,7 +693,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
       <SelectValue placeholder="Tous les quartiers" />
     </SelectTrigger>
     <SelectContent>
-      <SelectItem value="all">Tous les quartiers</SelectItem>
+      <SelectItem value="all">Tous les sections</SelectItem>
       {quartiers.map((quartier) => (
         <SelectItem key={quartier.id} value={String(quartier.id)}>
           {quartier.name}
