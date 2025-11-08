@@ -449,6 +449,9 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
   const [searchMeter, setSearchMeter] = useState('');
   const [isSelectOpen, setIsSelectOpen] = useState(false);
 
+  const [quartierFilter, setQuartierFilter] = useState('all');
+  const [quartiers, setQuartiers] = useState([]);
+
   useEffect(() => {
     if (!isOpen) {
       setFormData({
@@ -514,6 +517,30 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
       fetchLatestReading(formData.meter_id);
     }
   }, [formData.meter_id, editingReading, isOpen]);
+
+ useEffect(() => {
+  if (isOpen && meters.length > 0) {
+    console.log('Meters:', meters); // Debug
+    console.log('Premier meter:', meters[0]); // Debug
+    
+    // Extraire les quartiers uniques des compteurs disponibles
+    const uniqueQuartiers = meters
+      .filter(meter => {
+        console.log('Meter quartier:', meter.quartier); // Debug
+        return meter.quartier && meter.quartier.id;
+      })
+      .reduce((acc, meter) => {
+        if (!acc.find(q => q.id === meter.quartier.id)) {
+          acc.push(meter.quartier);
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => a.name.localeCompare(b.name));
+    
+    console.log('Quartiers trouvés:', uniqueQuartiers); // Debug
+    setQuartiers(uniqueQuartiers);
+  }
+}, [isOpen, meters]);
 
   const handleChange = (field, value) => {
     const newFormData = {
@@ -614,21 +641,26 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     }
   };
 
-  const filteredMeters = meters
-    .sort((a, b) => {
-      const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
-      const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
-      
-      if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
-        return parseInt(aMatch[2]) - parseInt(bMatch[2]);
-      }
-      return a.meter_number.localeCompare(b.meter_number);
-    })
-    .filter(meter => 
-      `${meter.meter_number} ${meter.user?.first_name} ${meter.user?.last_name} ${meter.serial_number}`
-        .toLowerCase()
-        .includes(searchMeter.toLowerCase())
-    );
+ const filteredMeters = meters
+  .sort((a, b) => {
+    const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
+    const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
+    
+    if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
+      return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+    }
+    return a.meter_number.localeCompare(b.meter_number);
+  })
+  .filter(meter => {
+    const searchMatch = `${meter.meter_number} ${meter.user?.first_name} ${meter.user?.last_name} ${meter.serial_number}`
+      .toLowerCase()
+      .includes(searchMeter.toLowerCase());
+    
+    const quartierMatch = quartierFilter === 'all' || 
+      (meter.quartier_id && meter.quartier_id === parseInt(quartierFilter));
+    
+    return searchMatch && quartierMatch;
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -650,6 +682,26 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
           <div className="flex gap-8">
             <div className="flex-1 space-y-4">
               <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+  <label className="text-sm font-medium">Filtrer par quartier</label>
+  <Select
+    value={quartierFilter}
+    onValueChange={setQuartierFilter}
+    disabled={!!editingReading}
+  >
+    <SelectTrigger>
+      <SelectValue placeholder="Tous les quartiers" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="all">Tous les quartiers</SelectItem>
+      {quartiers.map((quartier) => (
+        <SelectItem key={quartier.id} value={String(quartier.id)}>
+          {quartier.name}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+</div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Compteur</label>
 
