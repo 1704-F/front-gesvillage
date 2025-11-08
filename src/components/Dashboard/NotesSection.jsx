@@ -47,6 +47,7 @@ const NotesSection = () => {
   const [colorFilter, setColorFilter] = useState('all');
   const [showArchived, setShowArchived] = useState(false);
   const [modal, setModal] = useState({ isOpen: false, note: null });
+  const [attachmentModal, setAttachmentModal] = useState({ isOpen: false, attachment: null });
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -451,9 +452,26 @@ const NotesSection = () => {
 
                   {/* Pièces jointes */}
                   {note.attachments && note.attachments.length > 0 && (
-                    <div className="flex items-center gap-1 text-xs text-gray-600">
-                      <FileText className="h-3 w-3" />
-                      <span>{note.attachments.length} pièce(s) jointe(s)</span>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1 text-xs text-gray-600 font-medium">
+                        <FileText className="h-3 w-3" />
+                        <span>{note.attachments.length} pièce(s) jointe(s):</span>
+                      </div>
+                      <div className="space-y-1 pl-4">
+                        {note.attachments.map((attachment) => (
+                          <button
+                            key={attachment.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAttachmentModal({ isOpen: true, attachment });
+                            }}
+                            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            <FileText className="h-3 w-3" />
+                            <span className="truncate max-w-[200px]">{attachment.file_name}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -629,6 +647,106 @@ const NotesSection = () => {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de visualisation des pièces jointes */}
+      <Dialog open={attachmentModal.isOpen} onOpenChange={(open) => !open && setAttachmentModal({ isOpen: false, attachment: null })}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{attachmentModal.attachment?.file_name}</span>
+              <a
+                href={`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/${attachmentModal.attachment?.file_path.replace(/\\/g, '/').replace(/^public\//, '')}`}
+                download={attachmentModal.attachment?.file_name}
+                className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              >
+                <Download className="h-4 w-4" />
+                Télécharger
+              </a>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="overflow-auto max-h-[70vh]">
+            {attachmentModal.attachment && (() => {
+              const fileType = attachmentModal.attachment.file_type;
+              // Construire le chemin correct - normaliser les slashes et enlever 'public/'
+              const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+              let cleanPath = attachmentModal.attachment.file_path
+                .replace(/\\/g, '/') // Remplacer backslashes par slashes
+                .replace(/^public\//, ''); // Enlever 'public/' au début
+              const filePath = `${apiUrl}/${cleanPath}`;
+              
+              // Debug
+              console.log('🔍 Debug attachment:', {
+                original: attachmentModal.attachment.file_path,
+                cleaned: cleanPath,
+                final: filePath
+              });
+
+              // Images
+              if (fileType?.startsWith('image/')) {
+                return (
+                  <img 
+                    src={filePath} 
+                    alt={attachmentModal.attachment.file_name}
+                    className="w-full h-auto"
+                    onError={(e) => {
+                      console.error('Erreur de chargement de l\'image:', filePath);
+                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE2IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+SW1hZ2Ugbm9uIGRpc3BvbmlibGU8L3RleHQ+PC9zdmc+';
+                    }}
+                  />
+                );
+              }
+
+              // PDFs
+              if (fileType === 'application/pdf') {
+                return (
+                  <div className="space-y-2">
+                    <iframe
+                      src={filePath}
+                      className="w-full h-[600px] border-0"
+                      title={attachmentModal.attachment.file_name}
+                      onError={(e) => {
+                        console.error('Erreur de chargement du PDF:', filePath);
+                      }}
+                    />
+                    <p className="text-xs text-gray-500 text-center">
+                      Si le PDF ne s'affiche pas, <a href={filePath} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">ouvrez-le dans un nouvel onglet</a>
+                    </p>
+                  </div>
+                );
+              }
+
+              // Fichiers texte
+              if (fileType?.startsWith('text/')) {
+                return (
+                  <iframe
+                    src={filePath}
+                    className="w-full h-[600px] border-0"
+                    title={attachmentModal.attachment.file_name}
+                  />
+                );
+              }
+
+              // Autres types de fichiers
+              return (
+                <div className="flex flex-col items-center justify-center p-12 text-gray-500">
+                  <FileText className="h-16 w-16 mb-4" />
+                  <p className="text-lg mb-2">Aperçu non disponible pour ce type de fichier</p>
+                  <p className="text-sm mb-4">{attachmentModal.attachment.file_name}</p>
+                  <a
+                    href={filePath}
+                    download={attachmentModal.attachment.file_name}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    <Download className="h-4 w-4" />
+                    Télécharger le fichier
+                  </a>
+                </div>
+              );
+            })()}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
