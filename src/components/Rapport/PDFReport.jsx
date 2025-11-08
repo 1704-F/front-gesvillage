@@ -655,7 +655,7 @@ const getConsumerStatus = () => {
           <View style={styles.logo}>
   {serviceInfo?.logo ? (
     <Image 
-      src={`${process.env.REACT_APP_API_URL || 'https://api.gesvillage.com'}/uploads/logos/${serviceInfo.logo}`}
+      src={`${process.env.NEXT_PUBLIC_URL || 'https://api.gesvillage.com'}/uploads/logos/${serviceInfo.logo}`}
       style={{ maxWidth: 100, maxHeight: 75 }}
     />
   ) : (
