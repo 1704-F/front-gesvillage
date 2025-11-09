@@ -677,14 +677,6 @@ const NotesSection = () => {
               
               // Utiliser l'URL de l'API configurée
               const filePath = `${api.defaults.baseURL}/${cleanPath}`;
-              
-              // Debug
-              console.log('🔍 Debug attachment:', {
-                original: attachmentModal.attachment.file_path,
-                cleaned: cleanPath,
-                final: filePath,
-                apiBaseURL: api.defaults.baseURL
-              });
 
               // Images
               if (fileType?.startsWith('image/')) {

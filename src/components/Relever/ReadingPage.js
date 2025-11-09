@@ -878,15 +878,32 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
   );
 };
 
-
-
-
-
-// Nouveau composant pour afficher les compteurs sans relevés
+// Composant pour afficher les compteurs sans relevés avec couleurs par section
 const MetersWithoutReadings = ({ dateRange }) => {
   const { toast } = useToast();
   const [meters, setMeters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [quartierFilter, setQuartierFilter] = useState('all');
+
+  // Couleurs pour chaque section
+  const SECTION_COLORS = [
+    'bg-blue-100 text-blue-800 border-blue-200',
+    'bg-green-100 text-green-800 border-green-200',
+    'bg-purple-100 text-purple-800 border-purple-200',
+    'bg-orange-100 text-orange-800 border-orange-200',
+    'bg-pink-100 text-pink-800 border-pink-200',
+    'bg-indigo-100 text-indigo-800 border-indigo-200',
+    'bg-yellow-100 text-yellow-800 border-yellow-200',
+    'bg-red-100 text-red-800 border-red-200',
+    'bg-teal-100 text-teal-800 border-teal-200',
+    'bg-cyan-100 text-cyan-800 border-cyan-200',
+  ];
+
+  // Fonction pour obtenir la couleur d'une section
+  const getSectionColor = (quartierId) => {
+    if (!quartierId) return 'bg-gray-100 text-gray-800 border-gray-200';
+    return SECTION_COLORS[(quartierId - 1) % SECTION_COLORS.length];
+  };
 
   const fetchMetersWithoutReadings = async () => {
     try {
@@ -909,16 +926,6 @@ const MetersWithoutReadings = ({ dateRange }) => {
     }
   };
 
-const sortedMeters = [...meters].sort((a, b) => {
-  const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
-  const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
-  
-  if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
-    return parseInt(aMatch[2]) - parseInt(bMatch[2]);
-  }
-  return a.meter_number.localeCompare(b.meter_number);
-});
-
   useEffect(() => {
     if (dateRange[0] && dateRange[1]) {
       fetchMetersWithoutReadings();
@@ -939,38 +946,83 @@ const sortedMeters = [...meters].sort((a, b) => {
     };
   }, [dateRange]); 
 
- 
-  
+  // Extraire les quartiers uniques des compteurs chargés
+  const quartiers = meters
+    .filter(meter => meter.quartier && meter.quartier.id)
+    .reduce((acc, meter) => {
+      if (!acc.find(q => q.id === meter.quartier.id)) {
+        acc.push(meter.quartier);
+      }
+      return acc;
+    }, [])
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Filtrer les compteurs selon le quartier sélectionné
+  const filteredMeters = quartierFilter === 'all' 
+    ? meters 
+    : meters.filter(meter => meter.quartier?.id === parseInt(quartierFilter));
+
+  // Trier les compteurs filtrés
+  const sortedMeters = [...filteredMeters].sort((a, b) => {
+    const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
+    const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
+    
+    if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
+      return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+    }
+    return a.meter_number.localeCompare(b.meter_number);
+  });
 
   return (
     <Card>
-      <div className="p-4 border-b flex items-center justify-between">
-  <div className="flex items-center space-x-2">
-    <AlertTriangle className="h-5 w-5 text-yellow-500" />
-    <h2 className="text-lg font-medium">
-      Compteurs sans relevés pour la période sélectionnée
-    </h2>
-  </div>
-  <div className="flex items-center space-x-2">
-    <Badge variant="outline" className="bg-yellow-50">
-      {meters.length} compteur(s)
-    </Badge>
-    {meters.length > 0 && (
-      <PDFDownloadLink
-        document={<MetersPDF meters={meters} dateRange={dateRange} />}
-        fileName={`compteurs-sans-releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
-      >
-        {({ loading }) => (
-          <Button variant="outline" size="sm" disabled={loading}>
-            <Download className="h-4 w-4 mr-2" />
-            {loading ? 'Génération...' : 'Télécharger PDF'}
-          </Button>
-        )}
-      </PDFDownloadLink>
-    )}
-  </div>
-</div>
-      
+      <div className="p-4 border-b">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <h2 className="text-lg font-medium">
+                Compteurs sans relevés pour la période sélectionnée
+              </h2>
+            </div>
+            
+            {/* Filtre quartier - seulement si des quartiers existent */}
+            {quartiers.length > 0 && (
+              <Select value={quartierFilter} onValueChange={setQuartierFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Toutes les sections" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les sections</SelectItem>
+                  {quartiers.map((quartier) => (
+                    <SelectItem key={quartier.id} value={String(quartier.id)}>
+                      {quartier.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Badge variant="outline" className="bg-yellow-50">
+              {filteredMeters.length} compteur(s)
+            </Badge>
+            {filteredMeters.length > 0 && (
+              <PDFDownloadLink
+                document={<MetersPDF meters={sortedMeters} dateRange={dateRange} />}
+                fileName={`compteurs-sans-releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button variant="outline" size="sm" disabled={loading}>
+                    <Download className="h-4 w-4 mr-2" />
+                    {loading ? 'Génération...' : 'Télécharger PDF'}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+            )}
+          </div>
+        </div>
+      </div>
 
       <Table>
         <TableHeader>
@@ -981,64 +1033,75 @@ const sortedMeters = [...meters].sort((a, b) => {
             <TableHead>Consommateur</TableHead>
             <TableHead>Emplacement</TableHead>
             <TableHead>Actions</TableHead>
-            
           </TableRow>
         </TableHeader>
         <TableBody>
-        {loading ? (
-  <TableRow>
-    <TableCell colSpan={6} className="text-center py-8">
-      Chargement des données...
-    </TableCell>
-  </TableRow>
-) : sortedMeters.length === 0 ? (
-  <TableRow>
-    <TableCell colSpan={6} className="text-center py-8">
-      <div className="flex flex-col items-center justify-center text-gray-500">
-        <FileText className="h-8 w-8 mb-2" />
-        <p>Tous les compteurs ont des relevés pour cette période.</p>
-      </div>
-    </TableCell>
-  </TableRow>
-) : (
-  sortedMeters.map((meter, index) => (
-    <TableRow key={meter.id}>
-      <TableCell>{index + 1}</TableCell>
-      <TableCell>{meter.meter_number}</TableCell>
-      <TableCell>{meter.serial_number || 'N/A'}</TableCell>
-      <TableCell>
-        {meter.user ? 
-          <div>
-            <div className="font-medium">{meter.user.first_name} {meter.user.last_name}</div>
-            <div className="text-sm text-gray-500">{meter.user.name}</div>
-          </div> : 
-          'N/A'}
-      </TableCell>
-      <TableCell>{meter.quartier?.name || meter.location || 'N/A'}</TableCell>
-      <TableCell>
-        <Button 
-          size="sm" 
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent('create-reading-for-meter', { 
-              detail: { meterId: meter.id }
-            }));
-          }}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Ajouter un relevé
-        </Button>
-      </TableCell>
-    </TableRow>
-  ))
-)}
-         
-
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-8">
+                Chargement des données...
+              </TableCell>
+            </TableRow>
+          ) : sortedMeters.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-8">
+                <div className="flex flex-col items-center justify-center text-gray-500">
+                  <FileText className="h-8 w-8 mb-2" />
+                  <p>
+                    {quartierFilter === 'all' 
+                      ? 'Tous les compteurs ont des relevés pour cette période.' 
+                      : 'Aucun compteur sans relevé pour cette section.'}
+                  </p>
+                </div>
+              </TableCell>
+            </TableRow>
+          ) : (
+            sortedMeters.map((meter, index) => (
+              <TableRow key={meter.id}>
+                <TableCell>{index + 1}</TableCell>
+                <TableCell>{meter.meter_number}</TableCell>
+                <TableCell>{meter.serial_number || 'N/A'}</TableCell>
+                <TableCell>
+                  {meter.user ? 
+                    <div>
+                      <div className="font-medium">{meter.user.first_name} {meter.user.last_name}</div>
+                      <div className="text-sm text-gray-500">{meter.user.name}</div>
+                    </div> : 
+                    'N/A'}
+                </TableCell>
+                <TableCell>
+                  {meter.quartier?.name ? (
+                    <Badge 
+                      variant="outline" 
+                      className={`${getSectionColor(meter.quartier.id)} border font-medium`}
+                    >
+                      {meter.quartier.name}
+                    </Badge>
+                  ) : (
+                    <span className="text-gray-500">{meter.location || 'N/A'}</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('create-reading-for-meter', { 
+                        detail: { meterId: meter.id }
+                      }));
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter un relevé
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
         </TableBody>
       </Table>
     </Card>
   );
 };
-
 
 
 // Composant principal modifié avec les onglets
