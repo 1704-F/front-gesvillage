@@ -1,13 +1,13 @@
 // src/components/dashboard/AdminDashboard.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Card } from "../ui/card";
-import { 
-  DollarSign, 
-  PieChart, 
-  BarChart, 
-  Clock, 
-  CheckSquare, 
-  XCircle, 
+import {
+  DollarSign,
+  PieChart,
+  BarChart,
+  Clock,
+  CheckSquare,
+  XCircle,
   FileText,
   Users,
   Activity,
@@ -23,29 +23,54 @@ import {
   Archive,
   Calendar,
   StickyNote,
-  LayoutDashboard
-} from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart as RechartsBarChart, Bar, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { axiosPrivate as api } from '../../utils/axios';
-import NotesSection from './NotesSection';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+  LayoutDashboard,
+  Wallet,
+  History
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart as RechartsBarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { axiosPrivate as api } from "../../utils/axios";
+import NotesSection from "./NotesSection";
+import CashRegisterSection from "./CashRegisterSection";
+import CashRegisterHistory from './CashRegisterHistory';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+const COLORS = [
+  "#0088FE",
+  "#00C49F",
+  "#FFBB28",
+  "#FF8042",
+  "#8884d8",
+  "#82ca9d",
+];
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("notes");
-  
+
   const [dateRange, setDateRange] = useState([
     (() => {
-      const date = new Date(); 
+      const date = new Date();
       date.setMonth(date.getMonth() - 1);
-      date.setDate(1); 
+      date.setDate(1);
       date.setHours(0, 0, 0, 0);
       return date;
     })(),
-    new Date()
+    new Date(),
   ]);
 
   const [loading, setLoading] = useState(true);
@@ -56,24 +81,24 @@ const AdminDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        
-        const start_date = format(dateRange[0], 'yyyy-MM-dd');
-        const end_date = format(dateRange[1], 'yyyy-MM-dd');
-        
-        const response = await api.get('/dashboards/admin/enriched', {
-          params: { startDate: start_date, endDate: end_date }
+
+        const start_date = format(dateRange[0], "yyyy-MM-dd");
+        const end_date = format(dateRange[1], "yyyy-MM-dd");
+
+        const response = await api.get("/dashboards/admin/enriched", {
+          params: { startDate: start_date, endDate: end_date },
         });
-        
+
         setData(response.data.data);
         setError(null);
       } catch (err) {
-        console.error('Erreur lors du chargement des données:', err);
-        setError('Impossible de charger les données du tableau de bord');
+        console.error("Erreur lors du chargement des données:", err);
+        setError("Impossible de charger les données du tableau de bord");
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchDashboardData();
   }, [dateRange]);
 
@@ -84,6 +109,14 @@ const AdminDashboard = () => {
       {/* Tabs pour Notes et Tableau de bord */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
+          <TabsTrigger value="cashregister">
+            <Wallet className="w-4 h-4 mr-2" />
+            Caisse
+          </TabsTrigger>
+          <TabsTrigger value="cashhistory">
+      <History className="w-4 h-4 mr-2" />
+      Historique Caisses
+    </TabsTrigger>
           <TabsTrigger value="notes">
             <StickyNote className="w-4 h-4 mr-2" />
             Notes
@@ -93,6 +126,17 @@ const AdminDashboard = () => {
             Tableau de bord
           </TabsTrigger>
         </TabsList>
+
+        {/* Tab Content Caisse - NOUVEAU */}
+
+        <TabsContent value="cashregister">
+          <CashRegisterSection />
+        </TabsContent>
+
+         {/* Tab Content Historique Caisses */}
+  <TabsContent value="cashhistory">
+    <CashRegisterHistory />
+  </TabsContent>
 
         {/* Tab Content Notes */}
         <TabsContent value="notes">
@@ -118,11 +162,17 @@ const AdminDashboard = () => {
                     <input
                       type="date"
                       className="pl-10 pr-3 py-2 border rounded-lg"
-                      value={dateRange[0] instanceof Date ? format(dateRange[0], 'yyyy-MM-dd') : ''} 
-                      onChange={(e) => setDateRange([
-                        e.target.value ? new Date(e.target.value) : null,
-                        dateRange[1]
-                      ])}
+                      value={
+                        dateRange[0] instanceof Date
+                          ? format(dateRange[0], "yyyy-MM-dd")
+                          : ""
+                      }
+                      onChange={(e) =>
+                        setDateRange([
+                          e.target.value ? new Date(e.target.value) : null,
+                          dateRange[1],
+                        ])
+                      }
                     />
                     <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
                   </div>
@@ -131,11 +181,17 @@ const AdminDashboard = () => {
                     <input
                       type="date"
                       className="pl-10 pr-3 py-2 border rounded-lg"
-                      value={dateRange[1] instanceof Date ? format(dateRange[1], 'yyyy-MM-dd') : ''} 
-                      onChange={(e) => setDateRange([
-                        dateRange[0],
-                        e.target.value ? new Date(e.target.value) : null
-                      ])}
+                      value={
+                        dateRange[1] instanceof Date
+                          ? format(dateRange[1], "yyyy-MM-dd")
+                          : ""
+                      }
+                      onChange={(e) =>
+                        setDateRange([
+                          dateRange[0],
+                          e.target.value ? new Date(e.target.value) : null,
+                        ])
+                      }
                     />
                     <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
                   </div>
@@ -144,74 +200,100 @@ const AdminDashboard = () => {
 
               {/* Section 1: Statistiques principales */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard 
+                <StatCard
                   icon={Users}
                   title="Total Consommateurs"
                   value={data.consumersCount}
                   color="blue"
                 />
-                <StatCard 
+                <StatCard
                   icon={Activity}
                   title="Compteurs Actifs"
                   value={data.meters.active.length}
                   color="green"
                 />
-                <StatCard 
+                <StatCard
                   icon={AlertCircle}
                   title="Compteurs Inactifs"
                   value={data.meters.inactive.length}
                   color="red"
                 />
-                <StatCard 
+                <StatCard
                   icon={TrendingUp}
                   title="Total Factures"
                   value={data.invoices.length}
                   color="purple"
                 />
               </div>
-              
+
               {/* Section 2: Bons de coupure */}
               <SectionCard title="Bons de coupure">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <StatCard 
+                  <StatCard
                     icon={Scissors}
                     title="Avis générés"
                     value={data.disconnection.stats.generated || 0}
-                    subValue={`${data.disconnection.stats.unpaidCustomers || 0} clients concernés`}
+                    subValue={`${
+                      data.disconnection.stats.unpaidCustomers || 0
+                    } clients concernés`}
                     color="yellow"
                   />
-                  <StatCard 
+                  <StatCard
                     icon={CheckSquare}
                     title="Avis exécutés"
                     value={data.disconnection.stats.executed || 0}
-                    subValue={`${(((data.disconnection.stats.executed || 0) / ((data.disconnection.stats.generated || 0) || 1)) * 100).toFixed(1)}% d'exécution`}
+                    subValue={`${(
+                      ((data.disconnection.stats.executed || 0) /
+                        (data.disconnection.stats.generated || 0 || 1)) *
+                      100
+                    ).toFixed(1)}% d'exécution`}
                     color="orange"
                   />
-                  <StatCard 
+                  <StatCard
                     icon={DollarSign}
                     title="Montant total impayé"
-                    value={`${(data.disconnection.stats.unpaidAmount || 0).toLocaleString()} FCFA`}
-                    subValue={`dont ${(data.disconnection.stats.totalPenalties || 0).toLocaleString()} FCFA de pénalités`}
+                    value={`${(
+                      data.disconnection.stats.unpaidAmount || 0
+                    ).toLocaleString()} FCFA`}
+                    subValue={`dont ${(
+                      data.disconnection.stats.totalPenalties || 0
+                    ).toLocaleString()} FCFA de pénalités`}
                     color="red"
                   />
                 </div>
-                      
+
                 <div className="bg-gray-50 p-4 rounded-lg mb-4">
                   <div className="flex items-start">
                     <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 mr-2 flex-shrink-0" />
-                    <p className="text-gray-700">{data.disconnection.statusComment}</p>
+                    <p className="text-gray-700">
+                      {data.disconnection.statusComment}
+                    </p>
                   </div>
                 </div>
 
                 {data && data.disconnection && (
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <RechartsBarChart data={[
-                        {name: 'Clients concernés', value: data.disconnection.stats.unpaidCustomers},
-                        {name: 'Factures impayées', value: data.disconnection.stats.unpaidInvoices},
-                        {name: 'Avis générés', value: data.disconnection.stats.generated},
-                        {name: 'Avis exécutés', value: data.disconnection.stats.executed}
-                      ]}>
+                      <RechartsBarChart
+                        data={[
+                          {
+                            name: "Clients concernés",
+                            value: data.disconnection.stats.unpaidCustomers,
+                          },
+                          {
+                            name: "Factures impayées",
+                            value: data.disconnection.stats.unpaidInvoices,
+                          },
+                          {
+                            name: "Avis générés",
+                            value: data.disconnection.stats.generated,
+                          },
+                          {
+                            name: "Avis exécutés",
+                            value: data.disconnection.stats.executed,
+                          },
+                        ]}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" />
                         <YAxis />
@@ -222,38 +304,65 @@ const AdminDashboard = () => {
                   </div>
                 )}
               </SectionCard>
-              
+
               {/* Section 3: Répartition des compteurs */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Répartition par type de facturation */}
                 <SectionCard title="Répartition par type de facturation">
                   <div className="grid grid-cols-3 gap-4 mb-4">
-                    <StatItem 
-                      label="Standard" 
-                      value={`${data.meters.active.filter(m => m.billing_type === 'standard').length} compteurs`}
+                    <StatItem
+                      label="Standard"
+                      value={`${
+                        data.meters.active.filter(
+                          (m) => m.billing_type === "standard"
+                        ).length
+                      } compteurs`}
                       color="blue-100"
                     />
-                    <StatItem 
-                      label="Premium" 
-                      value={`${data.meters.active.filter(m => m.billing_type === 'premium').length} compteurs`}
+                    <StatItem
+                      label="Premium"
+                      value={`${
+                        data.meters.active.filter(
+                          (m) => m.billing_type === "premium"
+                        ).length
+                      } compteurs`}
                       color="purple-100"
                     />
-                    <StatItem 
-                      label="Gratuit" 
-                      value={`${data.meters.active.filter(m => m.billing_type === 'free').length} compteurs`}
+                    <StatItem
+                      label="Gratuit"
+                      value={`${
+                        data.meters.active.filter(
+                          (m) => m.billing_type === "free"
+                        ).length
+                      } compteurs`}
                       color="green-100"
                     />
                   </div>
-                  
+
                   <div className="flex items-center h-56">
                     <div className="w-1/2 h-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <RechartsPieChart>
                           <Pie
                             data={[
-                              {name: 'Standard', value: data.meters.active.filter(m => m.billing_type === 'standard').length},
-                              {name: 'Premium', value: data.meters.active.filter(m => m.billing_type === 'premium').length},
-                              {name: 'Gratuit', value: data.meters.active.filter(m => m.billing_type === 'free').length}
+                              {
+                                name: "Standard",
+                                value: data.meters.active.filter(
+                                  (m) => m.billing_type === "standard"
+                                ).length,
+                              },
+                              {
+                                name: "Premium",
+                                value: data.meters.active.filter(
+                                  (m) => m.billing_type === "premium"
+                                ).length,
+                              },
+                              {
+                                name: "Gratuit",
+                                value: data.meters.active.filter(
+                                  (m) => m.billing_type === "free"
+                                ).length,
+                              },
                             ]}
                             cx="50%"
                             cy="50%"
@@ -262,14 +371,34 @@ const AdminDashboard = () => {
                             fill="#8884d8"
                             dataKey="value"
                             labelLine={false}
-                            label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            label={({ name, percent }) =>
+                              `${name} ${(percent * 100).toFixed(0)}%`
+                            }
                           >
                             {[
-                              {name: 'Standard', value: data.meters.active.filter(m => m.billing_type === 'standard').length},
-                              {name: 'Premium', value: data.meters.active.filter(m => m.billing_type === 'premium').length},
-                              {name: 'Gratuit', value: data.meters.active.filter(m => m.billing_type === 'free').length}
+                              {
+                                name: "Standard",
+                                value: data.meters.active.filter(
+                                  (m) => m.billing_type === "standard"
+                                ).length,
+                              },
+                              {
+                                name: "Premium",
+                                value: data.meters.active.filter(
+                                  (m) => m.billing_type === "premium"
+                                ).length,
+                              },
+                              {
+                                name: "Gratuit",
+                                value: data.meters.active.filter(
+                                  (m) => m.billing_type === "free"
+                                ).length,
+                              },
                             ].map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                              />
                             ))}
                           </Pie>
                           <Tooltip />
@@ -279,48 +408,76 @@ const AdminDashboard = () => {
 
                     <div className="w-1/2 pl-4">
                       <p className="text-gray-700 text-sm">
-                        La majorité des compteurs utilisent la tarification standard ({((data.meters.active.filter(m => m.billing_type === 'standard').length / data.meters.active.length) * 100).toFixed(1)}%).
-                        {data.meters.active.filter(m => m.billing_type === 'premium').length > 0 && 
-                          ` Les compteurs premium représentent ${((data.meters.active.filter(m => m.billing_type === 'premium').length / data.meters.active.length) * 100).toFixed(1)}% du parc.`}
-                        {data.meters.active.filter(m => m.billing_type === 'free').length > 0 && 
-                          ` ${data.meters.active.filter(m => m.billing_type === 'free').length} compteurs sont en mode gratuit (services publics ou sociaux).`}
+                        La majorité des compteurs utilisent la tarification
+                        standard (
+                        {(
+                          (data.meters.active.filter(
+                            (m) => m.billing_type === "standard"
+                          ).length /
+                            data.meters.active.length) *
+                          100
+                        ).toFixed(1)}
+                        %).
+                        {data.meters.active.filter(
+                          (m) => m.billing_type === "premium"
+                        ).length > 0 &&
+                          ` Les compteurs premium représentent ${(
+                            (data.meters.active.filter(
+                              (m) => m.billing_type === "premium"
+                            ).length /
+                              data.meters.active.length) *
+                            100
+                          ).toFixed(1)}% du parc.`}
+                        {data.meters.active.filter(
+                          (m) => m.billing_type === "free"
+                        ).length > 0 &&
+                          ` ${
+                            data.meters.active.filter(
+                              (m) => m.billing_type === "free"
+                            ).length
+                          } compteurs sont en mode gratuit (services publics ou sociaux).`}
                       </p>
                     </div>
                   </div>
                 </SectionCard>
-                
+
                 {/* Répartition par quartier */}
                 <SectionCard title="Répartition par quartier">
                   <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsBarChart
-                        data={(data?.waterQuality?.metersByQuartier || []).map(quartier => ({
-                          name: quartier.name || 'Non défini',
-                          value: parseInt(quartier.count)
-                        }))}
+                        data={(data?.waterQuality?.metersByQuartier || []).map(
+                          (quartier) => ({
+                            name: quartier.name || "Non défini",
+                            value: parseInt(quartier.count),
+                          })
+                        )}
                         layout="vertical"
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" />
                         <YAxis dataKey="name" type="category" width={100} />
                         <Tooltip />
-                        <Bar dataKey="value" fill="#4fc3f7" barSize={20} /> 
+                        <Bar dataKey="value" fill="#4fc3f7" barSize={20} />
                       </RechartsBarChart>
                     </ResponsiveContainer>
                   </div>
-                  
+
                   <div className="bg-blue-50 p-4 rounded-lg mt-4">
                     <div className="flex">
                       <MapPin className="h-5 w-5 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
                       <p className="text-gray-700 text-sm">
                         {(() => {
-                          const quartiers = (data?.waterQuality?.metersByQuartier || [])
-                            .sort((a, b) => parseInt(b.count) - parseInt(a.count));
-                          
+                          const quartiers = (
+                            data?.waterQuality?.metersByQuartier || []
+                          ).sort(
+                            (a, b) => parseInt(b.count) - parseInt(a.count)
+                          );
+
                           if (quartiers.length === 0) {
                             return "Aucune donnée disponible sur la répartition par quartier.";
                           }
-                          
+
                           const topQuartier = quartiers[0];
                           return `Le quartier "${topQuartier.name}" compte le plus de compteurs (${topQuartier.count}).`;
                         })()}
@@ -333,40 +490,52 @@ const AdminDashboard = () => {
               {/* Section 4: Maintenance */}
               <SectionCard title="Maintenance">
                 <div className="grid grid-cols-3 gap-3 mb-4">
-                  <StatItem 
-                    label="Total" 
+                  <StatItem
+                    label="Total"
                     value={data.maintenance.total}
                     color="indigo-100"
                   />
-                  <StatItem 
-                    label="Préventives" 
+                  <StatItem
+                    label="Préventives"
                     value={data.maintenance.preventive.total}
                     color="green-100"
                   />
-                  <StatItem 
-                    label="Curatives" 
+                  <StatItem
+                    label="Curatives"
                     value={data.maintenance.corrective.total}
                     color="orange-100"
                   />
                 </div>
-                
+
                 <div className="flex items-center mb-2">
-                  <div className="text-sm font-medium mr-2">Taux de complétion:</div>
+                  <div className="text-sm font-medium mr-2">
+                    Taux de complétion:
+                  </div>
                   <div className="flex-grow h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-green-500 rounded-full" 
-                      style={{width: `${data.maintenance.completionRate}%`}}
+                    <div
+                      className="h-full bg-green-500 rounded-full"
+                      style={{ width: `${data.maintenance.completionRate}%` }}
                     ></div>
                   </div>
-                  <div className="ml-2 text-sm font-medium">{data.maintenance.completionRate.toFixed(1)}%</div>
+                  <div className="ml-2 text-sm font-medium">
+                    {data.maintenance.completionRate.toFixed(1)}%
+                  </div>
                 </div>
-                
+
                 <div className="h-44 mb-3">
                   <ResponsiveContainer width="100%" height="100%">
                     <RechartsBarChart
                       data={[
-                        {name: 'Préventives', pending: data.maintenance.preventive.pending, done: data.maintenance.preventive.done},
-                        {name: 'Curatives', pending: data.maintenance.corrective.pending, done: data.maintenance.corrective.done},
+                        {
+                          name: "Préventives",
+                          pending: data.maintenance.preventive.pending,
+                          done: data.maintenance.preventive.done,
+                        },
+                        {
+                          name: "Curatives",
+                          pending: data.maintenance.corrective.pending,
+                          done: data.maintenance.corrective.done,
+                        },
                       ]}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
@@ -374,43 +543,63 @@ const AdminDashboard = () => {
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="done" stackId="a" fill="#4CAF50" name="Terminées" />
-                      <Bar dataKey="pending" stackId="a" fill="#FFC107" name="En attente" />
+                      <Bar
+                        dataKey="done"
+                        stackId="a"
+                        fill="#4CAF50"
+                        name="Terminées"
+                      />
+                      <Bar
+                        dataKey="pending"
+                        stackId="a"
+                        fill="#FFC107"
+                        name="En attente"
+                      />
                     </RechartsBarChart>
                   </ResponsiveContainer>
                 </div>
-                
+
                 <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-700">
                   {data.maintenance.comment}
                 </div>
               </SectionCard>
-              
+
               {/* Section 5: Emprunts et Inventaire */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Emprunts */}
                 <SectionCard title="Emprunts">
                   <div className="grid grid-cols-2 gap-3 mb-4">
-                    <StatItem 
-                      label="Total emprunts" 
+                    <StatItem
+                      label="Total emprunts"
                       value={data.loans.stats.totalLoans}
                       subLabel={`${data.loans.stats.totalAmount.toLocaleString()} FCFA`}
                       color="purple-100"
                     />
-                    <StatItem 
-                      label="Montant restant" 
+                    <StatItem
+                      label="Montant restant"
                       value={`${data.loans.stats.remainingAmount.toLocaleString()} FCFA`}
-                      subLabel={`Taux: ${data.loans.stats.repaymentRate.toFixed(1)}%`}
+                      subLabel={`Taux: ${data.loans.stats.repaymentRate.toFixed(
+                        1
+                      )}%`}
                       color="indigo-100"
                     />
                   </div>
-                  
+
                   <div className="h-44 mb-3">
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsPieChart>
                         <Pie
                           data={[
-                            {name: 'Remboursé', value: data.loans.stats.totalAmount - data.loans.stats.remainingAmount},
-                            {name: 'Restant', value: data.loans.stats.remainingAmount}
+                            {
+                              name: "Remboursé",
+                              value:
+                                data.loans.stats.totalAmount -
+                                data.loans.stats.remainingAmount,
+                            },
+                            {
+                              name: "Restant",
+                              value: data.loans.stats.remainingAmount,
+                            },
                           ]}
                           cx="50%"
                           cy="50%"
@@ -419,45 +608,61 @@ const AdminDashboard = () => {
                           fill="#8884d8"
                           dataKey="value"
                           labelLine={true}
-                          label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
                         >
                           <Cell fill="#4CAF50" />
                           <Cell fill="#FF9800" />
                         </Pie>
-                        <Tooltip formatter={(value) => `${value.toLocaleString()} FCFA`} />
+                        <Tooltip
+                          formatter={(value) =>
+                            `${value.toLocaleString()} FCFA`
+                          }
+                        />
                       </RechartsPieChart>
                     </ResponsiveContainer>
                   </div>
-                  
+
                   <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-700">
                     {data.loans.comment}
                   </div>
                 </SectionCard>
-                
+
                 {/* Inventaire */}
                 <SectionCard title="Gestion des Stocks">
                   <div className="grid grid-cols-2 gap-3 mb-4">
-                    <StatItem 
-                      label="Total articles" 
+                    <StatItem
+                      label="Total articles"
                       value={data.inventory.stats.totalItems}
                       color="teal-100"
                     />
-                    <StatItem 
-                      label="Stock faible" 
+                    <StatItem
+                      label="Stock faible"
                       value={data.inventory.stats.lowStockItems}
-                      subLabel={`${data.inventory.stats.lowStockPercentage.toFixed(1)}%`}
-                      color={data.inventory.stats.lowStockPercentage > 20 ? "red-100" : "yellow-100"}
+                      subLabel={`${data.inventory.stats.lowStockPercentage.toFixed(
+                        1
+                      )}%`}
+                      color={
+                        data.inventory.stats.lowStockPercentage > 20
+                          ? "red-100"
+                          : "yellow-100"
+                      }
                     />
                   </div>
-                  
+
                   {data.inventory.lowStockItems.length > 0 && (
                     <div className="mb-4">
-                      <h4 className="text-sm font-medium mb-2">Articles en stock faible:</h4>
+                      <h4 className="text-sm font-medium mb-2">
+                        Articles en stock faible:
+                      </h4>
                       <div className="bg-yellow-50 p-3 rounded-lg">
                         <ul className="text-sm text-amber-800 space-y-1">
                           {data.inventory.lowStockItems.map((item, index) => (
                             <li key={index} className="flex justify-between">
-                              <span>{item.name} ({item.category})</span>
+                              <span>
+                                {item.name} ({item.category})
+                              </span>
                               <span>
                                 {item.quantity} / {item.alert_threshold}
                               </span>
@@ -478,11 +683,15 @@ const AdminDashboard = () => {
                         <XAxis type="number" />
                         <YAxis dataKey="category" type="category" width={100} />
                         <Tooltip />
-                        <Bar dataKey="items" fill="#009688" name="Nombre d'articles" />
+                        <Bar
+                          dataKey="items"
+                          fill="#009688"
+                          name="Nombre d'articles"
+                        />
                       </RechartsBarChart>
                     </ResponsiveContainer>
                   </div>
-                  
+
                   <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-700">
                     {data.inventory.comment}
                   </div>
@@ -513,9 +722,7 @@ const StatCard = ({ icon: Icon, title, value, subValue, color }) => (
       <div className="text-right">
         <p className="text-sm text-gray-600">{title}</p>
         <h3 className="text-xl font-bold">{value}</h3>
-        {subValue && (
-          <p className="text-sm text-gray-500">{subValue}</p>
-        )}
+        {subValue && <p className="text-sm text-gray-500">{subValue}</p>}
       </div>
     </div>
   </Card>
