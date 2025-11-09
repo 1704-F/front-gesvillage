@@ -1,12 +1,31 @@
 //ReadingPage
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { cn } from "../lib/utils";
-import { Card } from "../ui/card"; 
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
+import { Card } from "../ui/card";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "../ui/table";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { Badge } from "../ui/badge";
 import { Alert, AlertDescription } from "../ui/alert";
 import { ScrollArea } from "../ui/scroll-area";
@@ -16,78 +35,95 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription, 
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import { useToast } from "../ui/toast/use-toast";
-import { Plus, Pencil, Trash2, Calendar, Calculator, AlertCircle, Download,Check, FileText, AlertTriangle } from 'lucide-react';
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Calendar,
+  Calculator,
+  AlertCircle,
+  Download,
+  Check,
+  FileText,
+  AlertTriangle,
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar as CalendarComponent } from "../ui/calendar";
-import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import { Users, XCircle, Search } from 'lucide-react';
-import { format } from 'date-fns';
-import { axiosPrivate as api } from '../../utils/axios';
-import ReadingPageSkeleton from './ReadingPageSkeleton';
-
+import {
+  PDFDownloadLink,
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+} from "@react-pdf/renderer";
+import { Users, XCircle, Search } from "lucide-react";
+import { format } from "date-fns";
+import { axiosPrivate as api } from "../../utils/axios";
+import ReadingPageSkeleton from "./ReadingPageSkeleton";
 
 // Styles améliorés pour éviter les problèmes de rendu PDF
 const styles = StyleSheet.create({
   page: {
     padding: 30,
-    orientation: 'landscape',
-    backgroundColor: '#ffffff',
-    color: '#000000',
+    orientation: "landscape",
+    backgroundColor: "#ffffff",
+    color: "#000000",
   },
   header: {
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000000',
+    fontWeight: "bold",
+    color: "#000000",
   },
   dateRange: {
     marginBottom: 15,
     fontSize: 12,
-    color: '#333333',
-    textAlign: 'center',
+    color: "#333333",
+    textAlign: "center",
   },
   table: {
-    display: 'table',
-    width: '100%',
+    display: "table",
+    width: "100%",
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#000000',
-    borderStyle: 'solid',
+    borderColor: "#000000",
+    borderStyle: "solid",
   },
   tableRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: '#000000',
-    borderBottomStyle: 'solid',
-    alignItems: 'center',
+    borderBottomColor: "#000000",
+    borderBottomStyle: "solid",
+    alignItems: "center",
     minHeight: 30,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   tableHeader: {
-    backgroundColor: '#f8f9fa',
-    fontWeight: 'bold',
+    backgroundColor: "#f8f9fa",
+    fontWeight: "bold",
     borderBottomWidth: 2,
   },
   tableCell: {
     flex: 1,
     padding: 6,
     fontSize: 9,
-    textAlign: 'left',
-    color: '#000000',
+    textAlign: "left",
+    color: "#000000",
     borderRightWidth: 1,
-    borderRightColor: '#cccccc',
-    borderRightStyle: 'solid',
+    borderRightColor: "#cccccc",
+    borderRightStyle: "solid",
   },
   tableCellNumber: {
     flex: 0.5,
-    textAlign: 'center',
+    textAlign: "center",
   },
   tableCellMeter: {
     flex: 1.2,
@@ -100,26 +136,25 @@ const styles = StyleSheet.create({
   },
   tableCellStatus: {
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });
 
-
-
 const formatNumber = (num, decimals = 0) => {
-  if (isNaN(num)) return '0';
-  return new Intl.NumberFormat('fr-FR', { 
+  if (isNaN(num)) return "0";
+  return new Intl.NumberFormat("fr-FR", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-    useGrouping: true
-  }).format(num)
-    .replace(/\s/g, ' ')
-    .replace(/[.,]\s/g, '.')
-    .replace(/\//g, ' ');
+    useGrouping: true,
+  })
+    .format(num)
+    .replace(/\s/g, " ")
+    .replace(/[.,]\s/g, ".")
+    .replace(/\//g, " ");
 };
 
 const formatPercent = (num) => {
-  if (isNaN(num)) return '0.00';
+  if (isNaN(num)) return "0.00";
   return Number(num).toFixed(2);
 };
 
@@ -127,7 +162,7 @@ const formatPercent = (num) => {
 const sortMeterNumber = (a, b) => {
   const aMatch = a.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
   const bMatch = b.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
-  
+
   if (aMatch && bMatch) {
     // Comparer les préfixes
     if (aMatch[1] !== bMatch[1]) {
@@ -136,7 +171,7 @@ const sortMeterNumber = (a, b) => {
     // Si préfixes identiques, comparer les numéros
     return parseInt(aMatch[2]) - parseInt(bMatch[2]);
   }
-  
+
   // Fallback si le format ne correspond pas
   return a.meter.meter_number.localeCompare(b.meter.meter_number);
 };
@@ -147,10 +182,10 @@ const RelevePDF = ({ readings, dateRange }) => {
   // Trier les données par numéro de compteur CORRECTEMENT
   const sortedReadings = [...readings].sort((a, b) => {
     if (!a.meter || !b.meter) return 0;
-    
+
     const aMatch = a.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
     const bMatch = b.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
-    
+
     if (aMatch && bMatch) {
       // Comparer les préfixes
       if (aMatch[1] !== bMatch[1]) {
@@ -159,7 +194,7 @@ const RelevePDF = ({ readings, dateRange }) => {
       // Si préfixes identiques, comparer les numéros
       return parseInt(aMatch[2]) - parseInt(bMatch[2]);
     }
-    
+
     return a.meter.meter_number.localeCompare(b.meter.meter_number);
   });
 
@@ -167,9 +202,10 @@ const RelevePDF = ({ readings, dateRange }) => {
     <Document>
       <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.header}>Relevés de consommation</Text>
-        
+
         <Text style={styles.dateRange}>
-          Période du {format(dateRange[0], 'dd/MM/yyyy')} au {format(dateRange[1], 'dd/MM/yyyy')}
+          Période du {format(dateRange[0], "dd/MM/yyyy")} au{" "}
+          {format(dateRange[1], "dd/MM/yyyy")}
         </Text>
 
         <View style={styles.table}>
@@ -192,11 +228,13 @@ const RelevePDF = ({ readings, dateRange }) => {
           {sortedReadings.map((reading, index) => (
             <View key={reading.id} style={styles.tableRow}>
               <Text style={styles.tableCell}>{index + 1}</Text>
-              <Text style={styles.tableCell}>{reading.meter?.meter_number}</Text>
               <Text style={styles.tableCell}>
-                {reading.meter?.user ? 
-                  `${reading.meter.user.first_name} ${reading.meter.user.last_name}` : 
-                  'N/A'}
+                {reading.meter?.meter_number}
+              </Text>
+              <Text style={styles.tableCell}>
+                {reading.meter?.user
+                  ? `${reading.meter.user.first_name} ${reading.meter.user.last_name}`
+                  : "N/A"}
               </Text>
               <Text style={styles.tableCell}>{reading.last_reading_value}</Text>
               <Text style={styles.tableCell}>{reading.reading_value}</Text>
@@ -205,10 +243,10 @@ const RelevePDF = ({ readings, dateRange }) => {
                 {formatNumber(reading.amount).toLocaleString()}
               </Text>
               <Text style={styles.tableCell}>
-                {format(new Date(reading.reading_date), 'dd/MM/yyyy')}
+                {format(new Date(reading.reading_date), "dd/MM/yyyy")}
               </Text>
               <Text style={styles.tableCell}>
-                {reading.status === 'validated' ? 'Validé' : 'En attente'}
+                {reading.status === "validated" ? "Validé" : "En attente"}
               </Text>
               <Text style={styles.tableCell}>
                 {/* Colonne de paiement - vide par défaut */}
@@ -224,15 +262,14 @@ const RelevePDF = ({ readings, dateRange }) => {
   );
 };
 
-
 // Composant PDF complet pour les compteurs sans relevés
 const MetersPDF = ({ meters, dateRange }) => {
-  console.log('MetersPDF - Nombre de compteurs:', meters.length);
-  
+  console.log("MetersPDF - Nombre de compteurs:", meters.length);
+
   const sortedMeters = [...meters].sort((a, b) => {
     const aMatch = a.meter_number.match(/([A-Za-z]+)-?(\d+)/);
     const bMatch = b.meter_number.match(/([A-Za-z]+)-?(\d+)/);
-    
+
     if (aMatch && bMatch) {
       if (aMatch[1] !== bMatch[1]) {
         return aMatch[1].localeCompare(bMatch[1]);
@@ -246,9 +283,10 @@ const MetersPDF = ({ meters, dateRange }) => {
     <Document>
       <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.header}>Compteurs sans relevés</Text>
-        
+
         <Text style={styles.dateRange}>
-          Période du {format(dateRange[0], 'dd/MM/yyyy')} au {format(dateRange[1], 'dd/MM/yyyy')}
+          Période du {format(dateRange[0], "dd/MM/yyyy")} au{" "}
+          {format(dateRange[1], "dd/MM/yyyy")}
         </Text>
 
         <Text style={{ fontSize: 12, marginBottom: 10 }}>
@@ -269,13 +307,17 @@ const MetersPDF = ({ meters, dateRange }) => {
             <View key={meter.id} style={styles.tableRow}>
               <Text style={styles.tableCell}>{index + 1}</Text>
               <Text style={styles.tableCell}>{meter.meter_number}</Text>
-              <Text style={styles.tableCell}>{meter.serial_number || 'N/A'}</Text>
               <Text style={styles.tableCell}>
-                {meter.user ? 
-                  `${meter.user.first_name} ${meter.user.last_name}` : 
-                  'N/A'}
+                {meter.serial_number || "N/A"}
               </Text>
-              <Text style={styles.tableCell}>{meter.quartier?.name || meter.location || 'N/A'}</Text>
+              <Text style={styles.tableCell}>
+                {meter.user
+                  ? `${meter.user.first_name} ${meter.user.last_name}`
+                  : "N/A"}
+              </Text>
+              <Text style={styles.tableCell}>
+                {meter.quartier?.name || meter.location || "N/A"}
+              </Text>
               <Text style={styles.tableCell}>Sans relevé</Text>
             </View>
           ))}
@@ -289,29 +331,29 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
   const [calculationDetails, setCalculationDetails] = useState(null);
   const [loading, setLoading] = useState(false);
 
- const billingTypeLabels = {
-  'standard': 'Standard',
-  'premium': 'Premium',
-  'agricole': 'Agricole',
-  'industriel': 'Industriel',
-  'autre_tarif': 'Autre tarif',
-  'free': 'Gratuit'
-};
+  const billingTypeLabels = {
+    standard: "Standard",
+    premium: "Premium",
+    agricole: "Agricole",
+    industriel: "Industriel",
+    autre_tarif: "Autre tarif",
+    free: "Gratuit",
+  };
 
   useEffect(() => {
     const fetchCalculation = async () => {
       if (!consumption) return;
-      
+
       try {
         setLoading(true);
-        const response = await api.post('/readings/calculate-preview', { 
+        const response = await api.post("/readings/calculate-preview", {
           consumption,
-          meter_id: meterId
+          meter_id: meterId,
         });
-        
+
         setCalculationDetails(response.data.data);
       } catch (error) {
-        console.error('Erreur lors du calcul:', error);
+        console.error("Erreur lors du calcul:", error);
       } finally {
         setLoading(false);
       }
@@ -319,7 +361,6 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
 
     fetchCalculation();
   }, [consumption, meterId]);
-  
 
   if (!calculationDetails || loading) {
     return (
@@ -330,7 +371,7 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
   }
 
   const { calculationDetails: details } = calculationDetails;
-  const isSingleTier = details.pricing_type === 'SINGLE';
+  const isSingleTier = details.pricing_type === "SINGLE";
 
   return (
     <div className="space-y-4">
@@ -340,86 +381,109 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
           Calcul
         </h3>
         {details.billing_type && (
-
-         <Badge 
-  variant={
-    details.billing_type === 'premium' ? 'destructive' : 
-    details.billing_type === 'free' ? 'success' : 
-    details.billing_type === 'agricole' ? 'outline' :
-    details.billing_type === 'industriel' ? 'default' :
-    details.billing_type === 'autre_tarif' ? 'secondary' :
-    'secondary'
-  }
->
-  {billingTypeLabels[details.billing_type]}
-</Badge>
-
-
+          <Badge
+            variant={
+              details.billing_type === "premium"
+                ? "destructive"
+                : details.billing_type === "free"
+                ? "success"
+                : details.billing_type === "agricole"
+                ? "outline"
+                : details.billing_type === "industriel"
+                ? "default"
+                : details.billing_type === "autre_tarif"
+                ? "secondary"
+                : "secondary"
+            }
+          >
+            {billingTypeLabels[details.billing_type]}
+          </Badge>
         )}
         <div className="text-lg font-bold text-blue-700">
           {Math.round(details.total_amount).toLocaleString()} FCFA
         </div>
       </div>
 
-      {details.billing_type === 'free' ? (
+      {details.billing_type === "free" ? (
         <div className="bg-green-50 rounded-md p-4 text-center">
-          <p className="font-medium text-green-700">Ce compteur est configuré en mode gratuit</p>
-          <p className="text-sm text-green-600">Aucun frais ne sera facturé pour cette consommation</p>
+          <p className="font-medium text-green-700">
+            Ce compteur est configuré en mode gratuit
+          </p>
+          <p className="text-sm text-green-600">
+            Aucun frais ne sera facturé pour cette consommation
+          </p>
         </div>
       ) : (
         <div className="bg-white rounded-md p-4 space-y-4">
           <div className="pb-3 border-b">
-            <div className="text-sm font-medium text-gray-500">Consommation totale</div>
-            <div className="text-2xl font-semibold">{consumption.toFixed(2)} m³</div>
+            <div className="text-sm font-medium text-gray-500">
+              Consommation totale
+            </div>
+            <div className="text-2xl font-semibold">
+              {consumption.toFixed(2)} m³
+            </div>
           </div>
 
           <div className="space-y-4">
-  {details.pricing_type === 'SINGLE' ? (
-    <div>
-      <div className="text-sm font-medium">Tarification unique</div>
-      <div className="pl-3 text-sm text-gray-600">
-        <div>Prix unitaire : {details.tranches[0].rate} FCFA/m³</div>
-        <div>{details.tranches[0].consumption.toFixed(2)} m³ × {details.tranches[0].rate} FCFA</div>
-        <div className="font-medium text-black">
-          = {Math.round(details.tranches[0].amount).toLocaleString()} FCFA
-        </div>
-      </div>
-    </div>
-  ) : (
-    <>
-      {details.tranches.map((tranche, index) => (
-        tranche.consumption > 0 && (
-          <div key={index}>
-            <div className="text-sm font-medium">
-              Tranche {index + 1} {tranche.range && `(${tranche.range})`}
-            </div>
-            <div className="pl-3 text-sm text-gray-600">
-              <div>{tranche.consumption.toFixed(2)} m³ × {tranche.rate} FCFA</div>
-              <div className="font-medium text-black">
-                = {Math.round(tranche.amount).toLocaleString()} FCFA
+            {details.pricing_type === "SINGLE" ? (
+              <div>
+                <div className="text-sm font-medium">Tarification unique</div>
+                <div className="pl-3 text-sm text-gray-600">
+                  <div>Prix unitaire : {details.tranches[0].rate} FCFA/m³</div>
+                  <div>
+                    {details.tranches[0].consumption.toFixed(2)} m³ ×{" "}
+                    {details.tranches[0].rate} FCFA
+                  </div>
+                  <div className="font-medium text-black">
+                    = {Math.round(details.tranches[0].amount).toLocaleString()}{" "}
+                    FCFA
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                {details.tranches.map(
+                  (tranche, index) =>
+                    tranche.consumption > 0 && (
+                      <div key={index}>
+                        <div className="text-sm font-medium">
+                          Tranche {index + 1}{" "}
+                          {tranche.range && `(${tranche.range})`}
+                        </div>
+                        <div className="pl-3 text-sm text-gray-600">
+                          <div>
+                            {tranche.consumption.toFixed(2)} m³ × {tranche.rate}{" "}
+                            FCFA
+                          </div>
+                          <div className="font-medium text-black">
+                            = {Math.round(tranche.amount).toLocaleString()} FCFA
+                          </div>
+                        </div>
+                      </div>
+                    )
+                )}
+              </>
+            )}
+
+            {details.multiplier && details.multiplier !== 1 && (
+              <div className="border-t pt-2">
+                <div
+                  className={`text-sm font-medium ${
+                    details.multiplier > 1 ? "text-red-600" : "text-green-600"
+                  }`}
+                >
+                  {details.billing_type} :{" "}
+                  {details.multiplier > 1
+                    ? `+${Math.round(
+                        (details.multiplier - 1) * 100
+                      )}% d'augmentation`
+                    : `Réduction de ${Math.round(
+                        (1 - details.multiplier) * 100
+                      )}%`}
+                </div>
+              </div>
+            )}
           </div>
-        )
-      ))}
-    </>
-  )}
-
-{details.multiplier && details.multiplier !== 1 && (
-  <div className="border-t pt-2">
-    <div className={`text-sm font-medium ${
-      details.multiplier > 1 ? 'text-red-600' : 'text-green-600'
-    }`}>
-      {details.billing_type} : {
-        details.multiplier > 1 
-          ? `+${Math.round((details.multiplier - 1) * 100)}% d'augmentation`
-          : `Réduction de ${Math.round((1 - details.multiplier) * 100)}%`
-      }
-    </div>
-  </div>
-)}
-
-</div>
 
           <div className="text-xs text-gray-500 mt-2">
             * Calcul basé sur la tarification en vigueur
@@ -430,45 +494,52 @@ const ConsumptionDetails = ({ consumption, meterId }) => {
   );
 };
 
-const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, selectedMeterId }) => {
+const ReadingForm = ({
+  isOpen,
+  onClose,
+  editingReading,
+  meters,
+  onSubmit,
+  selectedMeterId,
+}) => {
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
-    meter_id: '',
-    last_reading_value: '',
-    reading_value: '',
-    method: 'manual',
+    meter_id: "",
+    last_reading_value: "",
+    reading_value: "",
+    method: "manual",
     reading_date: null,
-    status: 'pending',
+    status: "pending",
     period: {
       from: null,
-      to: null
-    }
+      to: null,
+    },
   });
 
   const [consumption, setConsumption] = useState(null);
-  const [searchMeter, setSearchMeter] = useState('');
+  const [searchMeter, setSearchMeter] = useState("");
   const [isSelectOpen, setIsSelectOpen] = useState(false);
 
-  const [quartierFilter, setQuartierFilter] = useState('all');
+  const [quartierFilter, setQuartierFilter] = useState("all");
   const [quartiers, setQuartiers] = useState([]);
 
   useEffect(() => {
     if (!isOpen) {
       setFormData({
-        meter_id: '',
-        last_reading_value: '',
-        reading_value: '',
-        method: 'manual',
+        meter_id: "",
+        last_reading_value: "",
+        reading_value: "",
+        method: "manual",
         reading_date: null,
-        status: 'pending',
+        status: "pending",
         period: {
           from: null,
-          to: null
-        }
+          to: null,
+        },
       });
       setConsumption(null);
       setError(null);
-      setSearchMeter('');
+      setSearchMeter("");
     }
   }, [isOpen]);
 
@@ -483,29 +554,31 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
         status: editingReading.status,
         period: {
           from: new Date(editingReading.start_date),
-          to: new Date(editingReading.end_date)
-        }
+          to: new Date(editingReading.end_date),
+        },
       });
     }
   }, [editingReading, isOpen]);
 
   useEffect(() => {
     if (selectedMeterId && !editingReading && isOpen) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         meter_id: String(selectedMeterId),
         reading_date: new Date(),
         period: {
           from: new Date(),
-          to: new Date()
-        }
+          to: new Date(),
+        },
       }));
     }
   }, [selectedMeterId, editingReading, isOpen]);
 
   useEffect(() => {
     if (formData.last_reading_value && formData.reading_value) {
-      const newConsumption = parseFloat(formData.reading_value) - parseFloat(formData.last_reading_value);
+      const newConsumption =
+        parseFloat(formData.reading_value) -
+        parseFloat(formData.last_reading_value);
       setConsumption(newConsumption > 0 ? newConsumption : null);
     } else {
       setConsumption(null);
@@ -518,46 +591,48 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     }
   }, [formData.meter_id, editingReading, isOpen]);
 
- useEffect(() => {
-  if (isOpen && meters.length > 0) {
-    console.log('Meters:', meters); // Debug
-    console.log('Premier meter:', meters[0]); // Debug
-    
-    // Extraire les quartiers uniques des compteurs disponibles
-    const uniqueQuartiers = meters
-      .filter(meter => {
-        console.log('Meter quartier:', meter.quartier); // Debug
-        return meter.quartier && meter.quartier.id;
-      })
-      .reduce((acc, meter) => {
-        if (!acc.find(q => q.id === meter.quartier.id)) {
-          acc.push(meter.quartier);
-        }
-        return acc;
-      }, [])
-      .sort((a, b) => a.name.localeCompare(b.name));
-    
-    console.log('Quartiers trouvés:', uniqueQuartiers); // Debug
-    setQuartiers(uniqueQuartiers);
-  }
-}, [isOpen, meters]);
+  useEffect(() => {
+    if (isOpen && meters.length > 0) {
+      console.log("Meters:", meters); // Debug
+      console.log("Premier meter:", meters[0]); // Debug
+
+      // Extraire les quartiers uniques des compteurs disponibles
+      const uniqueQuartiers = meters
+        .filter((meter) => {
+          console.log("Meter quartier:", meter.quartier); // Debug
+          return meter.quartier && meter.quartier.id;
+        })
+        .reduce((acc, meter) => {
+          if (!acc.find((q) => q.id === meter.quartier.id)) {
+            acc.push(meter.quartier);
+          }
+          return acc;
+        }, [])
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      console.log("Quartiers trouvés:", uniqueQuartiers); // Debug
+      setQuartiers(uniqueQuartiers);
+    }
+  }, [isOpen, meters]);
 
   const handleChange = (field, value) => {
     const newFormData = {
       ...formData,
-      [field]: value
+      [field]: value,
     };
-    
+
     setFormData(newFormData);
-    
-    if (field === 'last_reading_value' && newFormData.reading_value) {
-      const newConsumption = parseFloat(newFormData.reading_value) - parseFloat(value);
+
+    if (field === "last_reading_value" && newFormData.reading_value) {
+      const newConsumption =
+        parseFloat(newFormData.reading_value) - parseFloat(value);
       setConsumption(newConsumption > 0 ? newConsumption : null);
-    } else if (field === 'reading_value' && newFormData.last_reading_value) {
-      const newConsumption = parseFloat(value) - parseFloat(newFormData.last_reading_value);
+    } else if (field === "reading_value" && newFormData.last_reading_value) {
+      const newConsumption =
+        parseFloat(value) - parseFloat(newFormData.last_reading_value);
       setConsumption(newConsumption > 0 ? newConsumption : null);
     }
-    
+
     setError(null);
   };
 
@@ -565,28 +640,39 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
     e.preventDefault();
     setError(null);
 
-    if (parseFloat(formData.reading_value) <= parseFloat(formData.last_reading_value)) {
+    if (
+      parseFloat(formData.reading_value) <=
+      parseFloat(formData.last_reading_value)
+    ) {
       setError("Le nouvel index doit être supérieur à l'ancien index");
       return;
     }
 
     const submitData = {
       ...formData,
-      start_date: formData.period.from ? format(formData.period.from, 'yyyy-MM-dd') : null,
-      end_date: formData.period.to ? format(formData.period.to, 'yyyy-MM-dd') : null,
-      reading_date: formData.reading_date ? format(formData.reading_date, 'yyyy-MM-dd') : null
+      start_date: formData.period.from
+        ? format(formData.period.from, "yyyy-MM-dd")
+        : null,
+      end_date: formData.period.to
+        ? format(formData.period.to, "yyyy-MM-dd")
+        : null,
+      reading_date: formData.reading_date
+        ? format(formData.reading_date, "yyyy-MM-dd")
+        : null,
     };
 
     try {
       await onSubmit(submitData);
     } catch (error) {
       const errorData = error.response?.data;
-      const errorText = errorData?.error || '';
-      
-      if (errorText.includes('unique_reading_per_day')) {
+      const errorText = errorData?.error || "";
+
+      if (errorText.includes("unique_reading_per_day")) {
         setError(
           <div className="space-y-2">
-            <p className="font-medium text-red-700">Un relevé existe déjà pour cette date</p>
+            <p className="font-medium text-red-700">
+              Un relevé existe déjà pour cette date
+            </p>
             <ul className="list-disc list-inside space-y-1 text-sm">
               <li>Un seul relevé est autorisé par jour pour chaque compteur</li>
               <li>Veuillez choisir une autre date pour ce relevé</li>
@@ -594,9 +680,9 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
           </div>
         );
       } else if (
-        errorText.includes('existe déjà sur cette période') || 
-        errorText.includes('existe d,j') || 
-        errorText.toLowerCase().includes('relev')
+        errorText.includes("existe déjà sur cette période") ||
+        errorText.includes("existe d,j") ||
+        errorText.toLowerCase().includes("relev")
       ) {
         setError(
           <div className="space-y-2">
@@ -608,66 +694,77 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
           </div>
         );
       } else {
-        setError(errorData?.message || "Une erreur est survenue lors de l'enregistrement du relevé");
+        setError(
+          errorData?.message ||
+            "Une erreur est survenue lors de l'enregistrement du relevé"
+        );
       }
     }
   };
 
   const fetchLatestReading = async (meterId) => {
     if (!meterId) return;
-    
+
     try {
       const response = await api.get(`/readings/meter/${meterId}/latest`);
-      
+
       if (response.data && response.data.data) {
         const latestReading = response.data.data;
-        handleChange('last_reading_value', latestReading.reading_value);
+        handleChange("last_reading_value", latestReading.reading_value);
       } else {
         try {
           const meterResponse = await api.get(`/api/meters/${meterId}`);
           if (meterResponse.data && meterResponse.data.initial_reading_value) {
-            handleChange('last_reading_value', meterResponse.data.initial_reading_value);
+            handleChange(
+              "last_reading_value",
+              meterResponse.data.initial_reading_value
+            );
           } else {
-            handleChange('last_reading_value', '0');
+            handleChange("last_reading_value", "0");
           }
         } catch (err) {
-          console.error('Erreur lors de la récupération des détails du compteur:', err);
-          handleChange('last_reading_value', '0');
+          console.error(
+            "Erreur lors de la récupération des détails du compteur:",
+            err
+          );
+          handleChange("last_reading_value", "0");
         }
       }
     } catch (error) {
-      console.error('Erreur lors de la récupération du dernier relevé:', error);
-      handleChange('last_reading_value', '0');
+      console.error("Erreur lors de la récupération du dernier relevé:", error);
+      handleChange("last_reading_value", "0");
     }
   };
 
- const filteredMeters = meters
-  .sort((a, b) => {
-    const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
-    const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
-    
-    if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
-      return parseInt(aMatch[2]) - parseInt(bMatch[2]);
-    }
-    return a.meter_number.localeCompare(b.meter_number);
-  })
-  .filter(meter => {
-    const searchMatch = `${meter.meter_number} ${meter.user?.first_name} ${meter.user?.last_name} ${meter.serial_number}`
-      .toLowerCase()
-      .includes(searchMeter.toLowerCase());
-    
-    const quartierMatch = quartierFilter === 'all' || 
-      (meter.quartier_id && meter.quartier_id === parseInt(quartierFilter));
-    
-    return searchMatch && quartierMatch;
-  });
+  const filteredMeters = meters
+    .sort((a, b) => {
+      const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
+      const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
+
+      if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
+        return parseInt(aMatch[2]) - parseInt(bMatch[2]);
+      }
+      return a.meter_number.localeCompare(b.meter_number);
+    })
+    .filter((meter) => {
+      const searchMatch =
+        `${meter.meter_number} ${meter.user?.first_name} ${meter.user?.last_name} ${meter.serial_number}`
+          .toLowerCase()
+          .includes(searchMeter.toLowerCase());
+
+      const quartierMatch =
+        quartierFilter === "all" ||
+        (meter.quartier_id && meter.quartier_id === parseInt(quartierFilter));
+
+      return searchMatch && quartierMatch;
+    });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[900px]">
         <DialogHeader>
           <DialogTitle>
-            {editingReading ? 'Modifier le relevé' : 'Nouveau relevé'}
+            {editingReading ? "Modifier le relevé" : "Nouveau relevé"}
           </DialogTitle>
         </DialogHeader>
 
@@ -683,25 +780,30 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
             <div className="flex-1 space-y-4">
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
-  <label className="text-sm font-medium">Filtrer par sections</label>
-  <Select
-    value={quartierFilter}
-    onValueChange={setQuartierFilter}
-    disabled={!!editingReading}
-  >
-    <SelectTrigger>
-      <SelectValue placeholder="Tous les quartiers" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="all">Tous les sections</SelectItem>
-      {quartiers.map((quartier) => (
-        <SelectItem key={quartier.id} value={String(quartier.id)}>
-          {quartier.name}
-        </SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-</div>
+                  <label className="text-sm font-medium">
+                    Filtrer par sections
+                  </label>
+                  <Select
+                    value={quartierFilter}
+                    onValueChange={setQuartierFilter}
+                    disabled={!!editingReading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tous les quartiers" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les sections</SelectItem>
+                      {quartiers.map((quartier) => (
+                        <SelectItem
+                          key={quartier.id}
+                          value={String(quartier.id)}
+                        >
+                          {quartier.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Compteur</label>
 
@@ -710,9 +812,9 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                     onOpenChange={setIsSelectOpen}
                     value={formData.meter_id}
                     onValueChange={(value) => {
-                      handleChange('meter_id', value);
+                      handleChange("meter_id", value);
                       setIsSelectOpen(false);
-                      setSearchMeter('');
+                      setSearchMeter("");
                     }}
                     disabled={!!editingReading}
                   >
@@ -720,11 +822,11 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                       <SelectValue placeholder="Sélectionner un compteur" />
                     </SelectTrigger>
 
-                    <SelectContent 
+                    <SelectContent
                       className="max-h-80 overflow-y-auto"
                       onPointerDownOutside={() => {
                         setIsSelectOpen(false);
-                        setSearchMeter('');
+                        setSearchMeter("");
                       }}
                     >
                       <div className="sticky top-0 bg-white p-2 border-b z-10">
@@ -743,8 +845,8 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                           }}
                         />
                       </div>
-                      
-                      <ScrollArea className="max-h-60 overflow-y-auto"> 
+
+                      <ScrollArea className="max-h-60 overflow-y-auto">
                         {filteredMeters.length > 0 ? (
                           filteredMeters.map((meter) => (
                             <SelectItem key={meter.id} value={String(meter.id)}>
@@ -769,7 +871,9 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                     type="number"
                     step="0.01"
                     value={formData.last_reading_value}
-                    onChange={(e) => handleChange('last_reading_value', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("last_reading_value", e.target.value)
+                    }
                   />
                 </div>
 
@@ -779,49 +883,76 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                     type="number"
                     step="0.01"
                     value={formData.reading_value}
-                    onChange={(e) => handleChange('reading_value', e.target.value)}
+                    onChange={(e) =>
+                      handleChange("reading_value", e.target.value)
+                    }
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Période de consommation</label>
+                <label className="text-sm font-medium">
+                  Période de consommation
+                </label>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="relative">
                     <input
                       type="date"
                       className="w-full pl-10 pr-3 py-2 border rounded-lg"
-                      value={formData.period.from instanceof Date ? format(formData.period.from, 'yyyy-MM-dd') : ''}
-                      onChange={(e) => handleChange('period', { 
-                        ...formData.period, 
-                        from: e.target.value ? new Date(e.target.value) : null 
-                      })}
+                      value={
+                        formData.period.from instanceof Date
+                          ? format(formData.period.from, "yyyy-MM-dd")
+                          : ""
+                      }
+                      onChange={(e) =>
+                        handleChange("period", {
+                          ...formData.period,
+                          from: e.target.value
+                            ? new Date(e.target.value)
+                            : null,
+                        })
+                      }
                     />
                     <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
                   </div>
                   <div className="relative">
                     <input
                       type="date"
-                      className="w-full pl-10 pr-3 py-2 border rounded-lg" 
-                      value={formData.period.to instanceof Date ? format(formData.period.to, 'yyyy-MM-dd') : ''}
-                      onChange={(e) => handleChange('period', {
-                        ...formData.period,
-                        to: e.target.value ? new Date(e.target.value) : null
-                      })}
+                      className="w-full pl-10 pr-3 py-2 border rounded-lg"
+                      value={
+                        formData.period.to instanceof Date
+                          ? format(formData.period.to, "yyyy-MM-dd")
+                          : ""
+                      }
+                      onChange={(e) =>
+                        handleChange("period", {
+                          ...formData.period,
+                          to: e.target.value ? new Date(e.target.value) : null,
+                        })
+                      }
                     />
                     <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
                   </div>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Date du relevé</label>
                 <div className="relative">
                   <input
                     type="date"
                     className="w-full pl-10 pr-3 py-2 border rounded-lg"
-                    value={formData.reading_date instanceof Date ? format(formData.reading_date, 'yyyy-MM-dd') : ''}
-                    onChange={(e) => handleChange('reading_date', e.target.value ? new Date(e.target.value) : null)}
+                    value={
+                      formData.reading_date instanceof Date
+                        ? format(formData.reading_date, "yyyy-MM-dd")
+                        : ""
+                    }
+                    onChange={(e) =>
+                      handleChange(
+                        "reading_date",
+                        e.target.value ? new Date(e.target.value) : null
+                      )
+                    }
                   />
                   <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
                 </div>
@@ -832,7 +963,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
                   <label className="text-sm font-medium">Statut</label>
                   <Select
                     value={formData.status}
-                    onValueChange={(value) => handleChange('status', value)}
+                    onValueChange={(value) => handleChange("status", value)}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -848,7 +979,7 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
 
             <div className="w-96 border-l pl-8">
               {consumption !== null && (
-                <ConsumptionDetails 
+                <ConsumptionDetails
                   consumption={consumption}
                   meterId={formData.meter_id}
                 />
@@ -857,19 +988,19 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
           </div>
 
           <DialogFooter className="mt-6">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => {
                 setError(null);
-                setSearchMeter('');
+                setSearchMeter("");
                 onClose();
               }}
             >
               Annuler
             </Button>
             <Button type="submit">
-              {editingReading ? 'Modifier' : 'Ajouter'}
+              {editingReading ? "Modifier" : "Ajouter"}
             </Button>
           </DialogFooter>
         </form>
@@ -883,40 +1014,40 @@ const MetersWithoutReadings = ({ dateRange }) => {
   const { toast } = useToast();
   const [meters, setMeters] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [quartierFilter, setQuartierFilter] = useState('all');
-  
+  const [quartierFilter, setQuartierFilter] = useState("all");
+
   // États pour la pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
 
   // Couleurs pour chaque section
   const SECTION_COLORS = [
-    'bg-blue-100 text-blue-800 border-blue-200',
-    'bg-green-100 text-green-800 border-green-200',
-    'bg-purple-100 text-purple-800 border-purple-200',
-    'bg-orange-100 text-orange-800 border-orange-200',
-    'bg-pink-100 text-pink-800 border-pink-200',
-    'bg-indigo-100 text-indigo-800 border-indigo-200',
-    'bg-yellow-100 text-yellow-800 border-yellow-200',
-    'bg-red-100 text-red-800 border-red-200',
-    'bg-teal-100 text-teal-800 border-teal-200',
-    'bg-cyan-100 text-cyan-800 border-cyan-200',
+    "bg-blue-100 text-blue-800 border-blue-200",
+    "bg-green-100 text-green-800 border-green-200",
+    "bg-purple-100 text-purple-800 border-purple-200",
+    "bg-orange-100 text-orange-800 border-orange-200",
+    "bg-pink-100 text-pink-800 border-pink-200",
+    "bg-indigo-100 text-indigo-800 border-indigo-200",
+    "bg-yellow-100 text-yellow-800 border-yellow-200",
+    "bg-red-100 text-red-800 border-red-200",
+    "bg-teal-100 text-teal-800 border-teal-200",
+    "bg-cyan-100 text-cyan-800 border-cyan-200",
   ];
 
   // Fonction pour obtenir la couleur d'une section
   const getSectionColor = (quartierId) => {
-    if (!quartierId) return 'bg-gray-100 text-gray-800 border-gray-200';
+    if (!quartierId) return "bg-gray-100 text-gray-800 border-gray-200";
     return SECTION_COLORS[(quartierId - 1) % SECTION_COLORS.length];
   };
 
   const fetchMetersWithoutReadings = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/readings/meters-without-readings', {
+      const response = await api.get("/readings/meters-without-readings", {
         params: {
-          start_date: format(dateRange[0], 'yyyy-MM-dd'),
-          end_date: format(dateRange[1], 'yyyy-MM-dd')
-        }
+          start_date: format(dateRange[0], "yyyy-MM-dd"),
+          end_date: format(dateRange[1], "yyyy-MM-dd"),
+        },
       });
       setMeters(response.data.data);
       setCurrentPage(1); // Réinitialiser à la page 1 lors du chargement
@@ -924,7 +1055,7 @@ const MetersWithoutReadings = ({ dateRange }) => {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de récupérer les compteurs sans relevés"
+        description: "Impossible de récupérer les compteurs sans relevés",
       });
     } finally {
       setLoading(false);
@@ -944,12 +1075,15 @@ const MetersWithoutReadings = ({ dateRange }) => {
       }
     };
 
-    window.addEventListener('refresh-meters-without-readings', handleRefresh);
+    window.addEventListener("refresh-meters-without-readings", handleRefresh);
 
     return () => {
-      window.removeEventListener('refresh-meters-without-readings', handleRefresh);
+      window.removeEventListener(
+        "refresh-meters-without-readings",
+        handleRefresh
+      );
     };
-  }, [dateRange]); 
+  }, [dateRange]);
 
   // Réinitialiser la page quand le filtre quartier change
   useEffect(() => {
@@ -958,9 +1092,9 @@ const MetersWithoutReadings = ({ dateRange }) => {
 
   // Extraire les quartiers uniques des compteurs chargés
   const quartiers = meters
-    .filter(meter => meter.quartier && meter.quartier.id)
+    .filter((meter) => meter.quartier && meter.quartier.id)
     .reduce((acc, meter) => {
-      if (!acc.find(q => q.id === meter.quartier.id)) {
+      if (!acc.find((q) => q.id === meter.quartier.id)) {
         acc.push(meter.quartier);
       }
       return acc;
@@ -968,15 +1102,18 @@ const MetersWithoutReadings = ({ dateRange }) => {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   // Filtrer les compteurs selon le quartier sélectionné
-  const filteredMeters = quartierFilter === 'all' 
-    ? meters 
-    : meters.filter(meter => meter.quartier?.id === parseInt(quartierFilter));
+  const filteredMeters =
+    quartierFilter === "all"
+      ? meters
+      : meters.filter(
+          (meter) => meter.quartier?.id === parseInt(quartierFilter)
+        );
 
   // Trier les compteurs filtrés
   const sortedMeters = [...filteredMeters].sort((a, b) => {
     const aMatch = a.meter_number.match(/(\D+)-?(\d+)/);
     const bMatch = b.meter_number.match(/(\D+)-?(\d+)/);
-    
+
     if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
       return parseInt(aMatch[2]) - parseInt(bMatch[2]);
     }
@@ -1001,7 +1138,7 @@ const MetersWithoutReadings = ({ dateRange }) => {
                 Compteurs sans relevés pour la période sélectionnée
               </h2>
             </div>
-            
+
             {/* Filtre quartier - seulement si des quartiers existent */}
             {quartiers.length > 0 && (
               <Select value={quartierFilter} onValueChange={setQuartierFilter}>
@@ -1019,20 +1156,25 @@ const MetersWithoutReadings = ({ dateRange }) => {
               </Select>
             )}
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <Badge variant="outline" className="bg-yellow-50">
               {totalItems} compteur(s)
             </Badge>
             {totalItems > 0 && (
               <PDFDownloadLink
-                document={<MetersPDF meters={sortedMeters} dateRange={dateRange} />}
-                fileName={`compteurs-sans-releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
+                document={
+                  <MetersPDF meters={sortedMeters} dateRange={dateRange} />
+                }
+                fileName={`compteurs-sans-releves-${format(
+                  dateRange[0],
+                  "dd-MM-yyyy"
+                )}-au-${format(dateRange[1], "dd-MM-yyyy")}.pdf`}
               >
                 {({ loading }) => (
                   <Button variant="outline" size="sm" disabled={loading}>
                     <Download className="h-4 w-4 mr-2" />
-                    {loading ? 'Génération...' : 'Télécharger PDF'}
+                    {loading ? "Génération..." : "Télécharger PDF"}
                   </Button>
                 )}
               </PDFDownloadLink>
@@ -1065,9 +1207,9 @@ const MetersWithoutReadings = ({ dateRange }) => {
                 <div className="flex flex-col items-center justify-center text-gray-500">
                   <FileText className="h-8 w-8 mb-2" />
                   <p>
-                    {quartierFilter === 'all' 
-                      ? 'Tous les compteurs ont des relevés pour cette période.' 
-                      : 'Aucun compteur sans relevé pour cette section.'}
+                    {quartierFilter === "all"
+                      ? "Tous les compteurs ont des relevés pour cette période."
+                      : "Aucun compteur sans relevé pour cette section."}
                   </p>
                 </div>
               </TableCell>
@@ -1077,34 +1219,46 @@ const MetersWithoutReadings = ({ dateRange }) => {
               <TableRow key={meter.id}>
                 <TableCell>{startIndex + index + 1}</TableCell>
                 <TableCell>{meter.meter_number}</TableCell>
-                <TableCell>{meter.serial_number || 'N/A'}</TableCell>
+                <TableCell>{meter.serial_number || "N/A"}</TableCell>
                 <TableCell>
-                  {meter.user ? 
+                  {meter.user ? (
                     <div>
-                      <div className="font-medium">{meter.user.first_name} {meter.user.last_name}</div>
-                      <div className="text-sm text-gray-500">{meter.user.name}</div>
-                    </div> : 
-                    'N/A'}
+                      <div className="font-medium">
+                        {meter.user.first_name} {meter.user.last_name}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {meter.user.name}
+                      </div>
+                    </div>
+                  ) : (
+                    "N/A"
+                  )}
                 </TableCell>
                 <TableCell>
                   {meter.quartier?.name ? (
-                    <Badge 
-                      variant="outline" 
-                      className={`${getSectionColor(meter.quartier.id)} border font-medium`}
+                    <Badge
+                      variant="outline"
+                      className={`${getSectionColor(
+                        meter.quartier.id
+                      )} border font-medium`}
                     >
                       {meter.quartier.name}
                     </Badge>
                   ) : (
-                    <span className="text-gray-500">{meter.location || 'N/A'}</span>
+                    <span className="text-gray-500">
+                      {meter.location || "N/A"}
+                    </span>
                   )}
                 </TableCell>
                 <TableCell>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     onClick={() => {
-                      window.dispatchEvent(new CustomEvent('create-reading-for-meter', { 
-                        detail: { meterId: meter.id }
-                      }));
+                      window.dispatchEvent(
+                        new CustomEvent("create-reading-for-meter", {
+                          detail: { meterId: meter.id },
+                        })
+                      );
                     }}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -1148,7 +1302,7 @@ const MetersWithoutReadings = ({ dateRange }) => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
             >
               Précédent
@@ -1156,7 +1310,9 @@ const MetersWithoutReadings = ({ dateRange }) => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               disabled={currentPage === totalPages}
             >
               Suivant
@@ -1168,7 +1324,6 @@ const MetersWithoutReadings = ({ dateRange }) => {
   );
 };
 
-
 // Composant principal modifié avec les onglets
 const ReadingPage = () => {
   const { toast } = useToast();
@@ -1179,7 +1334,7 @@ const ReadingPage = () => {
   const [editingReading, setEditingReading] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
-  
+
   // États pour le contrôle du chargement des dates
   const [tempDateRange, setTempDateRange] = useState([
     (() => {
@@ -1189,11 +1344,11 @@ const ReadingPage = () => {
       date.setHours(0, 0, 0, 0);
       return date;
     })(),
-    new Date()
+    new Date(),
   ]);
   const [dateRange, setDateRange] = useState(tempDateRange);
-  
-  const [statusFilter, setStatusFilter] = useState('all');
+
+  const [statusFilter, setStatusFilter] = useState("all");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [readingToDelete, setReadingToDelete] = useState(null);
   const [selectedReadings, setSelectedReadings] = useState([]);
@@ -1206,10 +1361,10 @@ const ReadingPage = () => {
 
   const sortByMeterNumber = (a, b) => {
     if (!a.meter || !b.meter) return 0;
-    
+
     const aMatch = a.meter.meter_number.match(/(\D+)-?(\d+)/);
     const bMatch = b.meter.meter_number.match(/(\D+)-?(\d+)/);
-    
+
     if (aMatch && bMatch && aMatch[1] === bMatch[1]) {
       return parseInt(aMatch[2]) - parseInt(bMatch[2]);
     }
@@ -1223,12 +1378,11 @@ const ReadingPage = () => {
   const [consumerSearchResults, setConsumerSearchResults] = useState([]);
   const [isSearchingConsumers, setIsSearchingConsumers] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  
+
   // État pour le chargement du PDF avec toutes les données
   const [allReadingsForPDF, setAllReadingsForPDF] = useState([]);
   const [isLoadingPDF, setIsLoadingPDF] = useState(false);
   const [shouldGeneratePDF, setShouldGeneratePDF] = useState(false);
-  
 
   useEffect(() => {
     const handleCreateReadingForMeter = (event) => {
@@ -1237,38 +1391,44 @@ const ReadingPage = () => {
       setEditingReading(null);
       setIsModalOpen(true);
     };
-  
-    window.addEventListener('create-reading-for-meter', handleCreateReadingForMeter);
-    return () => window.removeEventListener('create-reading-for-meter', handleCreateReadingForMeter);
+
+    window.addEventListener(
+      "create-reading-for-meter",
+      handleCreateReadingForMeter
+    );
+    return () =>
+      window.removeEventListener(
+        "create-reading-for-meter",
+        handleCreateReadingForMeter
+      );
   }, [meters]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
-      const response = await api.get('/readings/dashboard', {
+
+      const response = await api.get("/readings/dashboard", {
         params: {
-          start_date: format(dateRange[0], 'yyyy-MM-dd'),
-          end_date: format(dateRange[1], 'yyyy-MM-dd'),
-          status: statusFilter !== 'all' ? statusFilter : undefined,
+          start_date: format(dateRange[0], "yyyy-MM-dd"),
+          end_date: format(dateRange[1], "yyyy-MM-dd"),
+          status: statusFilter !== "all" ? statusFilter : undefined,
           consumer_id: consumerFilter?.id,
           page: currentPage,
-          limit: itemsPerPage
-        }
+          limit: itemsPerPage,
+        },
       });
-      
+
       const data = response.data.data;
 
       setReadings(data.readings);
       setTotalPages(data.pagination.totalPages);
       setTotalItems(data.pagination.total);
       setMeters(data.meters);
-      
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de récupérer les données du tableau de bord"
+        description: "Impossible de récupérer les données du tableau de bord",
       });
     } finally {
       setLoading(false);
@@ -1280,20 +1440,20 @@ const ReadingPage = () => {
       setConsumerSearchResults([]);
       return;
     }
-    
+
     setIsSearchingConsumers(true);
     try {
-      const response = await api.get('/readings/search-consumers', {
-        params: { query }
+      const response = await api.get("/readings/search-consumers", {
+        params: { query },
       });
       console.log("Résultats:", response.data.data);
       setConsumerSearchResults(response.data.data);
     } catch (error) {
-      console.error('Erreur lors de la recherche des consommateurs:', error);
+      console.error("Erreur lors de la recherche des consommateurs:", error);
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de rechercher les consommateurs"
+        description: "Impossible de rechercher les consommateurs",
       });
     } finally {
       setIsSearchingConsumers(false);
@@ -1305,47 +1465,50 @@ const ReadingPage = () => {
     try {
       setIsLoadingPDF(true);
       setShouldGeneratePDF(false);
-      
-      const response = await api.get('/readings/dashboard', {
+
+      const response = await api.get("/readings/dashboard", {
         params: {
-          start_date: format(dateRange[0], 'yyyy-MM-dd'),
-          end_date: format(dateRange[1], 'yyyy-MM-dd'),
-          status: statusFilter !== 'all' ? statusFilter : undefined,
+          start_date: format(dateRange[0], "yyyy-MM-dd"),
+          end_date: format(dateRange[1], "yyyy-MM-dd"),
+          status: statusFilter !== "all" ? statusFilter : undefined,
           consumer_id: consumerFilter?.id,
           // Ne pas envoyer de pagination pour avoir toutes les données
           page: 1,
-          limit: 999999 // Valeur très élevée pour tout récupérer
-        }
+          limit: 999999, // Valeur très élevée pour tout récupérer
+        },
       });
-      
+
       const data = response.data.data;
-      
+
       // Trier les données correctement
       const sortedData = [...data.readings].sort((a, b) => {
         if (!a.meter || !b.meter) return 0;
-        
+
         const aMatch = a.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
         const bMatch = b.meter.meter_number.match(/([A-Za-z]+)-?(\d+)/);
-        
+
         if (aMatch && bMatch) {
           if (aMatch[1] !== bMatch[1]) {
             return aMatch[1].localeCompare(bMatch[1]);
           }
           return parseInt(aMatch[2]) - parseInt(bMatch[2]);
         }
-        
+
         return a.meter.meter_number.localeCompare(b.meter.meter_number);
       });
-      
+
       setAllReadingsForPDF(sortedData);
       setShouldGeneratePDF(true);
       return sortedData;
     } catch (error) {
-      console.error('Erreur lors de la récupération des données pour le PDF:', error);
+      console.error(
+        "Erreur lors de la récupération des données pour le PDF:",
+        error
+      );
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de récupérer toutes les données pour le PDF"
+        description: "Impossible de récupérer toutes les données pour le PDF",
       });
       return [];
     } finally {
@@ -1357,7 +1520,7 @@ const ReadingPage = () => {
     const delayDebounceFn = setTimeout(() => {
       searchConsumers(consumerSearchQuery);
     }, 300);
-    
+
     return () => clearTimeout(delayDebounceFn);
   }, [consumerSearchQuery]);
 
@@ -1383,12 +1546,15 @@ const ReadingPage = () => {
       setIsModalOpen(false);
       fetchDashboardData();
       if (activeTab === "missing") {
-        window.dispatchEvent(new CustomEvent('refresh-meters-without-readings'));
+        window.dispatchEvent(
+          new CustomEvent("refresh-meters-without-readings")
+        );
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || "Une erreur est survenue";
+      const errorMessage =
+        error.response?.data?.message || "Une erreur est survenue";
       const errorDetail = error.response?.data?.error || "";
-  
+
       if (errorDetail.includes("unique_reading_per_day")) {
         toast({
           variant: "destructive",
@@ -1396,12 +1562,14 @@ const ReadingPage = () => {
           description: "Un relevé existe déjà pour cette date.",
         });
       } else if (
-        errorDetail.includes("période") || errorDetail.includes("chevauchement")
+        errorDetail.includes("période") ||
+        errorDetail.includes("chevauchement")
       ) {
         toast({
           variant: "destructive",
           title: "Erreur",
-          description: "Un relevé existe déjà sur cette période. Veuillez choisir une autre période.",
+          description:
+            "Un relevé existe déjà sur cette période. Veuillez choisir une autre période.",
         });
       } else {
         toast({
@@ -1413,20 +1581,20 @@ const ReadingPage = () => {
       throw error;
     }
   };
-  
+
   const handleDelete = async () => {
     try {
       await api.delete(`/readings/${readingToDelete.id}`);
       toast({
         title: "Succès",
-        description: "Relevé supprimé avec succès"
+        description: "Relevé supprimé avec succès",
       });
-      fetchDashboardData()
+      fetchDashboardData();
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de supprimer le relevé"
+        description: "Impossible de supprimer le relevé",
       });
     } finally {
       setIsDeleteDialogOpen(false);
@@ -1436,22 +1604,19 @@ const ReadingPage = () => {
 
   const ActionsBar = ({ selectedCount, onValidate, onChangeStatus }) => {
     if (selectedCount === 0) return null;
-  
+
     return (
       <div className="bg-white border rounded-lg p-4 mb-4 flex items-center justify-between">
         <div className="text-sm text-gray-600">
-          {selectedCount} élément{selectedCount > 1 ? 's' : ''} sélectionné{selectedCount > 1 ? 's' : ''}
+          {selectedCount} élément{selectedCount > 1 ? "s" : ""} sélectionné
+          {selectedCount > 1 ? "s" : ""}
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onValidate}
-          >
+          <Button variant="outline" size="sm" onClick={onValidate}>
             <Check className="h-4 w-4 mr-2" />
             Valider
           </Button>
-          
+
           <Select onValueChange={onChangeStatus}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Changer le statut" />
@@ -1468,63 +1633,68 @@ const ReadingPage = () => {
 
   const handleBulkValidate = async () => {
     try {
-      await api.post('/readings/bulk-validate', { ids: selectedReadings });
+      await api.post("/readings/bulk-validate", { ids: selectedReadings });
       toast({
         title: "Succès",
-        description: "Les relevés sélectionnés ont été validés"
+        description: "Les relevés sélectionnés ont été validés",
       });
       setSelectedReadings([]);
-      fetchDashboardData()
+      fetchDashboardData();
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de valider les relevés"
+        description: "Impossible de valider les relevés",
       });
     }
   };
-  
+
   const handleBulkStatusChange = async (status) => {
     try {
-      const updatedReadings = readings.map(reading => {
+      const updatedReadings = readings.map((reading) => {
         if (selectedReadings.includes(reading.id)) {
           return { ...reading, status };
         }
         return reading;
       });
-      
+
       setReadings(updatedReadings);
-      
-      const response = await api.post('/readings/bulk-status-update', { 
+
+      const response = await api.post("/readings/bulk-status-update", {
         ids: selectedReadings,
-        status 
+        status,
       });
-      
+
       setSelectedReadings([]);
-      
+
       toast({
         title: "Succès",
-        description: "Le statut des relevés sélectionnés a été mis à jour"
+        description: "Le statut des relevés sélectionnés a été mis à jour",
       });
-      
+
       setTimeout(() => {
         fetchDashboardData();
       }, 100);
     } catch (error) {
       fetchDashboardData();
-      
-      if (error.response?.status === 400 && 
-          error.response?.data?.message?.includes('Impossible de changer le statut')) {
+
+      if (
+        error.response?.status === 400 &&
+        error.response?.data?.message?.includes(
+          "Impossible de changer le statut"
+        )
+      ) {
         toast({
           variant: "destructive",
           title: "Action non autorisée",
-          description: "Les relevés validés ne peuvent pas être remis en attente"
+          description:
+            "Les relevés validés ne peuvent pas être remis en attente",
         });
       } else {
         toast({
           variant: "destructive",
           title: "Erreur",
-          description: "Impossible de modifier le statut des relevés"
+          description: "Impossible de modifier le statut des relevés",
         });
       }
     }
@@ -1543,7 +1713,7 @@ const ReadingPage = () => {
               onChangeStatus={handleBulkStatusChange}
             />
           )}
-     
+
           {/* Ligne 1 : Titre et Dates */}
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">Gestion des Relevés</h1>
@@ -1553,23 +1723,41 @@ const ReadingPage = () => {
                 <input
                   type="date"
                   className="pl-10 pr-3 py-2 border rounded-lg"
-                  value={tempDateRange[0] instanceof Date ? format(tempDateRange[0], 'yyyy-MM-dd') : ''}
-                  onChange={(e) => setTempDateRange([e.target.value ? new Date(e.target.value) : null, tempDateRange[1]])}
-                />
-                <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
-              </div>
-              
-              <div className="relative">
-                <input
-                  type="date"
-                  className="pl-10 pr-3 py-2 border rounded-lg"
-                  value={tempDateRange[1] instanceof Date ? format(tempDateRange[1], 'yyyy-MM-dd') : ''}
-                  onChange={(e) => setTempDateRange([tempDateRange[0], e.target.value ? new Date(e.target.value) : null])}
+                  value={
+                    tempDateRange[0] instanceof Date
+                      ? format(tempDateRange[0], "yyyy-MM-dd")
+                      : ""
+                  }
+                  onChange={(e) =>
+                    setTempDateRange([
+                      e.target.value ? new Date(e.target.value) : null,
+                      tempDateRange[1],
+                    ])
+                  }
                 />
                 <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
               </div>
 
-              <Button 
+              <div className="relative">
+                <input
+                  type="date"
+                  className="pl-10 pr-3 py-2 border rounded-lg"
+                  value={
+                    tempDateRange[1] instanceof Date
+                      ? format(tempDateRange[1], "yyyy-MM-dd")
+                      : ""
+                  }
+                  onChange={(e) =>
+                    setTempDateRange([
+                      tempDateRange[0],
+                      e.target.value ? new Date(e.target.value) : null,
+                    ])
+                  }
+                />
+                <Calendar className="absolute left-3 top-2 h-5 w-5 text-gray-400" />
+              </div>
+
+              <Button
                 onClick={() => {
                   setDateRange(tempDateRange);
                   setCurrentPage(1);
@@ -1587,34 +1775,36 @@ const ReadingPage = () => {
               <div className="relative">
                 <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
                   <PopoverTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      role="combobox" 
-                      aria-expanded={isSearchOpen} 
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={isSearchOpen}
                       className="w-full justify-between"
                     >
                       <div className="flex items-center">
                         <Users className="h-4 w-4 mr-2" />
-                        {consumerFilter ? consumerFilter.name : "Rechercher un consommateur..."}
+                        {consumerFilter
+                          ? consumerFilter.name
+                          : "Rechercher un consommateur..."}
                       </div>
                       <Search className="h-4 w-4 ml-2 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[400px] p-0" align="start">
                     <div className="p-2">
-                      <Input 
-                        placeholder="Rechercher un consommateur..." 
+                      <Input
+                        placeholder="Rechercher un consommateur..."
                         value={consumerSearchQuery}
                         onChange={(e) => setConsumerSearchQuery(e.target.value)}
                         autoFocus
                       />
-                      
+
                       {isSearchingConsumers && (
                         <div className="flex justify-center my-2">
                           <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
                         </div>
                       )}
-                      
+
                       <div className="mt-2 max-h-60 overflow-y-auto">
                         {consumerSearchResults.length > 0 ? (
                           consumerSearchResults.map((consumer) => (
@@ -1678,50 +1868,65 @@ const ReadingPage = () => {
             )}
 
             {activeTab === "readings" && (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 disabled={isLoadingPDF}
                 onClick={async () => {
                   await fetchAllReadingsForPDF();
                 }}
               >
                 <Download className="h-4 w-4 mr-2" />
-                {isLoadingPDF ? 'Chargement...' : 'Télécharger PDF'}
+                {isLoadingPDF ? "Chargement..." : "Télécharger PDF"}
               </Button>
             )}
 
             {/* Composant caché pour le téléchargement PDF */}
-            {activeTab === "readings" && shouldGeneratePDF && allReadingsForPDF.length > 0 && (
-              <PDFDownloadLink
-                document={<RelevePDF readings={allReadingsForPDF} dateRange={dateRange} />}
-                fileName={`releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
-              >
-                {({ blob, url, loading, error }) => {
-                  // Déclencher le téléchargement automatiquement une seule fois
-                  if (!loading && url && shouldGeneratePDF) {
-                    // Créer un timeout pour éviter les appels multiples
-                    setTimeout(() => {
-                      const link = document.createElement('a');
-                      link.href = url;
-                      link.download = `releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      
-                      // Réinitialiser immédiatement pour éviter les re-téléchargements
-                      setShouldGeneratePDF(false);
-                      setAllReadingsForPDF([]);
-                    }, 100);
+            {activeTab === "readings" &&
+              shouldGeneratePDF &&
+              allReadingsForPDF.length > 0 && (
+                <PDFDownloadLink
+                  document={
+                    <RelevePDF
+                      readings={allReadingsForPDF}
+                      dateRange={dateRange}
+                    />
                   }
-                  return null;
-                }}
-              </PDFDownloadLink>
-            )}
+                  fileName={`releves-${format(
+                    dateRange[0],
+                    "dd-MM-yyyy"
+                  )}-au-${format(dateRange[1], "dd-MM-yyyy")}.pdf`}
+                >
+                  {({ blob, url, loading, error }) => {
+                    // Déclencher le téléchargement automatiquement une seule fois
+                    if (!loading && url && shouldGeneratePDF) {
+                      // Créer un timeout pour éviter les appels multiples
+                      setTimeout(() => {
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = `releves-${format(
+                          dateRange[0],
+                          "dd-MM-yyyy"
+                        )}-au-${format(dateRange[1], "dd-MM-yyyy")}.pdf`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
 
-            <Button onClick={() => {
-              setEditingReading(null);
-              setIsModalOpen(true);
-            }}>
+                        // Réinitialiser immédiatement pour éviter les re-téléchargements
+                        setShouldGeneratePDF(false);
+                        setAllReadingsForPDF([]);
+                      }, 100);
+                    }
+                    return null;
+                  }}
+                </PDFDownloadLink>
+              )}
+
+            <Button
+              onClick={() => {
+                setEditingReading(null);
+                setIsModalOpen(true);
+              }}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Ajouter
             </Button>
@@ -1731,9 +1936,13 @@ const ReadingPage = () => {
             <div className="bg-blue-50 p-6 rounded-lg flex items-center space-x-4 mb-4">
               <Calendar className="h-10 w-10 text-blue-500" />
               <div>
-                <h3 className="text-lg font-medium text-blue-800">Sélectionnez une période</h3>
+                <h3 className="text-lg font-medium text-blue-800">
+                  Sélectionnez une période
+                </h3>
                 <p className="text-blue-600">
-                  Veuillez sélectionner les dates de début et de fin puis cliquer sur "Valider" pour afficher les relevés de consommation correspondants.
+                  Veuillez sélectionner les dates de début et de fin puis
+                  cliquer sur "Valider" pour afficher les relevés de
+                  consommation correspondants.
                 </p>
               </div>
             </div>
@@ -1762,11 +1971,23 @@ const ReadingPage = () => {
                           className="rounded border-gray-300"
                           checked={selectAll}
                           onChange={(e) => {
-                            setSelectAll(e.target.checked);
-                          
+                            const checked = e.target.checked;
+                            setSelectAll(checked);
+
+                            if (checked) {
+                              // Sélectionner tous les IDs des relevés affichés
+                              const allIds = sortedReadings.map(
+                                (reading) => reading.id
+                              );
+                              setSelectedReadings(allIds);
+                            } else {
+                              // Tout désélectionner
+                              setSelectedReadings([]);
+                            }
                           }}
                         />
                       </TableHead>
+
                       <TableHead className="w-16">N°</TableHead>
                       <TableHead>Compteur</TableHead>
                       <TableHead>Consommateur</TableHead>
@@ -1782,9 +2003,11 @@ const ReadingPage = () => {
                   </TableHeader>
                   <TableBody>
                     {sortedReadings.map((reading, index) => (
-                      <TableRow 
+                      <TableRow
                         key={reading.id}
-                        className={reading.status === 'validated' ? 'bg-green-50/50' : ''}
+                        className={
+                          reading.status === "validated" ? "bg-green-50/50" : ""
+                        }
                       >
                         <TableCell>
                           <input
@@ -1793,53 +2016,76 @@ const ReadingPage = () => {
                             checked={selectedReadings.includes(reading.id)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSelectedReadings([...selectedReadings, reading.id]);
+                                setSelectedReadings([
+                                  ...selectedReadings,
+                                  reading.id,
+                                ]);
                               } else {
-                                setSelectedReadings(selectedReadings.filter(id => id !== reading.id));
+                                setSelectedReadings(
+                                  selectedReadings.filter(
+                                    (id) => id !== reading.id
+                                  )
+                                );
                               }
                             }}
                           />
                         </TableCell>
-                        <TableCell>{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
+                        <TableCell>
+                          {(currentPage - 1) * itemsPerPage + index + 1}
+                        </TableCell>
                         <TableCell>{reading.meter?.meter_number}</TableCell>
                         <TableCell>
-                          {reading.meter?.user ? 
-                            `${reading.meter.user.first_name} ${reading.meter.user.last_name}` : 
-                            'N/A'}
+                          {reading.meter?.user
+                            ? `${reading.meter.user.first_name} ${reading.meter.user.last_name}`
+                            : "N/A"}
                         </TableCell>
                         <TableCell>
-                          {reading.last_reading_value ? 
-                            parseFloat(reading.last_reading_value).toFixed(2) : 
-                            'N/A'}
+                          {reading.last_reading_value
+                            ? parseFloat(reading.last_reading_value).toFixed(2)
+                            : "N/A"}
                         </TableCell>
                         <TableCell>
                           {parseFloat(reading.reading_value).toFixed(2)}
                         </TableCell>
                         <TableCell>
-                          {reading.consumption ? 
-                            parseFloat(reading.consumption).toFixed(2) : 
-                            'N/A'}
+                          {reading.consumption
+                            ? parseFloat(reading.consumption).toFixed(2)
+                            : "N/A"}
                         </TableCell>
                         <TableCell>
-                          {reading.amount ? 
-                            Number(reading.amount).toLocaleString() : 
-                            'N/A'}
+                          {reading.amount
+                            ? Number(reading.amount).toLocaleString()
+                            : "N/A"}
                         </TableCell>
                         <TableCell>
-                          {`${format(new Date(reading.start_date), 'dd/MM/yy')} au ${format(new Date(reading.end_date), 'dd/MM/yy')}`}
+                          {`${format(
+                            new Date(reading.start_date),
+                            "dd/MM/yy"
+                          )} au ${format(
+                            new Date(reading.end_date),
+                            "dd/MM/yy"
+                          )}`}
                         </TableCell>
                         <TableCell>
-                          {format(new Date(reading.reading_date), 'dd/MM/yyyy')}
+                          {format(new Date(reading.reading_date), "dd/MM/yyyy")}
                         </TableCell>
                         <TableCell>
-                          <Badge 
-                            variant={reading.status === 'validated' ? 'success' : 'warning'}
+                          <Badge
+                            variant={
+                              reading.status === "validated"
+                                ? "success"
+                                : "warning"
+                            }
                             className={cn(
                               "w-24 flex justify-center",
-                              reading.status === 'validated' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                              reading.status === "validated"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-yellow-100 text-yellow-800"
                             )}
                           >
-                            {reading.status === 'validated' ? 'Validé' : 'En attente'}
+                            {reading.status === "validated"
+                              ? "Validé"
+                              : "En attente"}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -1847,7 +2093,10 @@ const ReadingPage = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              disabled={reading.status === 'validated' || reading.is_invoiced}
+                              disabled={
+                                reading.status === "validated" ||
+                                reading.is_invoiced
+                              }
                               onClick={() => {
                                 setEditingReading(reading);
                                 setIsModalOpen(true);
@@ -1858,7 +2107,10 @@ const ReadingPage = () => {
                             <Button
                               variant="destructive"
                               size="sm"
-                              disabled={reading.status === 'validated' || reading.is_invoiced}
+                              disabled={
+                                reading.status === "validated" ||
+                                reading.is_invoiced
+                              }
                               onClick={() => {
                                 setReadingToDelete(reading);
                                 setIsDeleteDialogOpen(true);
@@ -1874,7 +2126,9 @@ const ReadingPage = () => {
                 </Table>
                 <div className="flex items-center justify-between mt-4 px-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Lignes par page:</span>
+                    <span className="text-sm text-gray-600">
+                      Lignes par page:
+                    </span>
                     <Select
                       value={String(itemsPerPage)}
                       onValueChange={(value) => {
@@ -1897,12 +2151,16 @@ const ReadingPage = () => {
 
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">
-                      {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalItems)} sur {totalItems}
+                      {(currentPage - 1) * itemsPerPage + 1}-
+                      {Math.min(currentPage * itemsPerPage, totalItems)} sur{" "}
+                      {totalItems}
                     </span>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
                       disabled={currentPage === 1}
                     >
                       Précédent
@@ -1910,7 +2168,9 @@ const ReadingPage = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
                       disabled={currentPage === totalPages}
                     >
                       Suivant
@@ -1938,12 +2198,16 @@ const ReadingPage = () => {
             selectedMeterId={selectedMeterId}
           />
 
-          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialog
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+          >
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Cette action ne peut pas être annulée. Cela supprimera définitivement ce relevé.
+                  Cette action ne peut pas être annulée. Cela supprimera
+                  définitivement ce relevé.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

@@ -344,72 +344,75 @@ const fetchEmployees = async () => {
       </div>
 
       {/* Modal de sélection de la caissière */}
-      <Dialog open={showOpenModal} onOpenChange={setShowOpenModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Sélectionner la caissière</DialogTitle>
-          </DialogHeader>
+<Dialog open={showOpenModal} onOpenChange={setShowOpenModal}>
+  <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+    <DialogHeader>
+      <DialogTitle>Sélectionner la caissière</DialogTitle>
+    </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Qui sera la caissière aujourd'hui ?
-              </label>
-              
-              {employees.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="h-12 w-12 mx-auto mb-2" />
-                  <p>Aucun employé actif trouvé</p>
-                  <p className="text-sm">Veuillez d'abord ajouter des employés</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {employees.map((employee) => (
-                    <div
-                      key={employee.id}
-                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        selectedEmployeeId === employee.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => setSelectedEmployeeId(employee.id)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">
-                            {employee.first_name} {employee.last_name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {employee.job_title}
-                          </div>
-                        </div>
-                        {selectedEmployeeId === employee.id && (
-                          <div className="h-6 w-6 bg-blue-500 rounded-full flex items-center justify-center">
-                            <span className="text-white text-xs">✓</span>
-                          </div>
-                        )}
+    <div className="flex-1 overflow-y-auto px-1">
+      <div className="space-y-4">
+        <div>
+          <label className="text-sm font-medium mb-2 block">
+            Qui sera la caissière aujourd'hui ?
+          </label>
+          
+          {employees.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Users className="h-12 w-12 mx-auto mb-2" />
+              <p>Aucun employé actif trouvé</p>
+              <p className="text-sm">Veuillez d'abord ajouter des employés</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {employees.map((employee) => (
+                <div
+                  key={employee.id}
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    selectedEmployeeId === employee.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setSelectedEmployeeId(employee.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">
+                        {employee.first_name} {employee.last_name}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {employee.job_title}
                       </div>
                     </div>
-                  ))}
+                    {selectedEmployeeId === employee.id && (
+                      <div className="h-6 w-6 bg-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">✓</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
-          </div>
+          )}
+        </div>
+      </div>
+    </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowOpenModal(false)}>
-              Annuler
-            </Button>
-            <Button 
-              onClick={handleOpenCashRegister}
-              disabled={!selectedEmployeeId}
-            >
-              <Unlock className="mr-2 h-4 w-4" />
-              Ouvrir la caisse
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+    <DialogFooter className="mt-4">
+      <Button variant="outline" onClick={() => setShowOpenModal(false)}>
+        Annuler
+      </Button>
+      <Button 
+        onClick={handleOpenCashRegister}
+        disabled={!selectedEmployeeId}
+      >
+        <Unlock className="mr-2 h-4 w-4" />
+        Ouvrir la caisse
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
     </>
   );
 }
