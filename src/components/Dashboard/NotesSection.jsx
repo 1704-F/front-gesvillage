@@ -657,7 +657,7 @@ const NotesSection = () => {
             <DialogTitle className="flex items-center justify-between">
               <span>{attachmentModal.attachment?.file_name}</span>
               <a
-                href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/${attachmentModal.attachment?.file_path.replace(/\\/g, '/').replace(/^public\//, '')}`}
+                href={`${api.defaults.baseURL}/${attachmentModal.attachment?.file_path.replace(/\\/g, '/').replace(/^public\//, '')}`}
                 download={attachmentModal.attachment?.file_name}
                 className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
               >
@@ -671,18 +671,19 @@ const NotesSection = () => {
             {attachmentModal.attachment && (() => {
               const fileType = attachmentModal.attachment.file_type;
               // Construire le chemin correct - normaliser les slashes et enlever 'public/'
-              const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
               let cleanPath = attachmentModal.attachment.file_path
                 .replace(/\\/g, '/') // Remplacer backslashes par slashes
                 .replace(/^public\//, ''); // Enlever 'public/' au début
-              const filePath = `${apiUrl}/${cleanPath}`;
+              
+              // Utiliser l'URL de l'API configurée
+              const filePath = `${api.defaults.baseURL}/${cleanPath}`;
               
               // Debug
               console.log('🔍 Debug attachment:', {
                 original: attachmentModal.attachment.file_path,
                 cleaned: cleanPath,
                 final: filePath,
-                apiUrl: apiUrl
+                apiBaseURL: api.defaults.baseURL
               });
 
               // Images
