@@ -878,12 +878,16 @@ const ReadingForm = ({ isOpen, onClose, editingReading, meters, onSubmit, select
   );
 };
 
-// Composant pour afficher les compteurs sans relevés avec couleurs par section
+// Composant pour afficher les compteurs sans relevés avec pagination
 const MetersWithoutReadings = ({ dateRange }) => {
   const { toast } = useToast();
   const [meters, setMeters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [quartierFilter, setQuartierFilter] = useState('all');
+  
+  // États pour la pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
 
   // Couleurs pour chaque section
   const SECTION_COLORS = [
@@ -915,6 +919,7 @@ const MetersWithoutReadings = ({ dateRange }) => {
         }
       });
       setMeters(response.data.data);
+      setCurrentPage(1); // Réinitialiser à la page 1 lors du chargement
     } catch (error) {
       toast({
         variant: "destructive",
@@ -946,6 +951,11 @@ const MetersWithoutReadings = ({ dateRange }) => {
     };
   }, [dateRange]); 
 
+  // Réinitialiser la page quand le filtre quartier change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [quartierFilter]);
+
   // Extraire les quartiers uniques des compteurs chargés
   const quartiers = meters
     .filter(meter => meter.quartier && meter.quartier.id)
@@ -972,6 +982,13 @@ const MetersWithoutReadings = ({ dateRange }) => {
     }
     return a.meter_number.localeCompare(b.meter_number);
   });
+
+  // Calculer la pagination
+  const totalItems = sortedMeters.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedMeters = sortedMeters.slice(startIndex, endIndex);
 
   return (
     <Card>
@@ -1005,9 +1022,9 @@ const MetersWithoutReadings = ({ dateRange }) => {
           
           <div className="flex items-center space-x-2">
             <Badge variant="outline" className="bg-yellow-50">
-              {filteredMeters.length} compteur(s)
+              {totalItems} compteur(s)
             </Badge>
-            {filteredMeters.length > 0 && (
+            {totalItems > 0 && (
               <PDFDownloadLink
                 document={<MetersPDF meters={sortedMeters} dateRange={dateRange} />}
                 fileName={`compteurs-sans-releves-${format(dateRange[0], 'dd-MM-yyyy')}-au-${format(dateRange[1], 'dd-MM-yyyy')}.pdf`}
@@ -1042,7 +1059,7 @@ const MetersWithoutReadings = ({ dateRange }) => {
                 Chargement des données...
               </TableCell>
             </TableRow>
-          ) : sortedMeters.length === 0 ? (
+          ) : paginatedMeters.length === 0 ? (
             <TableRow>
               <TableCell colSpan={6} className="text-center py-8">
                 <div className="flex flex-col items-center justify-center text-gray-500">
@@ -1056,9 +1073,9 @@ const MetersWithoutReadings = ({ dateRange }) => {
               </TableCell>
             </TableRow>
           ) : (
-            sortedMeters.map((meter, index) => (
+            paginatedMeters.map((meter, index) => (
               <TableRow key={meter.id}>
-                <TableCell>{index + 1}</TableCell>
+                <TableCell>{startIndex + index + 1}</TableCell>
                 <TableCell>{meter.meter_number}</TableCell>
                 <TableCell>{meter.serial_number || 'N/A'}</TableCell>
                 <TableCell>
@@ -1099,6 +1116,54 @@ const MetersWithoutReadings = ({ dateRange }) => {
           )}
         </TableBody>
       </Table>
+
+      {/* Pagination */}
+      {totalItems > 0 && (
+        <div className="flex items-center justify-between mt-4 px-4 pb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Lignes par page:</span>
+            <Select
+              value={String(itemsPerPage)}
+              onValueChange={(value) => {
+                setItemsPerPage(Number(value));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[70px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="500">500</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">
+              {startIndex + 1}-{Math.min(endIndex, totalItems)} sur {totalItems}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              Précédent
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Suivant
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   );
 };
