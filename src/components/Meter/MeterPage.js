@@ -103,7 +103,7 @@ const [canDelete, setCanDelete] = useState(true); // Si le compteur peut être s
 
 const { toast } = useToast();
 
-const debouncedSearchTerm = useDebounce(searchTerm, 300);
+const debouncedSearchTerm = useDebounce(searchTerm, 800); 
 
 
 
@@ -127,9 +127,10 @@ const debouncedSearchTerm = useDebounce(searchTerm, 300);
   }, []);
 
   // Fonctions de récupération des données
-  const fetchMeters = useCallback(async () => {
+ const fetchMeters = useCallback(async () => {
   try {
-    setLoading(true);
+    // ✅ SUPPRIMER cette ligne : setLoading(true);
+    
     const params = {
       page: currentPage,
       limit: itemsPerPage,
@@ -153,10 +154,9 @@ const debouncedSearchTerm = useDebounce(searchTerm, 300);
       description: "Impossible de récupérer les compteurs."
     });
   } finally {
-    setLoading(false);
+    setLoading(false); // ✅ Garder juste pour le premier chargement
   }
 }, [currentPage, itemsPerPage, statusFilter, debouncedSearchTerm, problemFilterActive, toast]);
-
 
 
   const fetchConsumers = useCallback(async () => {
