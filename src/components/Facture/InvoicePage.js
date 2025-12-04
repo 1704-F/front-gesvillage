@@ -723,15 +723,33 @@ const [dateRange, setDateRange] = useState([
       setConsumerSearchResults([]);
       return;
     }
-    
+
     console.log("Recherche pour:", query);
     setIsSearchingConsumers(true);
     try {
+      // Séparer les mots de la recherche
+      const searchWords = query.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0);
+
+      // Si plusieurs mots, utiliser le dernier mot (nom de famille, plus spécifique) pour l'API
+      // Sinon utiliser la requête complète
+      const apiQuery = searchWords.length > 1 ? searchWords[searchWords.length - 1] : query;
+
       const response = await api.get('/invoices/search-consumers', {
-        params: { query }
+        params: { query: apiQuery }
       });
-      console.log("Résultats:", response.data.data);
-      setConsumerSearchResults(response.data.data);
+
+      let results = response.data.data;
+
+      // Si plusieurs mots, filtrer les résultats localement pour correspondre à tous les mots
+      if (searchWords.length > 1) {
+        results = results.filter(consumer => {
+          const consumerText = `${consumer.name || ''} ${consumer.first_name || ''} ${consumer.last_name || ''} ${consumer.nickname || ''} ${consumer.meter_number || ''}`.toLowerCase();
+          return searchWords.every(word => consumerText.includes(word));
+        });
+      }
+
+      console.log("Résultats:", results);
+      setConsumerSearchResults(results);
     } catch (error) {
       console.error('Erreur lors de la recherche des consommateurs:', error);
       toast({
