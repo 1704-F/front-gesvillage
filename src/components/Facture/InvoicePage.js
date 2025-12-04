@@ -75,16 +75,29 @@ const styles = StyleSheet.create({
 
 const formatNumber = (num, decimals = 0) => {
   if (isNaN(num) || num === null || num === undefined) return '0';
-  
+
   const number = typeof num === 'string' ? parseFloat(num) : num;
-  
-  return new Intl.NumberFormat('fr-FR', { 
+
+  return new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
     useGrouping: true
   }).format(number)
     .replace(/\//g, ' ')     // Remplacer toutes les barres par des espaces
     .replace(/\s+/g, ' ');   // Normaliser les espaces multiples
+};
+
+// Helper pour afficher le nom du consommateur (gère les deux formats: name ou first_name/last_name)
+const getConsumerDisplayName = (consumer) => {
+  if (!consumer) return '';
+  // Si le champ name existe et n'est pas vide, l'utiliser
+  if (consumer.name && consumer.name.trim()) {
+    return consumer.name;
+  }
+  // Sinon utiliser first_name et last_name
+  const firstName = consumer.first_name || '';
+  const lastName = consumer.last_name || '';
+  return `${firstName} ${lastName}`.trim() || 'Consommateur inconnu';
 };
 
 // Composant ConsumptionDetails
@@ -346,7 +359,7 @@ const InvoiceListPDF = ({ invoices, dateRange, statusFilter, consumerFilter }) =
         
         {consumerFilter && (
           <Text style={styles.dateRange}>
-            Consommateur: {consumerFilter.name}
+            Consommateur: {getConsumerDisplayName(consumerFilter)}
           </Text>
         )}
 
@@ -858,7 +871,7 @@ const [dateRange, setDateRange] = useState([
     >
       <div className="flex items-center">
         <Users className="h-4 w-4 mr-2" />
-        {consumerFilter ? consumerFilter.name : "Rechercher un consommateur..."} 
+        {consumerFilter ? getConsumerDisplayName(consumerFilter) : "Rechercher un consommateur..."}
       </div>
       <Search className="h-4 w-4 ml-2 shrink-0 opacity-50" />
     </Button>
@@ -892,7 +905,7 @@ const [dateRange, setDateRange] = useState([
   }}
 >
   <Users className="h-4 w-4 mr-2 text-blue-500" />
-  <span>{consumer.name}</span>
+  <span>{getConsumerDisplayName(consumer)}</span>
   {consumer.nickname && (
     <span className="ml-1 text-sm text-gray-600">
       ({consumer.nickname})
@@ -928,7 +941,7 @@ const [dateRange, setDateRange] = useState([
   {consumerFilter && (
     <div className="flex items-center bg-blue-50 px-3 py-2 rounded-lg">
       <span className="mr-2 text-sm font-medium">
-        Filtré par: {consumerFilter.name}
+        Filtré par: {getConsumerDisplayName(consumerFilter)}
       </span>
       <button
         onClick={() => setConsumerFilter(null)}
