@@ -724,57 +724,13 @@ const [dateRange, setDateRange] = useState([
       return;
     }
 
-    console.log("Recherche pour:", query);
     setIsSearchingConsumers(true);
     try {
-      // Séparer les mots de la recherche et garder seulement ceux >= 2 caractères
-      const allWords = query.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0);
-      const validWords = allWords.filter(w => w.length >= 2);
-
-      if (validWords.length === 0) {
-        setConsumerSearchResults([]);
-        return;
-      }
-
-      // Si plusieurs mots valides, envoyer des requêtes pour chaque mot et combiner les résultats
-      // Cela permet de trouver "ABOU SOW" même si ABOU n'est pas dans les 10 premiers résultats de "abou"
-      let allResults = [];
-
-      if (validWords.length > 1) {
-        // Envoyer des requêtes en parallèle pour chaque mot
-        const promises = validWords.map(word =>
-          api.get('/invoices/search-consumers', { params: { query: word } })
-            .then(res => res.data.data)
-            .catch(() => [])
-        );
-        const resultsArrays = await Promise.all(promises);
-
-        // Combiner tous les résultats et dédupliquer par ID
-        const seen = new Set();
-        for (const results of resultsArrays) {
-          for (const consumer of results) {
-            if (!seen.has(consumer.id)) {
-              seen.add(consumer.id);
-              allResults.push(consumer);
-            }
-          }
-        }
-
-        // Filtrer pour garder seulement ceux qui contiennent TOUS les mots
-        allResults = allResults.filter(consumer => {
-          const consumerText = `${consumer.name || ''} ${consumer.first_name || ''} ${consumer.last_name || ''} ${consumer.nickname || ''} ${consumer.meter_number || ''}`.toLowerCase();
-          return allWords.every(word => consumerText.includes(word));
-        });
-      } else {
-        // Un seul mot valide, recherche simple
-        const response = await api.get('/invoices/search-consumers', {
-          params: { query: validWords[0] }
-        });
-        allResults = response.data.data;
-      }
-
-      console.log("Résultats:", allResults);
-      setConsumerSearchResults(allResults);
+      // Le backend gère maintenant la recherche multi-mots
+      const response = await api.get('/invoices/search-consumers', {
+        params: { query }
+      });
+      setConsumerSearchResults(response.data.data);
     } catch (error) {
       console.error('Erreur lors de la recherche des consommateurs:', error);
       toast({
