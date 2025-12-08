@@ -920,45 +920,6 @@ const [dateRange, setDateRange] = useState([
       )}
     </Button>
 
-    {/* Sélecteur de quartier + bouton export */}
-    <div className="flex items-center gap-2">
-      <Select
-        value={selectedQuartier}
-        onValueChange={setSelectedQuartier}
-      >
-        <SelectTrigger className="w-48">
-          <SelectValue placeholder="Sélectionner un quartier" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Tous les quartiers</SelectItem>
-          {quartiers.map(quartier => (
-            <SelectItem key={quartier.id} value={quartier.id.toString()}>
-              {quartier.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Button
-        variant="outline"
-        onClick={handleExportByQuartier}
-        disabled={exportingQuartier || selectedQuartier === 'all'}
-        title={selectedQuartier === 'all' ? "Sélectionnez un quartier" : "Exporter les factures du quartier"}
-      >
-        {exportingQuartier ? (
-          <>
-            <span className="animate-spin mr-2">⏳</span>
-            Export...
-          </>
-        ) : (
-          <>
-            <Download className="h-4 w-4 mr-2" />
-            Export quartier
-          </>
-        )}
-      </Button>
-    </div>
-
     <Button
       onClick={() => {
         fetchDashboardData().then(() => {
@@ -972,15 +933,15 @@ const [dateRange, setDateRange] = useState([
 
   </div>
 </div>
-        
-      
-      
+
+
+
 
       <div className="flex items-center space-x-4 mt-2 pb-4 w-full">
   <div className="flex-1 relative">
     <div className="relative">
 
-  
+
 <Popover open={isSearchOpen || (consumerSearchQuery.length > 1 && consumerSearchResults.length > 0)} onOpenChange={setIsSearchOpen}>
   <PopoverTrigger asChild>
     <Button 
@@ -1071,11 +1032,46 @@ const [dateRange, setDateRange] = useState([
       </button>
     </div>
   )}
+
+  {/* Sélecteur de quartier + bouton export */}
+  <div className="flex items-center gap-2">
+    <Select
+      value={selectedQuartier}
+      onValueChange={setSelectedQuartier}
+    >
+      <SelectTrigger className="w-48">
+        <SelectValue placeholder="Sélectionner un quartier" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">Tous les quartiers</SelectItem>
+        {quartiers.map(quartier => (
+          <SelectItem key={quartier.id} value={quartier.id.toString()}>
+            {quartier.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+
+    <Button
+      variant="outline"
+      onClick={handleExportByQuartier}
+      disabled={exportingQuartier || selectedQuartier === 'all'}
+      title={selectedQuartier === 'all' ? "Sélectionnez un quartier" : "Exporter les factures du quartier"}
+    >
+      {exportingQuartier ? (
+        <>
+          <span className="animate-spin mr-2">⏳</span>
+          Export...
+        </>
+      ) : (
+        <>
+          <Download className="h-4 w-4 mr-2" />
+          Export quartier
+        </>
+      )}
+    </Button>
+  </div>
 </div>
-
-     
-
-
 
       <Card>
         <Table>
