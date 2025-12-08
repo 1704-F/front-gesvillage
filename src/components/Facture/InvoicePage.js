@@ -495,6 +495,11 @@ const [dateRange, setDateRange] = useState([
   // États des filtres
   const [statusFilter, setStatusFilter] = useState('all');
 
+  // États pour l'export par quartier
+  const [quartiers, setQuartiers] = useState([]);
+  const [selectedQuartier, setSelectedQuartier] = useState('all');
+  const [exportingQuartier, setExportingQuartier] = useState(false);
+
   // États des modals
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -538,7 +543,21 @@ const [dateRange, setDateRange] = useState([
       setLoading(false);
     }
   };
- 
+
+  // Fonction pour charger les quartiers
+  const fetchQuartiers = async () => {
+    try {
+      const response = await api.get('/invoices/quartiers');
+      setQuartiers(response.data.data);
+    } catch (error) {
+      console.error('Erreur chargement quartiers:', error);
+    }
+  };
+
+  // Charger les quartiers au montage du composant
+  useEffect(() => {
+    fetchQuartiers();
+  }, []);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
@@ -742,8 +761,71 @@ const [dateRange, setDateRange] = useState([
       setIsSearchingConsumers(false);
     }
   };
-  
 
+  // Fonction d'export par quartier
+  const handleExportByQuartier = async () => {
+    if (selectedQuartier === 'all') {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Veuillez sélectionner un quartier"
+      });
+      return;
+    }
+
+    if (!dateRange[0] || !dateRange[1]) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Veuillez sélectionner une période"
+      });
+      return;
+    }
+
+    try {
+      setExportingQuartier(true);
+
+      const response = await api.get('/invoices/export-quartier', {
+        params: {
+          quartier_id: selectedQuartier,
+          start_date: format(dateRange[0], 'yyyy-MM-dd'),
+          end_date: format(dateRange[1], 'yyyy-MM-dd'),
+          status: statusFilter
+        },
+        responseType: 'blob'
+      });
+
+      const quartierName = quartiers.find(q => q.id === parseInt(selectedQuartier))?.name || 'quartier';
+      const fileName = `Factures_${quartierName.replace(/\s+/g, '-')}_${format(dateRange[0], 'dd-MM-yyyy')}_${format(dateRange[1], 'dd-MM-yyyy')}.pdf`;
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Succès",
+        description: "Export des factures par quartier terminé"
+      });
+    } catch (error) {
+      const message = error.response?.status === 404
+        ? "Aucune facture trouvée pour ce quartier sur cette période"
+        : "Erreur lors de l'export";
+
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: message
+      });
+    } finally {
+      setExportingQuartier(false);
+    }
+  };
 
   // Interface
   return (
@@ -820,7 +902,7 @@ const [dateRange, setDateRange] = useState([
 
     
 
-    <Button 
+    <Button
       variant="outline"
       onClick={handleExportPeriodInvoices}
       disabled={exportLoading}
@@ -837,6 +919,45 @@ const [dateRange, setDateRange] = useState([
         </>
       )}
     </Button>
+
+    {/* Sélecteur de quartier + bouton export */}
+    <div className="flex items-center gap-2">
+      <Select
+        value={selectedQuartier}
+        onValueChange={setSelectedQuartier}
+      >
+        <SelectTrigger className="w-48">
+          <SelectValue placeholder="Sélectionner un quartier" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Tous les quartiers</SelectItem>
+          {quartiers.map(quartier => (
+            <SelectItem key={quartier.id} value={quartier.id.toString()}>
+              {quartier.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Button
+        variant="outline"
+        onClick={handleExportByQuartier}
+        disabled={exportingQuartier || selectedQuartier === 'all'}
+        title={selectedQuartier === 'all' ? "Sélectionnez un quartier" : "Exporter les factures du quartier"}
+      >
+        {exportingQuartier ? (
+          <>
+            <span className="animate-spin mr-2">⏳</span>
+            Export...
+          </>
+        ) : (
+          <>
+            <Download className="h-4 w-4 mr-2" />
+            Export quartier
+          </>
+        )}
+      </Button>
+    </div>
 
     <Button
       onClick={() => {
