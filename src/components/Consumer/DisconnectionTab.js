@@ -108,6 +108,9 @@ const DisconnectionTab = () => {
     date_from: '',
     date_to: ''
   });
+
+  // État pour le paramètre de configuration du service
+  const [serviceMinInvoices, setServiceMinInvoices] = useState(2);
   
   // Effet pour le debounce
   useEffect(() => {
@@ -150,7 +153,12 @@ const DisconnectionTab = () => {
       });
       
       setConsumers(response.data.data || []);
-      
+
+      // Récupérer le paramètre de configuration du service
+      if (response.data.service_min_invoices) {
+        setServiceMinInvoices(response.data.service_min_invoices);
+      }
+
       if (response.data.pagination) {
         setPagination(prev => ({
           ...prev,
@@ -745,6 +753,10 @@ const DisconnectionTab = () => {
               </Button>
             </div>
           </Card>
+
+          <p className="text-sm text-muted-foreground mb-4">
+            Configuration du service : minimum <strong>{serviceMinInvoices}</strong> facture(s) impayée(s) requise(s) pour générer un bon de coupure
+          </p>
 
           {/* Tableau des consommateurs avec factures impayées (reste identique) */}
           <Card>
