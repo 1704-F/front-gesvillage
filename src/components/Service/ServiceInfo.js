@@ -46,6 +46,7 @@ import {
 import { Input } from "../ui/input";
 import CashStatementManager from "../Caisse/Cash";
 import AnomalyDashboard from "../ServiceInfo/AnomalyDashboard"; // Ajustez le chemin selon votre structure
+import DisconnectionSettings from "../ServiceInfo/DisconnectionSettings";
 
 const localCache = {
   get: (key) => {
@@ -499,6 +500,10 @@ const ServiceInfoPage = () => {
           <TabsTrigger value="cash">
             <Wallet className="w-4 h-4 mr-2" />
             Caisse
+          </TabsTrigger>
+          <TabsTrigger value="disconnection-settings">
+            <Zap className="w-4 h-4 mr-2" />
+            Paramètres coupure
           </TabsTrigger>
         </TabsList>
 
@@ -1098,6 +1103,11 @@ const ServiceInfoPage = () => {
               <CashStatementManager />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Paramètres de coupure */}
+        <TabsContent value="disconnection-settings">
+          <DisconnectionSettings />
         </TabsContent>
       </Tabs>
 
