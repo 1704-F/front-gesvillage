@@ -518,6 +518,7 @@ const [dateRange, setDateRange] = useState([
           end_date: format(dateRange[1], 'yyyy-MM-dd'),
           status: statusFilter !== 'all' ? statusFilter : undefined,
           consumer_id: consumerFilter?.id,
+          quartier_id: selectedQuartier !== 'all' ? selectedQuartier : undefined,
           page: currentPage,
           limit: itemsPerPage
         }
@@ -570,7 +571,7 @@ const [dateRange, setDateRange] = useState([
 
   useEffect(() => {
     fetchDashboardData();
-  }, [dateRange, statusFilter, consumerFilter, currentPage, itemsPerPage]);
+  }, [dateRange, statusFilter, consumerFilter, selectedQuartier, currentPage, itemsPerPage]);
   
  
 
